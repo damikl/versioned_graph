@@ -372,11 +372,12 @@ inline bool compare(const boost::no_property&,const boost::no_property&){
 template<typename Graph>
 bool equal(const Graph& g1, const Graph& g2){
     typedef typename boost::graph_traits<Graph>::edge_iterator edge_iterator;
+    typedef typename boost::graph_traits<Graph>::vertex_iterator vertex_iterator;
     typedef typename boost::graph_traits<Graph>::vertex_descriptor vertex_descriptor;
     typedef typename boost::graph_traits<Graph>::edge_descriptor edge_descriptor;
     typedef typename boost::edge_bundle_type<Graph>::type edge_properties;
     std::pair<edge_iterator, edge_iterator> e_g1 = boost::edges(g1);
-    if(boost::num_edges(g1)!=boost::num_edges(g2))
+    if(boost::num_edges(g1)!=boost::num_edges(g2) || boost::num_vertices(g1)!=boost::num_vertices(g2))
         return false;
     for(edge_iterator it = e_g1.first; it!=e_g1.second;++it){
         std::pair<edge_descriptor,bool> p = boost::edge(source(*it,g1),target(*it,g1),g2);

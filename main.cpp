@@ -62,7 +62,7 @@ int main()
         std::cout << "(" << source(*edge_iter, g) << ", " << target(*edge_iter, g) << ")\n";
     }
 
-    std::cout << "\n";
+    std::cout << "Want to add another edge between (A,E)\n";
     //Want to add another edge between (A,E)?
     add_edge(A, E, g);
 
@@ -79,11 +79,19 @@ int main()
 
     //Connect our new vertex with an edge to A...
     add_edge(A, F, g);
+    for(edge_iterator edge_iter = ei.first; edge_iter != ei.second; ++edge_iter) {
+        std::cout << "(" << source(*edge_iter, g) << ", " << target(*edge_iter, g) << ")\n";
+    }
     arch.commit(ei);
     std::cout << "before checkout\n";
-    UndirectedGraph ng = arch.checkout(0);
+    UndirectedGraph ng = arch.checkout(1);
 
     std::cout << "hello"  << ng[D].simple_name << equal(back,ng) << std::endl;
+
+    std::pair<edge_iterator, edge_iterator> bi = edges(back);
+    for(edge_iterator edge_iter = bi.first; edge_iter != bi.second; ++edge_iter) {
+        std::cout << "(" << source(*edge_iter, back) << ", " << target(*edge_iter, back) << ")\n";
+    }
 
     UndirectedGraph::vertex_descriptor u,v;
     std::pair<edge_iterator, edge_iterator> ngi = edges(ng);
