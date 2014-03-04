@@ -99,7 +99,7 @@ bool thesame(const archive_edge<Graph>& f,const archive_edge<Graph>& s){
 
 template<typename Graph, typename vertex_prop_type>
 struct helper;
-
+/*
 template<typename Graph, typename descriptor,typename property>
 struct value_checker{
     static bool changed(descriptor v, property p,const Graph& g) {
@@ -111,6 +111,101 @@ struct value_checker<Graph,descriptor,boost::no_property>{
     static bool changed(descriptor, boost::no_property,const Graph&) {
         return false;
     }
+};
+*/
+template<typename key_type,typename property_type>
+struct history_holder{
+    typedef typename std::map<key_type,property_type> container;
+    typedef typename container::iterator iterator;
+    typedef typename container::const_iterator const_iterator;
+    std::pair<iterator,bool> insert(const key_type& key, const property_type& property){
+        return history_records.insert(std::make_pair(key, property));
+    }
+    template<typename Graph, typename descriptor>
+    static bool changed(descriptor v, iterator it,const Graph& g) {
+        return g[v] != it->second;
+    }
+    key_type get_key(const_iterator it) const {
+        return it->first;
+    }
+    template<typename Graph>
+    void set_edge_property(iterator it,
+                           Graph& graph,
+                           typename key_type::vertex_type s,
+                           typename key_type::vertex_type t){
+        boost::put(it->second,graph,s,t);
+    }
+    iterator begin(){
+        return history_records.begin();
+    }
+    const_iterator begin() const{
+        return history_records.begin();
+    }
+    iterator end(){
+        return history_records.end();
+    }
+    const_iterator end() const{
+        return history_records.end();
+    }
+    bool empty() const{
+        return history_records.empty();
+    }
+    const_iterator upper_bound (const key_type& val) const{
+        return history_records.upper_bound(val);
+    }
+
+    const_iterator lower_bound (const key_type& val) const{
+        return history_records.lower_bound(val);
+    }
+
+private:
+    container history_records;
+};
+
+template<typename key_type>
+struct history_holder<key_type,boost::no_property>{
+    typedef typename std::set<key_type> container;
+    typedef typename container::iterator iterator;
+    typedef typename container::const_iterator const_iterator;
+    std::pair<iterator,bool> insert(const key_type& key, const boost::no_property&){
+        return history_records.insert(key);
+    }
+    template<typename Graph, typename descriptor>
+    static bool changed(descriptor, iterator ,const Graph&) {
+        return false;
+    }
+    key_type get_key(const_iterator it) const {
+        return *it;
+    }
+    template<typename Graph>
+    void set_edge_property(iterator,
+                           Graph&,
+                           typename key_type::vertex_type,
+                           typename key_type::vertex_type){
+    }
+    iterator begin(){
+        return history_records.begin();
+    }
+    const_iterator begin() const{
+        return history_records.begin();
+    }
+    iterator end(){
+        return history_records.end();
+    }
+    const_iterator end() const{
+        return history_records.end();
+    }
+    bool empty() const{
+        return history_records.empty();
+    }
+    iterator upper_bound (const key_type& val) const{
+        return history_records.upper_bound(val);
+    }
+    iterator lower_bound (const key_type& val) const{
+        return history_records.lower_bound(val);
+    }
+private:
+    container history_records;
 };
 
 template<typename Graph>
@@ -124,8 +219,8 @@ public:
     typedef typename boost::vertex_bundle_type<Graph>::type vertex_properties;
     typedef typename boost::edge_bundle_type<Graph>::type edge_properties;
 private:
-    typedef typename std::map<vertex_key,vertex_properties> vertices_container;
-    typedef typename std::map<edge_key,edge_properties> edges_container;
+    typedef history_holder<vertex_key,vertex_properties> vertices_container;
+    typedef history_holder<edge_key,edge_properties> edges_container;
 
 public:
 
@@ -167,7 +262,7 @@ public:
             if(e_it == edges.end()){
                 commit(e,rev);
             } else {
-                if(value_checker<Graph,edge_descriptor,edge_properties>::changed(e,e_it->second,g))
+                if(edges.changed(e,e_it,g))
                     commit(e,rev);
                 else
                     ah_edges.insert(std::make_pair(source(e,g),target(e,g)));
@@ -177,7 +272,7 @@ public:
 
         typename edges_container::iterator e_it = edges.begin();
         while(e_it !=edges.end()){
-            edge_key curr = e_it->first;
+            edge_key curr = edges.get_key(e_it);
             std::pair<vertex_descriptor,vertex_descriptor> edge = std::make_pair(curr.source,curr.target);
             if(abs(curr.revision) < abs(rev) && ah_edges.find(edge)!= ah_edges.end())
             {
@@ -185,7 +280,7 @@ public:
             }
             e_it = edges.upper_bound(edge_key::get_min(curr.source,curr.target));
         }
-        typename vertices_container::iterator v_it = vertices.begin();
+        typename vertices_container::const_iterator v_it = vertices.begin();
         while(v_it !=vertices.end()){
            vertex_key curr = v_it->first;
            if(abs(curr.revision) < abs(rev) && ah_vertices.find(curr.id)!= ah_vertices.end())
@@ -215,7 +310,7 @@ public:
     void print_edges(){
         typename edges_container::iterator e_it = edges.begin();
         while(e_it != edges.end()){
-            edge_key curr_edge = e_it->first;
+            edge_key curr_edge = edges.get_key(e_it);
             std::cout << "int " << curr_edge.source << " " << curr_edge.target << " "<< curr_edge.revision << std::endl;
             ++e_it;
         }
@@ -228,19 +323,19 @@ public:
         Graph n;
         typename edges_container::iterator e_it = edges.begin();
         while(e_it != edges.end()){
-           edge_key curr_edge = e_it->first;
+           edge_key curr_edge = edges.get_key(e_it);
            if(abs(curr_edge.revision) > abs(rev))
             {
                std::cout << "inner" << std::endl;
                 e_it = edges.lower_bound(archive_edge<Graph>(curr_edge.source,curr_edge.target,rev));
                 if(e_it != edges.end())
-                    curr_edge = e_it->first;
+                    curr_edge = edges.get_key(e_it);
                 else
                     break;
             }
             boost::add_edge(curr_edge.source,curr_edge.target,n);
             std::cout << "internal" << curr_edge.source << " " << curr_edge.target << " "<< curr_edge.revision << "a" << std::endl;
-            set_edge_property(e_it->second,n,curr_edge.source,curr_edge.target);
+            edges.set_edge_property(e_it,n,curr_edge.source,curr_edge.target);
             //move to next edge
             e_it = edges.upper_bound(edge_key::get_min(curr_edge.source,curr_edge.target));
         }
@@ -253,9 +348,9 @@ public:
     int head_rev() const{
         int v = 0, e = 0;
         if(!vertices.empty())
-            v = vertices.begin()->first.revision;
+            v = vertices.get_key(vertices.begin()).revision;
         if(!edges.empty())
-            e = edges.begin()->first.revision;
+            e = edges.get_key(edges.begin()).revision;
         std::cout << "revs: "<< v << " " << e << std::endl;
         return std::max(std::abs(v),std::abs(e));
     }
@@ -267,9 +362,9 @@ private:
         typename edges_container::const_iterator it = edges.lower_bound(ed);
         if(it == edges.end())
             return it;
-        if(source(e, g) != it->first.source ||
-           target(e, g) != it->first.target ||
-           it->first.revision < 0)
+        if(source(e, g) != edges.get_key(it).source ||
+           target(e, g) != edges.get_key(it).target ||
+           edges.get_key(it).revision < 0)
             return edges.end();
         return it;
     }
@@ -288,7 +383,7 @@ private:
         vertex_key el;
         el.id = v;
         el.revision = revision;
-        vertices.insert(std::make_pair(el, g[v]));
+        vertices.insert(el, g[v]);
         return el;
     }
     edge_key commit(typename boost::graph_traits<Graph>::edge_descriptor v, int revision){
@@ -296,7 +391,7 @@ private:
         el.source = source(v, g);
         el.target = target(v, g);
         el.revision = revision;
-        edges.insert(std::make_pair(el, g[v]));
+        edges.insert(el, g[v]);
         return el;
     }
     edge_key del_commit(std::pair<  typename boost::graph_traits<Graph>::vertex_descriptor,
@@ -306,23 +401,9 @@ private:
         el.source = v.first;
         el.target = v.second;
         el.revision = revision;
-        edges.insert(std::make_pair(el, edge_properties()));
+        edges.insert(el, edge_properties());
         return el;
     }
-
-    template<typename edge_prop_type>
-    void set_edge_property(edge_prop_type property,
-                           Graph& graph,
-                           typename edge_key::vertex_type s,
-                           typename edge_key::vertex_type t){
-        boost::put(property,graph,s,t);
-    }
-    void set_edge_property(boost::no_property,
-                           Graph&,
-                           typename edge_key::vertex_type,
-                           typename edge_key::vertex_type){
-    }
-
 
     const Graph& g;
     vertices_container vertices;
