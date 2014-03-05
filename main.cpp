@@ -5,25 +5,64 @@
 using namespace std;
 using namespace boost;
 
-struct vertex_info {
+struct extra_info {
     string simple_name;
     int othervalue;
     vector<int> some_values;
-    bool operator ==(const vertex_info& vertex)const{
+    bool operator ==(const extra_info& vertex)const{
         return this->simple_name == vertex.simple_name;
     }
-    bool operator !=(const vertex_info& vertex)const{
+    bool operator !=(const extra_info& vertex)const{
         return this->simple_name != vertex.simple_name;
+    }
+    void print() const{
+        cout << simple_name << " ";
     }
 };
 
+template<typename properties_type>
+struct edge_printer{
 
+    template<typename Graph, typename iterator>
+    static void print_edges(const Graph& graph, iterator begin, iterator end){
+        for(iterator edge_iter = begin; edge_iter != end; ++edge_iter) {
+            int u = source(*edge_iter, graph);
+            int v = target(*edge_iter, graph);
+            std::cout << "(" << u << ", " << v << ")" << " from: ";
+            graph[u].print();
+            cout << " to: ";
+            graph[v].print();
+            cout << endl;
+        }
+    }
+};
+template<>
+struct edge_printer<no_property>{
+    template<typename Graph, typename iterator>
+    static void print_edges(const Graph& graph,iterator begin, iterator end){
+        for(iterator edge_iter = begin; edge_iter != end; ++edge_iter) {
+            int u = source(*edge_iter, graph);
+            int v = target(*edge_iter, graph);
+            std::cout << "(" << u << ", " << v << ")" << endl;
+        }
+    }
+};
+
+template<typename Graph>
+struct Printer{
+    static void print_edges(const Graph& graph){
+        edge_printer<typename vertex_bundle_type<Graph>::type>::print_edges(graph, edges(graph).first, edges(graph).second);
+    }
+
+};
 
 int main()
 {
     //create an -undirected- graph type, using vectors as the underlying containers
     //and an adjacency_list as the basic representation
-    typedef boost::adjacency_list<vecS, vecS, undirectedS, vertex_info> UndirectedGraph;
+    typedef boost::adjacency_list<vecS, vecS, undirectedS, extra_info> UndirectedGraph;
+    typedef boost::adjacency_list<vecS, vecS, undirectedS> SimpleGraph;
+    typedef boost::adjacency_list<vecS, vecS, undirectedS, extra_info,extra_info> ExtendedGraph;
 
     //Our set of edges, which basically are just converted into ints (0-4)
     enum {A, B, C, D, E, N};
@@ -57,22 +96,18 @@ int main()
 
     //Tried to make this section more clear, instead of using tie, keeping all
     //the original types so it's more clear what is going on
-    std::pair<edge_iterator, edge_iterator> ei = edges(g);
-    for(edge_iterator edge_iter = ei.first; edge_iter != ei.second; ++edge_iter) {
-        std::cout << "(" << source(*edge_iter, g) << ", " << target(*edge_iter, g) << ")\n";
-    }
+    Printer<UndirectedGraph>::print_edges(g);
 
     std::cout << "Want to add another edge between (A,E)\n";
     //Want to add another edge between (A,E)?
     add_edge(A, E, g);
 
     //Print out the edge list again to see that it has been added
-    for(edge_iterator edge_iter = ei.first; edge_iter != ei.second; ++edge_iter) {
-        std::cout << "(" << source(*edge_iter, g) << ", " << target(*edge_iter, g) << ")\n";
-    }
+    Printer<UndirectedGraph>::print_edges(g);
+
     UndirectedGraph back = g;
     graph_archive<UndirectedGraph> arch(g);
-    arch.commit(ei);
+    arch.commit();
     //Finally lets add a new vertex - remember the verticies are just of type int
     int F = add_vertex(g);
     std::cout << "new vertex: " << F << "\n";
@@ -83,27 +118,46 @@ int main()
     std::cout << "removed edge: " << B <<" to " << D << "\n";
     g[F].simple_name = "other";
     g[D].simple_name = "just something";
-    for(edge_iterator edge_iter = ei.first; edge_iter != ei.second; ++edge_iter) {
-        std::cout << "(" << source(*edge_iter, g) << ", " << target(*edge_iter, g) << ")\n";
-    }
-    arch.commit(ei);
+    Printer<UndirectedGraph>::print_edges(g);
+
+    arch.commit();
     std::cout << "before checkout\n";
     UndirectedGraph ng = arch.checkout(1);
+    bool first = equal(back,ng);
+    bool second = equal(arch.checkout(2),g);
+    std::cout << "Comparison: " << first << " " << second << std::endl;
 
-    std::cout << "hello"  << ng[D].simple_name << equal(back,ng) << " " << equal(arch.checkout(2),g)<< std::endl;
+    Printer<UndirectedGraph>::print_edges(g);
 
-    std::pair<edge_iterator, edge_iterator> bi = edges(back);
-    for(edge_iterator edge_iter = bi.first; edge_iter != bi.second; ++edge_iter) {
-        std::cout << "(" << source(*edge_iter, back) << ", " << target(*edge_iter, back) << ")\n";
-    }
+    SimpleGraph simple(edgeVec.begin(), edgeVec.end(), N);
+    SimpleGraph s_copy = simple;
+    graph_archive<SimpleGraph> simple_arch(simple);
+    simple_arch.commit();
+    add_edge(A, F, simple);
+    remove_edge(B, D, simple);
+    simple_arch.commit();
 
-    UndirectedGraph::vertex_descriptor u,v;
-    std::pair<edge_iterator, edge_iterator> ngi = edges(ng);
-    for(edge_iterator edge_iter = ngi.first; edge_iter != ngi.second; ++edge_iter) {
-        u = source(*edge_iter, ng);
-        v = target(*edge_iter, ng);
-        std::cout << "(" << u << ", " << v << ")" << " from: "<< ng[u].simple_name << " to: " << ng[v].simple_name  << "\n";
-    }
+    first = equal(s_copy,simple_arch.checkout(1));
+    second = equal(simple_arch.checkout(2),simple);
+    std::cout << "Comparison: " << first << " " << second << std::endl;
+    Printer<SimpleGraph>::print_edges(simple);
+
+    ExtendedGraph ex(edgeVec.begin(), edgeVec.end(), N);
+    ExtendedGraph ex_copy = ex;
+    graph_archive<ExtendedGraph> ex_arch(ex);
+    ex_arch.commit();
+    add_edge(A, F, ex);
+    remove_edge(B, D, ex);
+    ex[F].simple_name = "other";
+    ex[D].simple_name = "just something";
+    ex_arch.commit();
+    ex[A].simple_name = "aaa";     // breaks next comparison
+
+    first = equal(ex_copy,ex_arch.checkout(1));
+    second = equal(ex_arch.checkout(2),ex);
+    std::cout << "Comparison: " << first << " " << second << std::endl;
+    Printer<ExtendedGraph>::print_edges(ex);
+
 
     return 0;
 }

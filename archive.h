@@ -142,7 +142,7 @@ struct history_holder{
                            Graph& graph,
                            typename key_type::vertex_type s,
                            typename key_type::vertex_type t){
-        boost::put(it->second,graph,s,t);
+        graph[edge(s, t, graph).first] = it->second;
     }
     iterator begin(){
         return history_records.begin();
@@ -164,6 +164,14 @@ struct history_holder{
     }
 
     const_iterator lower_bound (const key_type& val) const{
+        return history_records.lower_bound(val);
+    }
+
+    iterator upper_bound (const key_type& val) {
+        return history_records.upper_bound(val);
+    }
+
+    iterator lower_bound (const key_type& val) {
         return history_records.lower_bound(val);
     }
 
@@ -236,9 +244,12 @@ public:
     friend struct helper<Graph,vertex_properties>;
     graph_archive(const Graph& graph) : g(graph){
     }
-    void commit(std::pair<edge_iterator, edge_iterator> ei){
+    void commit(){
+        std::pair<edge_iterator, edge_iterator> ei = boost::edges(g);
+#ifdef DEBUG
         std::cout << "COMMIT before" << std::endl;
         print_edges();
+#endif
         int rev = head_rev()+1;
         typedef typename boost::graph_traits<Graph>::vertex_descriptor vertex_descriptor;
         typedef typename boost::graph_traits<Graph>::edge_descriptor edge_descriptor;
@@ -279,7 +290,7 @@ public:
 
         }
 
-        typename edges_container::iterator e_it = edges.begin();
+        typename edges_container::const_iterator e_it = edges.begin();
         while(e_it !=edges.end()){
             edge_key curr = edges.get_key(e_it);
             std::pair<vertex_descriptor,vertex_descriptor> edge = std::make_pair(curr.source,curr.target);
@@ -291,15 +302,17 @@ public:
         }
         typename vertices_container::const_iterator v_it = vertices.begin();
         while(v_it !=vertices.end()){
-           vertex_key curr = v_it->first;
+           vertex_key curr = vertices.get_key(v_it);
            if(abs(curr.revision) < abs(rev) && ah_vertices.find(curr.id)== ah_vertices.end())
             {
                 commit(curr.id,-rev);
             }
             v_it = vertices.upper_bound(vertex_key::get_min(curr.id));
         }
+#ifdef DEBUG
         std::cout << "COMMIT after" << std::endl;
         print_edges();
+#endif
     }
 
     bool contains_edge(const typename boost::graph_traits<Graph>::edge_descriptor e) const{
@@ -331,15 +344,13 @@ public:
     }
     Graph checkout(int rev){
         Graph n;
-        typename edges_container::const_iterator e_it = edges.begin();
+        typename edges_container::iterator e_it = edges.begin();
         while(e_it != edges.end()){
             edge_key curr_edge = edges.get_key(e_it);
             if(abs(curr_edge.revision) > abs(rev))
             {
                 edge_key key = archive_edge<Graph>(curr_edge.source,curr_edge.target,rev);
                 e_it = edges.lower_bound(key);
-  //              std::cout << (curr_edge <  key) << key << edges.get_key(e_it) << std::endl;
-  //              std::cout << "inner" << rev << " "<< std::distance(edges.begin(),e_it)<< " "<< key.revision << " "<< edges.get_key(e_it).revision << " "<<(key <  edges.get_key(e_it)) << std::endl;
                 if(e_it == edges.end())
                     break;
                 edge_key tmp = edges.get_key(e_it);
@@ -350,17 +361,19 @@ public:
             }
             if(curr_edge.revision >=0){
                 boost::add_edge(curr_edge.source,curr_edge.target,n);
+#ifdef DEBUG
                 std::cout << "checked out: " << curr_edge.source << " " << curr_edge.target << " rev: "<< curr_edge.revision << " wanted: " << rev << std::endl;
+#endif
                 edges.set_edge_property(e_it,n,curr_edge.source,curr_edge.target);
-            }else
+            }else{
+#ifdef DEBUG
                 std::cout << "NOT checked out: " << curr_edge.source << " " << curr_edge.target << " rev: "<< curr_edge.revision << " wanted: " << rev << std::endl;
-
+#endif
+            }
             //move to next edge
             e_it = edges.upper_bound(edge_key::get_min(curr_edge.source,curr_edge.target));
         }
-        std::cout << "vertex" << std::endl;
         helper<Graph,vertex_properties>::set_vertex_properties(n,vertices, rev);
-        std::cout << "vertex2" << std::endl;
         return n;
     }
 
@@ -370,7 +383,9 @@ public:
             v = vertices.get_key(vertices.begin()).revision;
         if(!edges.empty())
             e = edges.get_key(edges.begin()).revision;
+#ifdef DEBUG
         std::cout << "revs: "<< v << " " << e << std::endl;
+#endif
         return std::max(std::abs(v),std::abs(e));
     }
 
@@ -388,12 +403,12 @@ private:
         return it;
     }
     typename vertices_container::const_iterator lower_bound(const typename boost::graph_traits<Graph>::vertex_descriptor v) const{
-        vertex_key ed = vertex_key::get_max(v);
-        typename vertices_container::const_iterator it = vertices.lower_bound(ed);
+        vertex_key max_key = vertex_key::get_max(v);
+        typename vertices_container::const_iterator it = vertices.lower_bound(max_key);
         if(it == vertices.end())
             return it;
-        if(v != it->first.id ||
-           it->first.revision < 0)
+        vertex_key curr = vertices.get_key(it);
+        if(v != curr.id || curr.revision < 0)
             return vertices.end();
         return it;
     }
@@ -445,7 +460,9 @@ struct helper{
                  else
                      break;
              }
+#ifdef DEBUG
             std::cout << "setting vertex property" << curr_vertex.id << " rev: " << curr_vertex.revision << std::endl;
+#endif
             if(curr_vertex.revision >=0){
                 graph[curr_vertex.id] = v_it->second;
             }
@@ -457,7 +474,7 @@ struct helper{
 
 template<typename Graph>
 struct helper<Graph,boost::no_property>{
-    static void set_vertex_properties(Graph&,const typename graph_archive<Graph>::vertices_container&){
+    static void set_vertex_properties(Graph&,const typename graph_archive<Graph>::vertices_container&, int){
 
     }
 
