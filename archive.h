@@ -87,7 +87,16 @@ struct archive_edge{
         arch.revision = 0;
         return arch;
    }
+   std::string to_string()const{
+       return std::string("(")+std::string(source) +std::string(",")+ std::string(target) +","+ std::string(revision) +")";
+   }
 };
+template<typename Graph>
+std::ostream& operator<<(std::ostream& os, const archive_edge<Graph>& obj)
+{
+  // write obj to stream
+    return os << "(" << obj.source << ","<< obj.target<<","<< obj.revision <<")";
+}
 template<typename Graph>
 bool thesame(const archive_vertex<Graph>& f,const archive_vertex<Graph>& s){
     return f.id == s.id;
@@ -122,7 +131,7 @@ struct history_holder{
         return history_records.insert(std::make_pair(key, property));
     }
     template<typename Graph, typename descriptor>
-    static bool changed(descriptor v, iterator it,const Graph& g) {
+    static bool changed(descriptor v, const_iterator it,const Graph& g) {
         return g[v] != it->second;
     }
     key_type get_key(const_iterator it) const {
@@ -228,7 +237,7 @@ public:
     graph_archive(const Graph& graph) : g(graph){
     }
     void commit(std::pair<edge_iterator, edge_iterator> ei){
-        std::cout << "COMMIT" << std::endl;
+        std::cout << "COMMIT before" << std::endl;
         print_edges();
         int rev = head_rev()+1;
         typedef typename boost::graph_traits<Graph>::vertex_descriptor vertex_descriptor;
@@ -242,7 +251,7 @@ public:
             if(v_it == vertices.end()){
                 commit(v,rev);
             } else {
-                if(g[v] != v_it->second)
+                if(vertices.changed(v,v_it,g))
                     commit(v,rev);
                 else
                     ah_vertices.insert(v);
@@ -252,7 +261,7 @@ public:
             if(u_it == vertices.end()){
                 commit(u,rev);
             } else {
-                if(g[u] != u_it->second)
+                if(vertices.changed(u,u_it,g))
                     commit(u,rev);
                 else
                     ah_vertices.insert(u);
@@ -274,7 +283,7 @@ public:
         while(e_it !=edges.end()){
             edge_key curr = edges.get_key(e_it);
             std::pair<vertex_descriptor,vertex_descriptor> edge = std::make_pair(curr.source,curr.target);
-            if(abs(curr.revision) < abs(rev) && ah_edges.find(edge)!= ah_edges.end())
+            if(abs(curr.revision) < abs(rev) && ah_edges.find(edge)== ah_edges.end())
             {
                 del_commit(edge,-rev);
             }
@@ -283,12 +292,14 @@ public:
         typename vertices_container::const_iterator v_it = vertices.begin();
         while(v_it !=vertices.end()){
            vertex_key curr = v_it->first;
-           if(abs(curr.revision) < abs(rev) && ah_vertices.find(curr.id)!= ah_vertices.end())
+           if(abs(curr.revision) < abs(rev) && ah_vertices.find(curr.id)== ah_vertices.end())
             {
                 commit(curr.id,-rev);
             }
             v_it = vertices.upper_bound(vertex_key::get_min(curr.id));
         }
+        std::cout << "COMMIT after" << std::endl;
+        print_edges();
     }
 
     bool contains_edge(const typename boost::graph_traits<Graph>::edge_descriptor e) const{
@@ -314,28 +325,36 @@ public:
             std::cout << "int " << curr_edge.source << " " << curr_edge.target << " "<< curr_edge.revision << std::endl;
             ++e_it;
         }
-
     }
     Graph checkout(){
         return checkout(head_rev());
     }
     Graph checkout(int rev){
         Graph n;
-        typename edges_container::iterator e_it = edges.begin();
+        typename edges_container::const_iterator e_it = edges.begin();
         while(e_it != edges.end()){
-           edge_key curr_edge = edges.get_key(e_it);
-           if(abs(curr_edge.revision) > abs(rev))
+            edge_key curr_edge = edges.get_key(e_it);
+            if(abs(curr_edge.revision) > abs(rev))
             {
-               std::cout << "inner" << std::endl;
-                e_it = edges.lower_bound(archive_edge<Graph>(curr_edge.source,curr_edge.target,rev));
-                if(e_it != edges.end())
-                    curr_edge = edges.get_key(e_it);
-                else
+                edge_key key = archive_edge<Graph>(curr_edge.source,curr_edge.target,rev);
+                e_it = edges.lower_bound(key);
+  //              std::cout << (curr_edge <  key) << key << edges.get_key(e_it) << std::endl;
+  //              std::cout << "inner" << rev << " "<< std::distance(edges.begin(),e_it)<< " "<< key.revision << " "<< edges.get_key(e_it).revision << " "<<(key <  edges.get_key(e_it)) << std::endl;
+                if(e_it == edges.end())
                     break;
+                edge_key tmp = edges.get_key(e_it);
+                if(thesame(key,tmp))
+                    curr_edge = tmp;
+                else
+                    continue;
             }
-            boost::add_edge(curr_edge.source,curr_edge.target,n);
-            std::cout << "internal" << curr_edge.source << " " << curr_edge.target << " "<< curr_edge.revision << "a" << std::endl;
-            edges.set_edge_property(e_it,n,curr_edge.source,curr_edge.target);
+            if(curr_edge.revision >=0){
+                boost::add_edge(curr_edge.source,curr_edge.target,n);
+                std::cout << "checked out: " << curr_edge.source << " " << curr_edge.target << " rev: "<< curr_edge.revision << " wanted: " << rev << std::endl;
+                edges.set_edge_property(e_it,n,curr_edge.source,curr_edge.target);
+            }else
+                std::cout << "NOT checked out: " << curr_edge.source << " " << curr_edge.target << " rev: "<< curr_edge.revision << " wanted: " << rev << std::endl;
+
             //move to next edge
             e_it = edges.upper_bound(edge_key::get_min(curr_edge.source,curr_edge.target));
         }
@@ -426,8 +445,10 @@ struct helper{
                  else
                      break;
              }
-            std::cout << "set prop" << curr_vertex.id << " " << curr_vertex.revision << std::endl;
-            graph[curr_vertex.id] = v_it->second;
+            std::cout << "setting vertex property" << curr_vertex.id << " rev: " << curr_vertex.revision << std::endl;
+            if(curr_vertex.revision >=0){
+                graph[curr_vertex.id] = v_it->second;
+            }
             v_it = vertices.upper_bound(graph_archive<Graph>::vertex_key::get_min(curr_vertex.id));
         }
     }
@@ -463,6 +484,11 @@ bool equal(const Graph& g1, const Graph& g2){
     for(edge_iterator it = e_g1.first; it!=e_g1.second;++it){
         std::pair<edge_descriptor,bool> p = boost::edge(source(*it,g1),target(*it,g1),g2);
         if(!p.second || !compare(g2[p.first],g1[*it]))
+            return false;
+    }
+    std::pair<vertex_iterator, vertex_iterator> v_g1 = boost::vertices(g1);
+    for(vertex_iterator it = v_g1.first; it!=v_g1.second;++it){
+        if(!compare(g2[*it],g1[*it]))
             return false;
     }
     return true;

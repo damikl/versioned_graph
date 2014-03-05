@@ -79,6 +79,10 @@ int main()
 
     //Connect our new vertex with an edge to A...
     add_edge(A, F, g);
+    remove_edge(B, D, g);
+    std::cout << "removed edge: " << B <<" to " << D << "\n";
+    g[F].simple_name = "other";
+    g[D].simple_name = "just something";
     for(edge_iterator edge_iter = ei.first; edge_iter != ei.second; ++edge_iter) {
         std::cout << "(" << source(*edge_iter, g) << ", " << target(*edge_iter, g) << ")\n";
     }
@@ -86,7 +90,7 @@ int main()
     std::cout << "before checkout\n";
     UndirectedGraph ng = arch.checkout(1);
 
-    std::cout << "hello"  << ng[D].simple_name << equal(back,ng) << std::endl;
+    std::cout << "hello"  << ng[D].simple_name << equal(back,ng) << " " << equal(arch.checkout(2),g)<< std::endl;
 
     std::pair<edge_iterator, edge_iterator> bi = edges(back);
     for(edge_iterator edge_iter = bi.first; edge_iter != bi.second; ++edge_iter) {
