@@ -151,7 +151,7 @@ int main()
     ex[F].simple_name = "other";
     ex[D].simple_name = "just something";
     ex_arch.commit();
-    ex[A].simple_name = "aaa";     // breaks next comparison
+//    ex[A].simple_name = "aaa";     // breaks next comparison
 
     first = equal(ex_copy,ex_arch.checkout(1));
     second = equal(ex_arch.checkout(2),ex);

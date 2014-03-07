@@ -7,231 +7,15 @@
 #include "boost/graph/graph_traits.hpp"
 #include "boost/graph/adjacency_list.hpp"
 #include "boost/graph/filtered_graph.hpp"
-
-template<typename Graph>
-struct archive_vertex{
-    typedef typename Graph::vertex_descriptor vertex_type;
-    vertex_type id;
-    int revision;
-    archive_vertex(vertex_type id, int rev) : id(id),revision(rev){}
-    archive_vertex(){}
-    bool operator<(const archive_vertex& obj)const{
-        if(this->id == obj.id)
-            return abs(this->revision) > abs(obj.revision);
-        return this->id < obj.id;
-    }
-    bool operator==(const archive_vertex& obj)const{
-        if(this->id == obj.id && this->revision == obj.revision)
-            return true;
-        return false;
-    }
-    static archive_vertex get_max(vertex_type id){
-         archive_vertex arch;
-         arch.id = id;
-         arch.revision = std::numeric_limits<int>::max();
-         return arch;
-    }
-    static archive_vertex get_min(vertex_type id){
-         archive_vertex arch;
-         arch.id = id;
-         arch.revision = 0;
-         return arch;
-    }
-};
-template<typename Graph>
-struct archive_edge{
-   typedef typename Graph::vertex_descriptor vertex_type;
-   vertex_type source;
-   vertex_type target;
-   int revision;
-   archive_edge(){}
-   archive_edge(vertex_type source,
-                vertex_type target,
-                int revision):  source(source),
-                                target(target),
-                                revision(revision){}
-
-   bool operator<(const archive_edge& obj) const {
-       if(this->source == obj.source){
-            if(this->target == obj.target)
-                return abs(this->revision) > abs(obj.revision);
-            return this->target < obj.target;
-       }
-       return this->source < obj.source;
-   }
-   bool operator==(const archive_edge& obj)const{
-       if(this->source == obj.source &&
-          this->target == obj.target &&
-          this->revision == obj.revision)
-            return true;
-       return false;
-   }
-   archive_edge& operator=(archive_edge rhs)
-   {
-     this->source = rhs.source;
-     this->target = rhs.target;
-     this->revision = rhs.revision;
-     return *this;
-   }
-   static archive_edge get_max(vertex_type source, vertex_type target){
-        archive_edge arch;
-        arch.source = source;
-        arch.target = target;
-        arch.revision = std::numeric_limits<int>::max();
-        return arch;
-   }
-   static archive_edge get_min(vertex_type source, vertex_type target){
-        archive_edge arch;
-        arch.source = source;
-        arch.target = target;
-        arch.revision = 0;
-        return arch;
-   }
-   std::string to_string()const{
-       return std::string("(")+std::string(source) +std::string(",")+ std::string(target) +","+ std::string(revision) +")";
-   }
-};
-template<typename Graph>
-std::ostream& operator<<(std::ostream& os, const archive_edge<Graph>& obj)
-{
-  // write obj to stream
-    return os << "(" << obj.source << ","<< obj.target<<","<< obj.revision <<")";
-}
-template<typename Graph>
-bool thesame(const archive_vertex<Graph>& f,const archive_vertex<Graph>& s){
-    return f.id == s.id;
-}
-template<typename Graph>
-bool thesame(const archive_edge<Graph>& f,const archive_edge<Graph>& s){
-    return f.source == s.source && f.target == s.target;
-}
-
-template<typename Graph, typename vertex_prop_type>
-struct helper;
-/*
-template<typename Graph, typename descriptor,typename property>
-struct value_checker{
-    static bool changed(descriptor v, property p,const Graph& g) {
-        return g[v] != p;
-    }
-};
-template<typename Graph, typename descriptor>
-struct value_checker<Graph,descriptor,boost::no_property>{
-    static bool changed(descriptor, boost::no_property,const Graph&) {
-        return false;
-    }
-};
-*/
-template<typename key_type,typename property_type>
-struct history_holder{
-    typedef typename std::map<key_type,property_type> container;
-    typedef typename container::iterator iterator;
-    typedef typename container::const_iterator const_iterator;
-    std::pair<iterator,bool> insert(const key_type& key, const property_type& property){
-        return history_records.insert(std::make_pair(key, property));
-    }
-    template<typename Graph, typename descriptor>
-    static bool changed(descriptor v, const_iterator it,const Graph& g) {
-        return g[v] != it->second;
-    }
-    key_type get_key(const_iterator it) const {
-        return it->first;
-    }
-    template<typename Graph>
-    void set_edge_property(iterator it,
-                           Graph& graph,
-                           typename key_type::vertex_type s,
-                           typename key_type::vertex_type t){
-        graph[edge(s, t, graph).first] = it->second;
-    }
-    iterator begin(){
-        return history_records.begin();
-    }
-    const_iterator begin() const{
-        return history_records.begin();
-    }
-    iterator end(){
-        return history_records.end();
-    }
-    const_iterator end() const{
-        return history_records.end();
-    }
-    bool empty() const{
-        return history_records.empty();
-    }
-    const_iterator upper_bound (const key_type& val) const{
-        return history_records.upper_bound(val);
-    }
-
-    const_iterator lower_bound (const key_type& val) const{
-        return history_records.lower_bound(val);
-    }
-
-    iterator upper_bound (const key_type& val) {
-        return history_records.upper_bound(val);
-    }
-
-    iterator lower_bound (const key_type& val) {
-        return history_records.lower_bound(val);
-    }
-
-private:
-    container history_records;
-};
-
-template<typename key_type>
-struct history_holder<key_type,boost::no_property>{
-    typedef typename std::set<key_type> container;
-    typedef typename container::iterator iterator;
-    typedef typename container::const_iterator const_iterator;
-    std::pair<iterator,bool> insert(const key_type& key, const boost::no_property&){
-        return history_records.insert(key);
-    }
-    template<typename Graph, typename descriptor>
-    static bool changed(descriptor, iterator ,const Graph&) {
-        return false;
-    }
-    key_type get_key(const_iterator it) const {
-        return *it;
-    }
-    template<typename Graph>
-    void set_edge_property(iterator,
-                           Graph&,
-                           typename key_type::vertex_type,
-                           typename key_type::vertex_type){
-    }
-    iterator begin(){
-        return history_records.begin();
-    }
-    const_iterator begin() const{
-        return history_records.begin();
-    }
-    iterator end(){
-        return history_records.end();
-    }
-    const_iterator end() const{
-        return history_records.end();
-    }
-    bool empty() const{
-        return history_records.empty();
-    }
-    iterator upper_bound (const key_type& val) const{
-        return history_records.upper_bound(val);
-    }
-    iterator lower_bound (const key_type& val) const{
-        return history_records.lower_bound(val);
-    }
-private:
-    container history_records;
-};
+#include "history_holder.h"
 
 template<typename Graph>
 class graph_archive
 {
 
     typedef typename boost::graph_traits<Graph>::edge_iterator edge_iterator;
-    typedef archive_vertex<Graph> vertex_key;
-    typedef archive_edge<Graph> edge_key;
+    typedef vertex_id<Graph> vertex_key;
+    typedef edge_id<Graph> edge_key;
 public:
     typedef typename boost::vertex_bundle_type<Graph>::type vertex_properties;
     typedef typename boost::edge_bundle_type<Graph>::type edge_properties;
@@ -247,25 +31,25 @@ public:
     void commit(){
         std::pair<edge_iterator, edge_iterator> ei = boost::edges(g);
 #ifdef DEBUG
-        std::cout << "COMMIT before" << std::endl;
+        std::cout << "before COMMIT" << std::endl;
         print_edges();
 #endif
-        int rev = head_rev()+1;
+        int rev = head_rev()+1;// current revision number
         typedef typename boost::graph_traits<Graph>::vertex_descriptor vertex_descriptor;
         typedef typename boost::graph_traits<Graph>::edge_descriptor edge_descriptor;
-        std::set<vertex_descriptor> ah_vertices; // already here
-        std::set<std::pair<vertex_descriptor,vertex_descriptor> > ah_edges;
+        std::set<vertex_descriptor> ah_vertices; // vertices that are already here
+        std::set<std::pair<vertex_descriptor,vertex_descriptor> > ah_edges; // edges that are already here
 
         for(edge_iterator edge_iter = ei.first; edge_iter != ei.second; ++edge_iter) {
             vertex_descriptor v = source(*edge_iter, g);
             typename vertices_container::const_iterator v_it = lower_bound(v);
             if(v_it == vertices.end()){
-                commit(v,rev);
+                commit(v,rev);// new vertex
             } else {
                 if(vertices.changed(v,v_it,g))
                     commit(v,rev);
                 else
-                    ah_vertices.insert(v);
+                    ah_vertices.insert(v);// note already existing vertex
             }
             vertex_descriptor u = target(*edge_iter, g);
             typename vertices_container::const_iterator u_it = lower_bound(u);
@@ -287,39 +71,43 @@ public:
                 else
                     ah_edges.insert(std::make_pair(source(e,g),target(e,g)));
             }
-
         }
 
+        // mark currently missing edges as removed (negative revision)
         typename edges_container::const_iterator e_it = edges.begin();
         while(e_it !=edges.end()){
             edge_key curr = edges.get_key(e_it);
             std::pair<vertex_descriptor,vertex_descriptor> edge = std::make_pair(curr.source,curr.target);
-            if(abs(curr.revision) < abs(rev) && ah_edges.find(edge)== ah_edges.end())
-            {
+            if(abs(curr.revision) < abs(rev) && ah_edges.find(edge)== ah_edges.end()) {
                 del_commit(edge,-rev);
             }
             e_it = edges.upper_bound(edge_key::get_min(curr.source,curr.target));
         }
+        // mark currently missing vertices as removed (negative revision)
         typename vertices_container::const_iterator v_it = vertices.begin();
         while(v_it !=vertices.end()){
            vertex_key curr = vertices.get_key(v_it);
-           if(abs(curr.revision) < abs(rev) && ah_vertices.find(curr.id)== ah_vertices.end())
-            {
-                commit(curr.id,-rev);
-            }
-            v_it = vertices.upper_bound(vertex_key::get_min(curr.id));
+           if(abs(curr.revision) < abs(rev) && ah_vertices.find(curr.id)== ah_vertices.end()) {
+                del_commit(curr.id,-rev);
+           }
+           v_it = vertices.upper_bound(vertex_key::get_min(curr.id));
         }
 #ifdef DEBUG
-        std::cout << "COMMIT after" << std::endl;
+        std::cout << "after COMMIT" << std::endl;
         print_edges();
 #endif
     }
-
+    /**
+      check if edge exist in head revision
+    **/
     bool contains_edge(const typename boost::graph_traits<Graph>::edge_descriptor e) const{
         edge_key ed = edge_key::get_max(source(e, g),target(e, g));
         edge_key tmp = edges.lower_bound(ed)->first;
         return thesame(ed,tmp) && tmp.revision >=0;
     }
+    /**
+      check if vertex exist in head revision
+    **/
     bool contains_vertex(const typename boost::graph_traits<Graph>::vertex_descriptor v)const{
         vertex_key ed = vertex_key::get_max(v);
         vertex_key tmp = vertices.lower_bound(ed)->first;
@@ -344,17 +132,16 @@ public:
     }
     Graph checkout(int rev){
         Graph n;
-        typename edges_container::iterator e_it = edges.begin();
+        typename edges_container::iterator e_it = edges.begin(); // init with head revision
         while(e_it != edges.end()){
             edge_key curr_edge = edges.get_key(e_it);
-            if(abs(curr_edge.revision) > abs(rev))
-            {
-                edge_key key = archive_edge<Graph>(curr_edge.source,curr_edge.target,rev);
+            if(abs(curr_edge.revision) > abs(rev)) { // if looking for older revisions
+                edge_key key = edge_id<Graph>(curr_edge.source,curr_edge.target,rev);
                 e_it = edges.lower_bound(key);
                 if(e_it == edges.end())
                     break;
                 edge_key tmp = edges.get_key(e_it);
-                if(thesame(key,tmp))
+                if(thesame(key,tmp))// unless on next edge
                     curr_edge = tmp;
                 else
                     continue;
@@ -370,7 +157,7 @@ public:
                 std::cout << "NOT checked out: " << curr_edge.source << " " << curr_edge.target << " rev: "<< curr_edge.revision << " wanted: " << rev << std::endl;
 #endif
             }
-            //move to next edge
+            //jump to head revision of next edge
             e_it = edges.upper_bound(edge_key::get_min(curr_edge.source,curr_edge.target));
         }
         helper<Graph,vertex_properties>::set_vertex_properties(n,vertices, rev);
@@ -420,6 +207,13 @@ private:
         vertices.insert(el, g[v]);
         return el;
     }
+    vertex_key del_commit(typename boost::graph_traits<Graph>::vertex_descriptor v, int revision){
+        vertex_key el;
+        el.id = v;
+        el.revision = revision;
+        vertices.insert(el, vertex_properties());
+        return el;
+    }
     edge_key commit(typename boost::graph_traits<Graph>::edge_descriptor v, int revision){
         edge_key el;
         el.source = source(v, g);
@@ -454,7 +248,7 @@ struct helper{
         while(v_it != vertices.end()){
             typename graph_archive<Graph>::vertex_key curr_vertex = v_it->first;
             if(abs(curr_vertex.revision) > abs(rev)){
-                 v_it = vertices.lower_bound(archive_vertex<Graph>(curr_vertex.id,rev));
+                 v_it = vertices.lower_bound(vertex_id<Graph>(curr_vertex.id,rev));
                  if(v_it != vertices.end())
                      curr_vertex = v_it->first;
                  else
@@ -487,7 +281,9 @@ template<>
 inline bool compare(const boost::no_property&,const boost::no_property&){
     return true;
 }
-
+/**
+  check if graphs have exactly same list of vertices and edges
+**/
 template<typename Graph>
 bool equal(const Graph& g1, const Graph& g2){
     typedef typename boost::graph_traits<Graph>::edge_iterator edge_iterator;
