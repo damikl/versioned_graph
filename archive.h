@@ -19,11 +19,8 @@ class graph_archive
 public:
     typedef typename boost::vertex_bundle_type<Graph>::type vertex_properties;
     typedef typename boost::edge_bundle_type<Graph>::type edge_properties;
-private:
     typedef history_holder<vertex_key,vertex_properties> vertices_container;
     typedef history_holder<edge_key,edge_properties> edges_container;
-
-public:
 
     friend struct helper<Graph,vertex_properties>;
     graph_archive(const Graph& graph) : g(graph){
@@ -123,7 +120,7 @@ public:
         typename edges_container::iterator e_it = edges.begin();
         while(e_it != edges.end()){
             edge_key curr_edge = edges.get_key(e_it);
-            std::cout << "int " << curr_edge.source << " " << curr_edge.target << " "<< curr_edge.revision << std::endl;
+            std::cout << "edge: " << curr_edge.source << " " << curr_edge.target << " "<< curr_edge.revision << std::endl;
             ++e_it;
         }
     }
@@ -144,9 +141,9 @@ public:
                 if(thesame(key,tmp))// unless on next edge
                     curr_edge = tmp;
                 else
-                    continue;
+                    continue;// when analysed edge was created in more recent revision
             }
-            if(curr_edge.revision >=0){
+            if(curr_edge.revision >=0){// negative revision == removed
                 boost::add_edge(curr_edge.source,curr_edge.target,n);
 #ifdef DEBUG
                 std::cout << "checked out: " << curr_edge.source << " " << curr_edge.target << " rev: "<< curr_edge.revision << " wanted: " << rev << std::endl;
@@ -204,7 +201,7 @@ private:
         vertex_key el;
         el.id = v;
         el.revision = revision;
-        vertices.insert(el, g[v]);
+        vertices.insert(el, helper<Graph,vertex_properties>::get_properties(g,v));
         return el;
     }
     vertex_key del_commit(typename boost::graph_traits<Graph>::vertex_descriptor v, int revision){
@@ -219,7 +216,7 @@ private:
         el.source = source(v, g);
         el.target = target(v, g);
         el.revision = revision;
-        edges.insert(el, g[v]);
+        edges.insert(el, helper<Graph,edge_properties>::get_properties(g,v));
         return el;
     }
     edge_key del_commit(std::pair<  typename boost::graph_traits<Graph>::vertex_descriptor,
@@ -263,7 +260,22 @@ struct helper{
             v_it = vertices.upper_bound(graph_archive<Graph>::vertex_key::get_min(curr_vertex.id));
         }
     }
+    template<typename descriptor>
+    static property_type get_properties(const Graph& graph,descriptor v){
+        return graph[v];
+    }
+};
 
+template<typename Graph,class PropertyTag, class T, class NextProperty>
+struct helper<Graph,boost::property<PropertyTag,T,NextProperty> >{
+    typedef typename boost::property<PropertyTag,T,NextProperty> property;
+    static void set_vertex_properties(Graph&,const typename graph_archive<Graph>::vertices_container&, int){
+
+    }
+    template<typename descriptor>
+    static property get_properties(const Graph& graph, descriptor v){
+        return graph[v];
+    }
 };
 
 template<typename Graph>
@@ -271,14 +283,20 @@ struct helper<Graph,boost::no_property>{
     static void set_vertex_properties(Graph&,const typename graph_archive<Graph>::vertices_container&, int){
 
     }
-
+    template<typename descriptor>
+    static boost::no_property get_properties(const Graph& , descriptor ){
+        return boost::no_property();
+    }
 };
+
 template<typename property_type>
 inline bool compare(const property_type& p1,const property_type& p2){
+    std::cout << "type: " << typeid(p1).name() << std::endl;
     return p1 == p2;
 }
 template<>
 inline bool compare(const boost::no_property&,const boost::no_property&){
+    std::cout << "no property" << std::endl;
     return true;
 }
 /**

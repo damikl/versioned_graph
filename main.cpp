@@ -158,6 +158,28 @@ int main()
     std::cout << "Comparison: " << first << " " << second << std::endl;
     Printer<ExtendedGraph>::print_edges(ex);
 
+    typedef property<edge_weight_t, int> EdgeWeightProperty;
+    typedef boost::adjacency_list<listS, vecS, directedS, no_property,
+    EdgeWeightProperty > mygraph;
+
+
+    mygraph w;
+    add_edge(0, 1, 8, w);
+    add_edge(0, 3, 18, w);
+    add_edge(1, 2, 20, w);
+    add_edge(2, 3, 2, w);
+    add_edge(3, 1, 1, w);
+    add_edge(1, 3, 7, w);
+    mygraph w_copy = w;
+    graph_archive<mygraph> w_arch(w);
+    w_arch.commit();
+    add_edge(3, 2, 2, w);
+    w_arch.commit();
+
+    first = equal(w_copy,w_arch.checkout(1));
+    second = equal(w_arch.checkout(2),w);
+    std::cout << "Comparison: " << first << " " << second << std::endl;
+    Printer<mygraph>::print_edges(w);
 
     return 0;
 }
