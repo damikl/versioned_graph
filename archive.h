@@ -14,6 +14,7 @@ class graph_archive
 {
 
     typedef typename boost::graph_traits<Graph>::edge_iterator edge_iterator;
+    typedef typename boost::graph_traits<Graph>::vertex_iterator vertex_iterator;
     typedef vertex_id<Graph> vertex_key;
     typedef edge_id<Graph> edge_key;
 public:
@@ -27,6 +28,7 @@ public:
     }
     void commit(){
         std::pair<edge_iterator, edge_iterator> ei = boost::edges(g);
+        std::pair<vertex_iterator, vertex_iterator> vi = boost::vertices(g);
 #ifdef DEBUG
         std::cout << "before COMMIT" << std::endl;
         print_edges();
@@ -36,9 +38,8 @@ public:
         typedef typename boost::graph_traits<Graph>::edge_descriptor edge_descriptor;
         std::set<vertex_descriptor> ah_vertices; // vertices that are already here
         std::set<std::pair<vertex_descriptor,vertex_descriptor> > ah_edges; // edges that are already here
-
-        for(edge_iterator edge_iter = ei.first; edge_iter != ei.second; ++edge_iter) {
-            vertex_descriptor v = source(*edge_iter, g);
+        for(vertex_iterator vertex_iter = vi.first; vertex_iter != vi.second;++vertex_iter){
+            vertex_descriptor v = *vertex_iter;
             typename vertices_container::const_iterator v_it = lower_bound(v);
             if(v_it == vertices.end()){
                 commit(v,rev);// new vertex
@@ -48,16 +49,8 @@ public:
                 else
                     ah_vertices.insert(v);// note already existing vertex
             }
-            vertex_descriptor u = target(*edge_iter, g);
-            typename vertices_container::const_iterator u_it = lower_bound(u);
-            if(u_it == vertices.end()){
-                commit(u,rev);
-            } else {
-                if(vertices.changed(u,u_it,g))
-                    commit(u,rev);
-                else
-                    ah_vertices.insert(u);
-            }
+        }
+        for(edge_iterator edge_iter = ei.first; edge_iter != ei.second; ++edge_iter) {
             edge_descriptor e = *edge_iter;
             typename edges_container::const_iterator e_it = lower_bound(e);
             if(e_it == edges.end()){
@@ -265,7 +258,7 @@ struct helper{
         return graph[v];
     }
 };
-
+/*
 template<typename Graph,class PropertyTag, class T, class NextProperty>
 struct helper<Graph,boost::property<PropertyTag,T,NextProperty> >{
     typedef typename boost::property<PropertyTag,T,NextProperty> property;
@@ -277,7 +270,7 @@ struct helper<Graph,boost::property<PropertyTag,T,NextProperty> >{
         return graph[v];
     }
 };
-
+*/
 template<typename Graph>
 struct helper<Graph,boost::no_property>{
     static void set_vertex_properties(Graph&,const typename graph_archive<Graph>::vertices_container&, int){
@@ -291,12 +284,10 @@ struct helper<Graph,boost::no_property>{
 
 template<typename property_type>
 inline bool compare(const property_type& p1,const property_type& p2){
-    std::cout << "type: " << typeid(p1).name() << std::endl;
     return p1 == p2;
 }
 template<>
 inline bool compare(const boost::no_property&,const boost::no_property&){
-    std::cout << "no property" << std::endl;
     return true;
 }
 /**

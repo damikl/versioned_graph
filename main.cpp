@@ -22,36 +22,49 @@ struct extra_info {
 
 template<typename properties_type>
 struct edge_printer{
-
-    template<typename Graph, typename iterator>
-    static void print_edges(const Graph& graph, iterator begin, iterator end){
-        for(iterator edge_iter = begin; edge_iter != end; ++edge_iter) {
-            int u = source(*edge_iter, graph);
-            int v = target(*edge_iter, graph);
-            std::cout << "(" << u << ", " << v << ")" << " from: ";
+    template<typename Graph, typename descriptor>
+    static void print_vertices(const Graph& graph, descriptor u, descriptor v){
+            std::cout << " from: ";
             graph[u].print();
             cout << " to: ";
             graph[v].print();
-            cout << endl;
-        }
+            cout << " ";
     }
+    template<typename Graph, typename descriptor>
+    static void print_edges(const Graph& graph, descriptor e){
+            std::cout << " data: ";
+            graph[e].print();
+            cout << " ";
+    }
+
 };
 template<>
 struct edge_printer<no_property>{
-    template<typename Graph, typename iterator>
-    static void print_edges(const Graph& graph,iterator begin, iterator end){
-        for(iterator edge_iter = begin; edge_iter != end; ++edge_iter) {
-            int u = source(*edge_iter, graph);
-            int v = target(*edge_iter, graph);
-            std::cout << "(" << u << ", " << v << ")" << endl;
-        }
+    template<typename Graph, typename descriptor>
+    static void print_edges(const Graph& ,descriptor ){
+    }
+    template<typename Graph, typename descriptor>
+    static void print_vertices(const Graph& ,descriptor , descriptor ){
     }
 };
 
 template<typename Graph>
 struct Printer{
     static void print_edges(const Graph& graph){
-        edge_printer<typename vertex_bundle_type<Graph>::type>::print_edges(graph, edges(graph).first, edges(graph).second);
+
+        print(graph, edges(graph).first, edges(graph).second);
+    }
+private:
+    template<typename iterator>
+    static void print(const Graph& graph,iterator begin, iterator end){
+        for(iterator edge_iter = begin; edge_iter != end; ++edge_iter) {
+            int u = source(*edge_iter, graph);
+            int v = target(*edge_iter, graph);
+            std::cout << "(" << u << ", " << v << ")";
+            edge_printer<typename vertex_bundle_type<Graph>::type>::print_vertices(graph, u, v);
+            edge_printer<typename edge_bundle_type<Graph>::type>::print_edges(graph, *edge_iter);
+            cout << endl;
+        }
     }
 
 };
@@ -66,7 +79,6 @@ int main()
 
     //Our set of edges, which basically are just converted into ints (0-4)
     enum {A, B, C, D, E, N};
-    const char *name = "ABCDE";
 
     //An edge is just a connection between two vertitices. Our verticies above
     //are an enum, and are just used as integers, so our edges just become
@@ -83,14 +95,14 @@ int main()
     edgeVec.push_back(Edge(C,E));
     edgeVec.push_back(Edge(B,D));
     edgeVec.push_back(Edge(D,E));
-
+    cout << "Graph with data on vertices" << endl;
     //Now we can initialize our graph using iterators from our above vector
     UndirectedGraph g(edgeVec.begin(), edgeVec.end(), N);
 
-    std::cout << num_edges(g) << "\n";
-    g[D].simple_name = "Alpha";
+//    std::cout << num_edges(g) << "\n";
+//    g[D].simple_name = "Alpha";
 
-    std::cout << "HHH " << typeid(g[D]).name() << std::endl;
+//    std::cout << "HHH " << typeid(g[D]).name() << std::endl;
     //Ok, we want to see that all our edges are now contained in the graph
     typedef graph_traits<UndirectedGraph>::edge_iterator edge_iterator;
 
@@ -129,6 +141,8 @@ int main()
 
     Printer<UndirectedGraph>::print_edges(g);
 
+    cout << "Graph with no extra data" << endl;
+
     SimpleGraph simple(edgeVec.begin(), edgeVec.end(), N);
     SimpleGraph s_copy = simple;
     graph_archive<SimpleGraph> simple_arch(simple);
@@ -142,12 +156,15 @@ int main()
     std::cout << "Comparison: " << first << " " << second << std::endl;
     Printer<SimpleGraph>::print_edges(simple);
 
+    cout << "Graph with data on vertices and edges" << endl;
+
     ExtendedGraph ex(edgeVec.begin(), edgeVec.end(), N);
     ExtendedGraph ex_copy = ex;
     graph_archive<ExtendedGraph> ex_arch(ex);
     ex_arch.commit();
-    add_edge(A, F, ex);
+    pair<ExtendedGraph::edge_descriptor,bool> p = add_edge(A, F, ex);
     remove_edge(B, D, ex);
+    ex[p.first].simple_name = "super edge";
     ex[F].simple_name = "other";
     ex[D].simple_name = "just something";
     ex_arch.commit();
@@ -158,9 +175,9 @@ int main()
     std::cout << "Comparison: " << first << " " << second << std::endl;
     Printer<ExtendedGraph>::print_edges(ex);
 
+ /*
     typedef property<edge_weight_t, int> EdgeWeightProperty;
-    typedef boost::adjacency_list<listS, vecS, directedS, no_property,
-    EdgeWeightProperty > mygraph;
+    typedef boost::adjacency_list<listS, vecS, directedS, no_property,EdgeWeightProperty > mygraph;
 
 
     mygraph w;
@@ -180,7 +197,7 @@ int main()
     second = equal(w_arch.checkout(2),w);
     std::cout << "Comparison: " << first << " " << second << std::endl;
     Printer<mygraph>::print_edges(w);
-
+*/
     return 0;
 }
 
