@@ -35,52 +35,47 @@ public:
 #endif
         int rev = head_rev()+1;// current revision number
         typedef typename boost::graph_traits<Graph>::vertex_descriptor vertex_descriptor;
-        typedef typename boost::graph_traits<Graph>::edge_descriptor edge_descriptor;
-        std::set<vertex_descriptor> ah_vertices; // vertices that are already here
-        std::set<std::pair<vertex_descriptor,vertex_descriptor> > ah_edges; // edges that are already here
-        for(vertex_iterator vertex_iter = vi.first; vertex_iter != vi.second;++vertex_iter){
-            vertex_descriptor v = *vertex_iter;
-            typename vertices_container::const_iterator v_it = lower_bound(v);
-            if(v_it == vertices.end()){
-                commit(v,rev);// new vertex
-            } else {
-                if(vertices.changed(v,v_it,g))
-                    commit(v,rev);
-                else
-                    ah_vertices.insert(v);// note already existing vertex
+        {
+            std::set<vertex_descriptor> ah_vertices; // vertices that are already here
+            for(vertex_iterator vertex_iter = vi.first; vertex_iter != vi.second;++vertex_iter){
+                typename vertices_container::const_iterator v_it = lower_bound(*vertex_iter);
+                if(v_it == vertices.end() || vertices.changed(*vertex_iter,v_it,g)){
+                    commit(*vertex_iter,rev);// new vertex
+                   }else{
+                    ah_vertices.insert(*vertex_iter);// note already existing vertex
+                }
+            }
+            // mark currently missing vertices as removed (negative revision)
+            typename vertices_container::const_iterator v_it = vertices.begin();
+            while(v_it !=vertices.end()){
+               vertex_key curr = vertices.get_key(v_it);
+               if(abs(curr.revision) < abs(rev) && ah_vertices.find(curr.id)== ah_vertices.end()) {
+                    del_commit(curr.id,-rev);
+               }
+               v_it = vertices.upper_bound(vertex_key::get_min(curr.id));
             }
         }
-        for(edge_iterator edge_iter = ei.first; edge_iter != ei.second; ++edge_iter) {
-            edge_descriptor e = *edge_iter;
-            typename edges_container::const_iterator e_it = lower_bound(e);
-            if(e_it == edges.end()){
-                commit(e,rev);
-            } else {
-                if(edges.changed(e,e_it,g))
-                    commit(e,rev);
-                else
-                    ah_edges.insert(std::make_pair(source(e,g),target(e,g)));
+        {
+            typedef typename boost::graph_traits<Graph>::edge_descriptor edge_descriptor;
+            std::set<std::pair<vertex_descriptor,vertex_descriptor> > ah_edges; // edges that are already here
+            for(edge_iterator edge_iter = ei.first; edge_iter != ei.second; ++edge_iter) {
+                typename edges_container::const_iterator e_it = lower_bound(*edge_iter);
+                if(e_it == edges.end() || edges.changed(*edge_iter,e_it,g)){
+                    commit(*edge_iter,rev);
+                } else {
+                    ah_edges.insert(std::make_pair(source(*edge_iter,g),target(*edge_iter,g)));
+                }
             }
-        }
-
-        // mark currently missing edges as removed (negative revision)
-        typename edges_container::const_iterator e_it = edges.begin();
-        while(e_it !=edges.end()){
-            edge_key curr = edges.get_key(e_it);
-            std::pair<vertex_descriptor,vertex_descriptor> edge = std::make_pair(curr.source,curr.target);
-            if(abs(curr.revision) < abs(rev) && ah_edges.find(edge)== ah_edges.end()) {
-                del_commit(edge,-rev);
+            // mark currently missing edges as removed (negative revision)
+            typename edges_container::const_iterator e_it = edges.begin();
+            while(e_it !=edges.end()){
+                edge_key curr = edges.get_key(e_it);
+                std::pair<vertex_descriptor,vertex_descriptor> edge = std::make_pair(curr.source,curr.target);
+                if(abs(curr.revision) < abs(rev) && ah_edges.find(edge)== ah_edges.end()) {
+                    del_commit(edge,-rev);
+                }
+                e_it = edges.upper_bound(edge_key::get_min(curr.source,curr.target));
             }
-            e_it = edges.upper_bound(edge_key::get_min(curr.source,curr.target));
-        }
-        // mark currently missing vertices as removed (negative revision)
-        typename vertices_container::const_iterator v_it = vertices.begin();
-        while(v_it !=vertices.end()){
-           vertex_key curr = vertices.get_key(v_it);
-           if(abs(curr.revision) < abs(rev) && ah_vertices.find(curr.id)== ah_vertices.end()) {
-                del_commit(curr.id,-rev);
-           }
-           v_it = vertices.upper_bound(vertex_key::get_min(curr.id));
         }
 #ifdef DEBUG
         std::cout << "after COMMIT" << std::endl;
@@ -173,9 +168,10 @@ private:
         typename edges_container::const_iterator it = edges.lower_bound(ed);
         if(it == edges.end())
             return it;
-        if(source(e, g) != edges.get_key(it).source ||
-           target(e, g) != edges.get_key(it).target ||
-           edges.get_key(it).revision < 0)
+        edge_key curr = edges.get_key(it);
+        if(source(e, g) != curr.source ||
+           target(e, g) != curr.target ||
+           curr.revision < 0)
             return edges.end();
         return it;
     }
