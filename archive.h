@@ -121,7 +121,7 @@ public:
         while(e_it != edges.end()){
             edge_key curr_edge = edges.get_key(e_it);
             if(abs(curr_edge.revision) > abs(rev)) { // if looking for older revisions
-                edge_key key = edge_id<Graph>(curr_edge.source,curr_edge.target,rev);
+                edge_key key(curr_edge.source,curr_edge.target,rev);
                 e_it = edges.lower_bound(key);
                 if(e_it == edges.end())
                     break;
@@ -187,34 +187,24 @@ private:
     }
 
     vertex_key commit(typename boost::graph_traits<Graph>::vertex_descriptor v, int revision){
-        vertex_key el;
-        el.id = v;
-        el.revision = revision;
+        vertex_key el(v,revision);
         vertices.insert(el, helper<Graph,vertex_properties>::get_properties(g,v));
         return el;
     }
     vertex_key del_commit(typename boost::graph_traits<Graph>::vertex_descriptor v, int revision){
-        vertex_key el;
-        el.id = v;
-        el.revision = revision;
+        vertex_key el(v,revision);
         vertices.insert(el, vertex_properties());
         return el;
     }
     edge_key commit(typename boost::graph_traits<Graph>::edge_descriptor v, int revision){
-        edge_key el;
-        el.source = source(v, g);
-        el.target = target(v, g);
-        el.revision = revision;
+        edge_key el(source(v, g),target(v, g),revision);
         edges.insert(el, helper<Graph,edge_properties>::get_properties(g,v));
         return el;
     }
     edge_key del_commit(std::pair<  typename boost::graph_traits<Graph>::vertex_descriptor,
                                 typename boost::graph_traits<Graph>::vertex_descriptor> v,
                     int revision){
-        edge_key el;
-        el.source = v.first;
-        el.target = v.second;
-        el.revision = revision;
+        edge_key el(v.first,v.second,revision);
         edges.insert(el, edge_properties());
         return el;
     }
