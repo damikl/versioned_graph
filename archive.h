@@ -158,16 +158,9 @@ public:
             std::pair<edge_iterator, edge_iterator> ei = boost::edges(g);
             for(edge_iterator edge_iter = ei.first; edge_iter != ei.second; ++edge_iter) {
                 typename edges_container::const_iterator e_it = lower_bound(*edge_iter,revision);
-          /*      if(e_it == edges.end()){
-          //          std::cout << "rm: "<< source(*edge_iter,g) << " " << target(*edge_iter,g) << std::endl;
-                //    remove_edge(*edge_iter,g);
-                //    ei = boost::edges(g);
-                    continue;
-                } else */ if(edges.changed(*edge_iter,e_it,g)){
-          //          std::cout << "changed: "<< source(*edge_iter,g) << " " << target(*edge_iter,g) << std::endl;
+                if(edges.changed(*edge_iter,e_it,g)){
                     edges.set_edge_property(e_it,g,source(*edge_iter,g),target(*edge_iter,g));
                 }
-          //      std::cout << "all: " << source(*edge_iter,g) << " " << target(*edge_iter,g) << std::endl;
                 ah_edges.insert(std::make_pair(source(*edge_iter,g),target(*edge_iter,g)));
             }
             // mark currently missing edges as removed (negative revision)
@@ -177,11 +170,9 @@ public:
                 curr.revision = revision;
                 e_it = edges.lower_bound(curr);
                 if(thesame(curr, edges.get_key(e_it))){
-                    std::cout << "try add: "<< curr.source << " " << curr.target << std::endl;
                     std::pair<vertex_descriptor,vertex_descriptor> edge = std::make_pair(curr.source,curr.target);
                     if(ah_edges.find(edge)== ah_edges.end()) {
                         add_edge(curr.source,curr.target,g);
-               //         std::cout << "added: "<< curr.source << " " << curr.target << std::endl;
                     }
                     e_it = edges.upper_bound(edge_key::get_min(curr.source,curr.target));
                 }
