@@ -119,7 +119,7 @@ struct history_holder{
         return it->first;
     }
     template<typename Graph>
-    void set_edge_property(iterator it,
+    void set_edge_property(const_iterator it,
                            Graph& graph,
                            typename key_type::vertex_type s,
                            typename key_type::vertex_type t){
@@ -176,7 +176,7 @@ struct history_holder<key_type,boost::no_property>{
         return *it;
     }
     template<typename Graph>
-    void set_edge_property(iterator,
+    void set_edge_property(const_iterator,
                            Graph&,
                            typename key_type::vertex_type,
                            typename key_type::vertex_type){

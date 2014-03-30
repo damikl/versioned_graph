@@ -197,6 +197,16 @@ int main()
         std::cout << "verus" << std::endl;
         Printer::print_edges(ex);
     }
+    ex_arch.replace_with(1);
+    first = equal(ex_copy,ex);
+    if(first){
+        std::cout << "versions are equal" << std::endl;
+    } else{
+        std::cout << "versions not equal" << std::endl;
+        Printer::print_edges(ex_copy);
+        std::cout << "verus" << std::endl;
+        Printer::print_edges(ex);
+    }
 
     return 0;
 }
