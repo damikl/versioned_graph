@@ -23,12 +23,8 @@ struct extra_info {
 template<typename properties_type>
 struct edge_printer{
     template<typename Graph, typename descriptor>
-    static void print_vertices(const Graph& graph, descriptor u, descriptor v){
-            std::cout << " from: ";
-            graph[u].print();
-            cout << " to: ";
+    static void print_vertices(const Graph& graph, descriptor v){
             graph[v].print();
-            cout << " ";
     }
     template<typename Graph, typename descriptor>
     static void print_edges(const Graph& graph, descriptor e){
@@ -44,26 +40,40 @@ struct edge_printer<no_property>{
     static void print_edges(const Graph& ,descriptor ){
     }
     template<typename Graph, typename descriptor>
-    static void print_vertices(const Graph& ,descriptor , descriptor ){
+    static void print_vertices(const Graph& ,descriptor){
     }
 };
 
 
 struct Printer{
     template<typename Graph>
-    static void print_edges(const Graph& graph){
+    static void print_graph(const Graph& graph){
 
-        print(graph, edges(graph).first, edges(graph).second);
+        print_edges(graph, edges(graph).first, edges(graph).second);
+        print_vertices(graph, vertices(graph).first, vertices(graph).second);
     }
 private:
     template<typename Graph,typename iterator>
-    static void print(const Graph& graph,iterator begin, iterator end){
+    static void print_edges(const Graph& graph,iterator begin, iterator end){
         for(iterator edge_iter = begin; edge_iter != end; ++edge_iter) {
             int u = source(*edge_iter, graph);
             int v = target(*edge_iter, graph);
             std::cout << "(" << u << ", " << v << ")";
-            edge_printer<typename vertex_bundle_type<Graph>::type>::print_vertices(graph, u, v);
+
+            std::cout << " from: ";
+            edge_printer<typename vertex_bundle_type<Graph>::type>::print_vertices(graph, u);
+            cout << " to: ";
+            edge_printer<typename vertex_bundle_type<Graph>::type>::print_vertices(graph, v);
+            cout << " ";
             edge_printer<typename edge_bundle_type<Graph>::type>::print_edges(graph, *edge_iter);
+            cout << endl;
+        }
+    }
+    template<typename Graph,typename iterator>
+    static void print_vertices(const Graph&,iterator begin, iterator end){
+        for(iterator vertex_iter = begin; vertex_iter != end; ++vertex_iter) {
+            std::cout << "vertex(" << *vertex_iter << ")";
+
             cout << endl;
         }
     }
@@ -72,6 +82,9 @@ private:
 
 int main()
 {
+    FILELog::ReportingLevel() = logERROR;
+    FILE* log_fd = fopen( "mylogfile.txt", "w" );
+    Output2FILE::Stream() = log_fd;
     //create an -undirected- graph type, using vectors as the underlying containers
     //and an adjacency_list as the basic representation
     typedef boost::adjacency_list<vecS, vecS, undirectedS, extra_info> UndirectedGraph;
@@ -122,28 +135,31 @@ int main()
         std::cout << "versions are equal" << std::endl;
     } else{
         std::cout << "versions not equal" << std::endl;
-        Printer::print_edges(back);
+        Printer::print_graph(back);
         std::cout << "verus" << std::endl;
-        Printer::print_edges(ng);
+        Printer::print_graph(ng);
+        return -1;
     }
     bool second = equal(arch.checkout(2),g);
     if(second){
         std::cout << "versions are equal" << std::endl;
     } else{
         std::cout << "versions not equal" << std::endl;
-        Printer::print_edges(g);
+        Printer::print_graph(g);
         std::cout << "verus" << std::endl;
-        Printer::print_edges(arch.checkout(2));
+        Printer::print_graph(arch.checkout(2));
+        return -1;
     }
-
+    FILELog::ReportingLevel() = logDEBUG4;
     cout << endl << "Graph with no extra data" << endl;
-
+    FILE_LOG(logDEBUG1) << "Graph with no extra data";
     SimpleGraph simple(edgeVec.begin(), edgeVec.end(), N);
     SimpleGraph s_copy = simple;
     graph_archive<SimpleGraph> simple_arch(simple);
     simple_arch.commit();
     add_edge(A, F, simple);
     remove_edge(B, D, simple);
+    cout << "added vertex: " << add_vertex(simple) << endl;
     simple_arch.commit();
 
     first = equal(s_copy,simple_arch.checkout(1));
@@ -151,18 +167,20 @@ int main()
         std::cout << "versions are equal" << std::endl;
     } else{
         std::cout << "versions not equal" << std::endl;
-        Printer::print_edges(s_copy);
+        Printer::print_graph(s_copy);
         std::cout << "verus" << std::endl;
-        Printer::print_edges(simple_arch.checkout(1));
+        Printer::print_graph(simple_arch.checkout(1));
+        return -1;
     }
     second = equal(simple_arch.checkout(2),simple);
     if(second){
         std::cout << "versions are equal" << std::endl;
     } else{
         std::cout << "versions not equal" << std::endl;
-        Printer::print_edges(simple);
+        Printer::print_graph(simple);
         std::cout << "verus" << std::endl;
-        Printer::print_edges(simple_arch.checkout(2));
+        Printer::print_graph(simple_arch.checkout(2));
+        return -1;
     }
 
     cout << endl << "Graph with data on vertices and edges" << endl;
@@ -176,6 +194,7 @@ int main()
     ex[p.first].simple_name = "super edge";
     ex[F].simple_name = "other";
     ex[D].simple_name = "just something";
+    cout << "added vertex: " << add_vertex(ex)<< endl;
     ex_arch.commit();
 //    ex[A].simple_name = "aaa";     // breaks next comparison
 
@@ -184,18 +203,20 @@ int main()
         std::cout << "versions are equal" << std::endl;
     } else{
         std::cout << "versions not equal" << std::endl;
-        Printer::print_edges(ex_copy);
+        Printer::print_graph(ex_copy);
         std::cout << "verus" << std::endl;
-        Printer::print_edges(ex_arch.checkout(1));
+        Printer::print_graph(ex_arch.checkout(1));
+        return -1;
     }
     second = equal(ex_arch.checkout(2),ex);
     if(second){
         std::cout << "versions are equal" << std::endl;
     } else{
         std::cout << "versions not equal" << std::endl;
-        Printer::print_edges(ex_arch.checkout(2));
+        Printer::print_graph(ex_arch.checkout(2));
         std::cout << "verus" << std::endl;
-        Printer::print_edges(ex);
+        Printer::print_graph(ex);
+        return -1;
     }
     ex_arch.replace_with(1);
     first = equal(ex_copy,ex);
@@ -203,9 +224,10 @@ int main()
         std::cout << "versions are equal" << std::endl;
     } else{
         std::cout << "versions not equal" << std::endl;
-        Printer::print_edges(ex_copy);
+        Printer::print_graph(ex_copy);
         std::cout << "verus" << std::endl;
-        Printer::print_edges(ex);
+        Printer::print_graph(ex);
+        return -1;
     }
 
     return 0;
