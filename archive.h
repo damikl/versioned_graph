@@ -16,8 +16,8 @@ class graph_archive
 
     typedef typename boost::graph_traits<Graph>::edge_iterator edge_iterator;
     typedef typename boost::graph_traits<Graph>::vertex_iterator vertex_iterator;
-    typedef vertex_id<Graph> vertex_key;
-    typedef edge_id<Graph> edge_key;
+    typedef vertex_id<typename Graph::vertex_descriptor> vertex_key;
+    typedef edge_id<typename Graph::vertex_descriptor> edge_key;
 public:
     typedef typename boost::vertex_bundle_type<Graph>::type vertex_properties;
     typedef typename boost::edge_bundle_type<Graph>::type edge_properties;
@@ -30,11 +30,11 @@ public:
     void commit(){
         std::pair<edge_iterator, edge_iterator> ei = boost::edges(g);
         std::pair<vertex_iterator, vertex_iterator> vi = boost::vertices(g);
+        ++_head_rev;
 #ifdef DEBUG
-        FILE_LOG(logDEBUG1) << "before COMMIT" << std::endl;
+        FILE_LOG(logDEBUG1) << "before COMMIT " << head_rev() << std::endl;
         print_edges();
 #endif
-        ++_head_rev;
         typedef typename boost::graph_traits<Graph>::vertex_descriptor vertex_descriptor;
         {
             std::set<vertex_descriptor> ah_vertices; // vertices that are already here
@@ -84,7 +84,7 @@ public:
             }
         }
 #ifdef DEBUG
-        FILE_LOG(logDEBUG1) << "after COMMIT";
+        FILE_LOG(logDEBUG1) << "after COMMIT " << head_rev();
         print_edges();
 #endif
     }
@@ -120,7 +120,7 @@ public:
         while(e_it != edges.end()){
             edge_key curr_edge = edges.get_key(e_it);
          //   std::cout << "edge: " << curr_edge << std::endl;
-            FILE_LOG(logDEBUG2) << "edge: " << curr_edge << std::endl;
+            FILE_LOG(logDEBUG2) << "edge: " << curr_edge;
             ++e_it;
         }
     }
@@ -140,30 +140,21 @@ public:
         typename edges_container::const_iterator e_it = edges.begin(rev); // init with head revision
         while(e_it != edges.end()){
             edge_key curr_edge = edges.get_key(e_it);
-            if(abs(curr_edge.revision) > abs(rev)) { // if looking for older revisions
-                edge_key key(curr_edge.source,curr_edge.target,rev);
-                e_it = edges.lower_bound(key);
-                if(e_it == edges.end())
-                    break;
-                edge_key tmp = edges.get_key(e_it);
-                if(thesame(key,tmp))// unless on next edge
-                    curr_edge = tmp;
-                else
-                    continue;// when analysed edge was created in more recent revision
-            }
             if(curr_edge.revision >=0){// negative revision == removed
                 boost::add_edge(curr_edge.source,curr_edge.target,n);
 #ifdef DEBUG
                 std::cout << "checked out: " << curr_edge.source << " " << curr_edge.target << " rev: "<< curr_edge.revision << " wanted: " << rev << std::endl;
+                FILE_LOG(logDEBUG2) << "checked out: " << curr_edge.source << " " << curr_edge.target << " rev: "<< curr_edge.revision << " wanted: " << rev;
 #endif
                 edges.set_edge_property(e_it,n,curr_edge.source,curr_edge.target);
             }else{
 #ifdef DEBUG
                 std::cout << "NOT checked out: " << curr_edge.source << " " << curr_edge.target << " rev: "<< curr_edge.revision << " wanted: " << rev << std::endl;
+                FILE_LOG(logDEBUG2)  << "NOT checked out: " << curr_edge.source << " " << curr_edge.target << " rev: "<< curr_edge.revision << " wanted: " << rev;
 #endif
             }
-            //jump to head revision of next edge
-            e_it = edges.upper_bound(edge_key::get_min(curr_edge.source,curr_edge.target));
+
+            ++e_it;
         }
         helper<Graph,vertex_properties>::set_vertex_properties(n,vertices, rev);
 #ifdef DEBUG
@@ -310,13 +301,6 @@ struct helper{
         typename graph_archive<Graph>::vertices_container::const_iterator v_it = vertices.cbegin(rev);
         while(v_it != vertices.cend()){
             typename graph_archive<Graph>::vertex_key curr_vertex = v_it->first;
-            if(abs(curr_vertex.revision) > abs(rev)){
-                 v_it = vertices.lower_bound(vertex_id<Graph>(curr_vertex.id,rev));
-                 if(v_it != vertices.end())
-                     curr_vertex = v_it->first;
-                 else
-                     break;
-             }
 #ifdef DEBUG
             FILE_LOG(logDEBUG3) << "setting vertex property " << curr_vertex.id << " rev: " << curr_vertex.revision;
 #endif
@@ -330,7 +314,7 @@ struct helper{
                 graph[curr_vertex.id] = v_it->second;
             }
 
-            v_it = vertices.upper_bound(graph_archive<Graph>::vertex_key::get_min(curr_vertex.id));
+            ++v_it;
 #ifdef DEBUG
             FILE_LOG(logDEBUG1) << "vertex property in " << curr_vertex.id << " set ";
 #endif
@@ -363,13 +347,6 @@ struct helper<Graph,boost::no_property>{
         typename graph_archive<Graph>::vertices_container::const_iterator v_it = vertices.cbegin(rev);
         while(v_it != vertices.cend()){
             typename graph_archive<Graph>::vertex_key curr_vertex = *v_it;
-            if(abs(curr_vertex.revision) > abs(rev)){
-                 v_it = vertices.lower_bound(vertex_id<Graph>(curr_vertex.id,rev));
-                 if(v_it != vertices.end())
-                     curr_vertex = *v_it;
-                 else
-                     break;
-             }
 #ifdef DEBUG
             FILE_LOG(logDEBUG1) << "setting vertex property " << curr_vertex.id << " rev: " << curr_vertex.revision;
 
@@ -378,7 +355,7 @@ struct helper<Graph,boost::no_property>{
                 std::cout << "ADDED VERTEX" <<  add_vertex(graph) << std::endl;
                 FILE_LOG(logDEBUG1) << "ADDED VERTEX" <<  add_vertex(graph);
             }
-            v_it = vertices.upper_bound(graph_archive<Graph>::vertex_key::get_min(curr_vertex.id));
+            ++v_it;
 #ifdef DEBUG
             FILE_LOG(logDEBUG1) << "vertex property in " << curr_vertex.id << " set " << std::endl;
 #endif

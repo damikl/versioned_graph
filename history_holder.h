@@ -2,9 +2,9 @@
 #define HISTORY_HOLDER_H
 #include "log.h"
 
-template<typename Graph>
+template<typename vertex_typename>
 struct vertex_id{
-    typedef typename Graph::vertex_descriptor vertex_type;
+    typedef vertex_typename vertex_type;
     vertex_type id;
     int revision;
     vertex_id(vertex_type id, int rev) : id(id),revision(rev){}
@@ -19,6 +19,9 @@ struct vertex_id{
             return true;
         return false;
     }
+    bool operator!=(const vertex_id& obj)const{
+        return !(*this ==obj);
+    }
     static vertex_id get_max(vertex_type id){
          vertex_id arch;
          arch.id = id;
@@ -32,9 +35,9 @@ struct vertex_id{
          return arch;
     }
 };
-template<typename Graph>
+template<typename vertex_typename>
 struct edge_id{
-   typedef typename Graph::vertex_descriptor vertex_type;
+   typedef vertex_typename vertex_type;
    vertex_type source;
    vertex_type target;
    int revision;
@@ -59,6 +62,9 @@ struct edge_id{
           this->revision == obj.revision)
             return true;
        return false;
+   }
+   bool operator!=(const edge_id& obj)const{
+       return !(*this ==obj);
    }
    edge_id& operator=(edge_id rhs)
    {
@@ -120,7 +126,7 @@ class history_holder_iterator : public std::iterator<std::forward_iterator_tag, 
         history_holder_iterator(Type* cont, int rev) : container(cont),revision(rev) {
             this->current = this->container->history_records.begin();
             size_t size = this->container->history_records.size();
-            FILE_LOG(logDEBUG3) << "history_holder_iterator ctor, container size" << this->container->history_records.size() << " rev " << revision;
+            FILE_LOG(logDEBUG3) << "history_holder_iterator ctor, container size " << this->container->history_records.size() << " rev " << revision;
             if(size > 1){
                 typename Type::key_type curr = this->container->get_key(current);
                 FILE_LOG(logDEBUG3) << "history_holder_iterator ctor, head revision" << curr.revision;
@@ -162,12 +168,17 @@ class history_holder_iterator : public std::iterator<std::forward_iterator_tag, 
         history_holder_iterator& operator++(){
             range_check_policy::range_check(current == this->container->history_records.end());
             typename Type::key_type curr = this->container->get_key(*this);
+            FILE_LOG(logDEBUG3) << "++history_holder_iterator, wanted rev: " << revision;
+            FILE_LOG(logDEBUG3) << "++history_holder_iterator, was at " << curr;
             curr.revision = 0;
             current = this->container->history_records.upper_bound(curr);
-            curr = this->container->get_key(*this);
-            FILE_LOG(logDEBUG3) << "++history_holder_iterator ctor, container size" << this->container->history_records.size() << " rev " << revision;
-            curr.revision = revision;
-            current = this->container->history_records.lower_bound(curr);
+            do{
+                curr = this->container->get_key(*this);
+                curr.revision = revision;
+                FILE_LOG(logDEBUG3) << "++history_holder_iterator intermediate " << this->container->get_key(*this);
+                current = this->container->history_records.lower_bound(curr);
+            } while(!thesame(curr,this->container->get_key(*this)));
+            FILE_LOG(logDEBUG3) << "++history_holder_iterator finished at " << this->container->get_key(*this);
             return *this;
         }
         history_holder_iterator& operator++(int){

@@ -82,7 +82,7 @@ private:
 
 int main()
 {
-    FILELog::ReportingLevel() = logERROR;
+    FILELog::ReportingLevel() = logDEBUG4;
     FILE* log_fd = fopen( "mylogfile.txt", "w" );
     Output2FILE::Stream() = log_fd;
     //create an -undirected- graph type, using vectors as the underlying containers
