@@ -126,10 +126,10 @@ class history_holder_iterator : public std::iterator<std::forward_iterator_tag, 
         history_holder_iterator(Type* cont, int rev) : container(cont),revision(rev) {
             this->current = this->container->history_records.begin();
             size_t size = this->container->history_records.size();
-            FILE_LOG(logDEBUG3) << "history_holder_iterator ctor, container size " << this->container->history_records.size() << " rev " << revision;
+            FILE_LOG(logDEBUG4) << "history_holder_iterator ctor, container size " << this->container->history_records.size() << " rev " << revision;
             if(size > 1){
                 typename Type::key_type curr = this->container->get_key(current);
-                FILE_LOG(logDEBUG3) << "history_holder_iterator ctor, head revision" << curr.revision;
+                FILE_LOG(logDEBUG4) << "history_holder_iterator ctor, head revision" << curr.revision;
                 curr.revision = revision;
                 current = this->container->history_records.lower_bound(curr);
             }
@@ -168,17 +168,17 @@ class history_holder_iterator : public std::iterator<std::forward_iterator_tag, 
         history_holder_iterator& operator++(){
             range_check_policy::range_check(current == this->container->history_records.end());
             typename Type::key_type curr = this->container->get_key(*this);
-            FILE_LOG(logDEBUG3) << "++history_holder_iterator, wanted rev: " << revision;
-            FILE_LOG(logDEBUG3) << "++history_holder_iterator, was at " << curr;
+            FILE_LOG(logDEBUG4) << "++history_holder_iterator, wanted rev: " << revision;
+            FILE_LOG(logDEBUG4) << "++history_holder_iterator, was at " << curr;
             curr.revision = 0;
             current = this->container->history_records.upper_bound(curr);
             do{
                 curr = this->container->get_key(*this);
                 curr.revision = revision;
-                FILE_LOG(logDEBUG3) << "++history_holder_iterator intermediate " << this->container->get_key(*this);
+                FILE_LOG(logDEBUG4) << "++history_holder_iterator intermediate " << this->container->get_key(*this);
                 current = this->container->history_records.lower_bound(curr);
             } while(!thesame(curr,this->container->get_key(*this)));
-            FILE_LOG(logDEBUG3) << "++history_holder_iterator finished at " << this->container->get_key(*this);
+            FILE_LOG(logDEBUG4) << "++history_holder_iterator finished at " << this->container->get_key(*this);
             return *this;
         }
         history_holder_iterator& operator++(int){
@@ -279,6 +279,9 @@ struct history_holder{
     iterator lower_bound (const key_type& val) {
         return iterator(this,history_records.lower_bound(val));
     }
+    std::size_t size() const {
+        return history_records.size();
+    }
 
 private:
     container history_records;
@@ -355,6 +358,11 @@ struct history_holder<versioned_key_type,boost::no_property>{
     iterator lower_bound (const key_type& val) {
         return iterator(this,history_records.lower_bound(val));
     }
+
+    std::size_t size() const{
+        return history_records.size();
+    }
+
 private:
     container history_records;
 };

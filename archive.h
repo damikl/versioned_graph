@@ -34,7 +34,9 @@ public:
 #ifdef DEBUG
         FILE_LOG(logDEBUG1) << "before COMMIT " << head_rev() << std::endl;
         print_edges();
+        print_vertices();
 #endif
+
         typedef typename boost::graph_traits<Graph>::vertex_descriptor vertex_descriptor;
         {
             std::set<vertex_descriptor> ah_vertices; // vertices that are already here
@@ -60,6 +62,7 @@ public:
 #ifdef DEBUG
         FILE_LOG(logDEBUG1) << "vertices commited";
         print_edges();
+        print_vertices();
 #endif
         {
             typedef typename boost::graph_traits<Graph>::edge_descriptor edge_descriptor;
@@ -86,6 +89,7 @@ public:
 #ifdef DEBUG
         FILE_LOG(logDEBUG1) << "after COMMIT " << head_rev();
         print_edges();
+        print_vertices();
 #endif
     }
     /**
@@ -100,6 +104,9 @@ public:
       check if vertex exist in head revision
     **/
     bool contains_vertex(const typename boost::graph_traits<Graph>::vertex_descriptor v)const{
+        return contains_vertex(v,head_rev());
+    }
+    bool contains_vertex(const typename boost::graph_traits<Graph>::vertex_descriptor v, int revision)const{
         vertex_key ed = vertex_key::get_max(v);
         vertex_key tmp = vertices.lower_bound(ed)->first;
         return thesame(ed,tmp) && tmp.revision >=0;
@@ -124,11 +131,17 @@ public:
             ++e_it;
         }
     }
-    void print_vertices(){
-        typename vertices_container::iterator v_it = vertices.begin();
-        while(v_it != vertices.end()){
+    void print_vertices()const{
+        return print_vertices(head_rev());
+    }
+    void print_vertices(int revision)const{
+      //  std::cout << "vertices in revision: " << revision << std::endl;
+        FILE_LOG(logDEBUG2) << "vertices in revision: " << revision  << " size: " << vertices.size();
+        typename vertices_container::const_iterator v_it = vertices.cbegin(revision);
+        while(v_it != vertices.cend()){
             vertex_key curr_vertex = vertices.get_key(v_it);
-            std::cout << "vertex: " << curr_vertex << std::endl;
+         //   std::cout << "vertex: " << curr_vertex << std::endl;
+            FILE_LOG(logDEBUG2) << "vertex: " << curr_vertex;
             ++v_it;
         }
     }
@@ -282,6 +295,13 @@ private:
         FILE_LOG(logDEBUG2) << "COMMIT edge delete: " << el;
         edges.insert(el, edge_properties());
         return el;
+    }
+
+    void fill_missing_vertices(Graph& graph, int rev) const {
+        typename graph_archive<Graph>::vertices_container::const_iterator v_it = vertices.cbegin(rev);
+        while(v_it != vertices.cend()){
+
+        }
     }
 
     Graph& g;
