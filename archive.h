@@ -53,8 +53,8 @@ public:
             while(v_it !=vertices.cend()){
                vertex_key curr = vertices.get_key(v_it);
                FILE_LOG(logDEBUG1) << "vertex " << curr << " checked for deletion";
-               if(abs(curr.revision) < head_rev() && ah_vertices.find(curr.id)== ah_vertices.end()) {
-                    del_commit(curr.id,-head_rev());
+               if(abs(curr.revision) < head_rev() && ah_vertices.find(curr.desc)== ah_vertices.end()) {
+                    del_commit(curr.desc,-head_rev());
                }
                ++v_it;
             }
@@ -169,9 +169,11 @@ public:
 
             ++e_it;
         }
+        correct_missing_vertices(n,rev);
         helper<Graph,vertex_properties>::set_vertex_properties(n,vertices, rev);
 #ifdef DEBUG
         std::cout << "checkout of revision " << rev << " finished" << std::endl;
+        FILE_LOG(logDEBUG2)  << "checked out of revision revision " << rev << " finished";
 #endif
         return n;
     }
@@ -213,6 +215,7 @@ public:
                     remove_vertex(*vertex_iter,g);
                 }
             }
+            correct_missing_vertices(g,revision);
             helper<Graph,vertex_properties>::set_vertex_properties(g,vertices, revision);
         }
     }
@@ -265,7 +268,7 @@ private:
         if(it == vertices.end())
             return it;
         vertex_key curr = vertices.get_key(it);
-        if(v != curr.id || curr.revision < 0)
+        if(v != curr.desc || curr.revision < 0)
             return vertices.end();
         return it;
     }
@@ -297,11 +300,23 @@ private:
         return el;
     }
 
-    void fill_missing_vertices(Graph& graph, int rev) const {
+    void correct_missing_vertices(Graph& graph, int rev) const {
         typename graph_archive<Graph>::vertices_container::const_iterator v_it = vertices.cbegin(rev);
-        while(v_it != vertices.cend()){
-
+        FILE_LOG(logDEBUG2) << "adding missing vertices rev: " << rev;
+        unsigned int repo_size = std::distance(v_it,vertices.cend());
+        unsigned int v_size = boost::num_vertices(graph);
+        if(repo_size <= v_size){
+            FILE_LOG(logDEBUG2) << "no need to add vertices: repository: " << repo_size << " graph " << v_size;
+            return;
         }
+        while(v_it!=vertices.cend()){
+            FILE_LOG(logDEBUG2) << vertices.get_key(v_it);
+            ++v_it;
+        }
+        FILE_LOG(logDEBUG2) << "start adding " << repo_size << " " << v_size << " vertices from rev: " << rev;
+        for(unsigned int i = 0; i< repo_size - v_size;++i)
+            FILE_LOG(logDEBUG2) << "ADD VARTEX " << boost::add_vertex(graph);
+        assert(repo_size==boost::num_vertices(graph));
     }
 
     Graph& g;
@@ -316,20 +331,30 @@ struct helper{
                                       const typename graph_archive<Graph>::vertices_container& vertices,
                                       int rev){
 #ifdef DEBUG
-            FILE_LOG(logDEBUG3) << "started setting vertex properties";
+            FILE_LOG(logDEBUG3) << "started setting vertex properties for revision " << rev;
 #endif
+        typedef typename boost::graph_traits<Graph>::vertex_iterator vertex_iterator;
+        std::pair<vertex_iterator,vertex_iterator> vi = boost::vertices(graph);
+        for(vertex_iterator v_it = vi.first; v_it != vi.second; ++v_it){
+            typename graph_archive<Graph>::vertices_container::key_type key(*v_it,rev);
+#ifdef DEBUG
+            FILE_LOG(logDEBUG3) << "setting vertex property " << *v_it << " rev: " << rev;
+#endif
+            typename graph_archive<Graph>::vertices_container::const_iterator it = vertices.lower_bound(key);
+            assert(it!=vertices.cend());
+#ifdef DEBUG
+            FILE_LOG(logDEBUG3) << "found vertex key " << it->first;
+#endif
+            property_type p = it->second;
+            graph[*v_it] = p;
+        }
+/*
         typename graph_archive<Graph>::vertices_container::const_iterator v_it = vertices.cbegin(rev);
         while(v_it != vertices.cend()){
             typename graph_archive<Graph>::vertex_key curr_vertex = v_it->first;
 #ifdef DEBUG
             FILE_LOG(logDEBUG3) << "setting vertex property " << curr_vertex.id << " rev: " << curr_vertex.revision;
 #endif
-            typedef typename boost::graph_traits<Graph>::vertex_descriptor vertex_descriptor;
-            if(in_degree(curr_vertex.id, graph)==0 && out_degree(curr_vertex.id, graph)==0){
-                vertex_descriptor v = add_vertex(graph);
-                std::cout << "ADDED VERTEX " <<  v << std::endl;
-                FILE_LOG(logDEBUG1) << "ADDED VERTEX " <<  v;
-            }
             if(curr_vertex.revision >=0){
                 graph[curr_vertex.id] = v_it->second;
             }
@@ -339,6 +364,7 @@ struct helper{
             FILE_LOG(logDEBUG1) << "vertex property in " << curr_vertex.id << " set ";
 #endif
         }
+*/
 #ifdef DEBUG
             std::cout << "all vertex properties set" << std::endl;
 #endif
@@ -348,39 +374,10 @@ struct helper{
         return graph[v];
     }
 };
-/*
-template<typename Graph,class PropertyTag, class T, class NextProperty>
-struct helper<Graph,boost::property<PropertyTag,T,NextProperty> >{
-    typedef typename boost::property<PropertyTag,T,NextProperty> property;
-    static void set_vertex_properties(Graph&,const typename graph_archive<Graph>::vertices_container&, int){
 
-    }
-    template<typename descriptor>
-    static property get_properties(const Graph& graph, descriptor v){
-        return graph[v];
-    }
-};
-*/
 template<typename Graph>
 struct helper<Graph,boost::no_property>{
-    static void set_vertex_properties(Graph& graph,const typename graph_archive<Graph>::vertices_container& vertices, int rev){
-        typename graph_archive<Graph>::vertices_container::const_iterator v_it = vertices.cbegin(rev);
-        while(v_it != vertices.cend()){
-            typename graph_archive<Graph>::vertex_key curr_vertex = *v_it;
-#ifdef DEBUG
-            FILE_LOG(logDEBUG1) << "setting vertex property " << curr_vertex.id << " rev: " << curr_vertex.revision;
-
-#endif
-            if(in_degree(curr_vertex.id, graph)==0 && out_degree(curr_vertex.id, graph)==0){
-                std::cout << "ADDED VERTEX" <<  add_vertex(graph) << std::endl;
-                FILE_LOG(logDEBUG1) << "ADDED VERTEX" <<  add_vertex(graph);
-            }
-            ++v_it;
-#ifdef DEBUG
-            FILE_LOG(logDEBUG1) << "vertex property in " << curr_vertex.id << " set " << std::endl;
-#endif
-        }
-
+    static void set_vertex_properties(Graph&,const typename graph_archive<Graph>::vertices_container&, int){
     }
     template<typename descriptor>
     static boost::no_property get_properties(const Graph& , descriptor ){
@@ -425,6 +422,7 @@ bool equal(const Graph& g1, const Graph& g2){
             return false;
         }
     }
+    FILE_LOG(logDEBUG1) << "GRAPH COMPARE: match";
     return true;
 }
 

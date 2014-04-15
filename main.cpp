@@ -134,7 +134,9 @@ public:
         std::pair<vertex_iterator, vertex_iterator> vi = vertices(current);
         vertex_iterator it_u = vi.first;
         vertex_iterator it_v = vi.first;
+        assert(std::distance(vi.first,vi.second) > u);
         advance(it_u,u);
+        assert(std::distance(vi.first,vi.second) > v);
         advance(it_v,v);
         boost::remove_edge(*it_u,*it_v,current);
     }
@@ -164,15 +166,17 @@ public:
     }
     void test(){
         archive.commit();
-        FILE_LOG(logDEBUG1) << "added vertex: " << add_vertex() << endl;
-        FILE_LOG(logDEBUG1) << "added vertex: " << add_vertex() << endl;
-        FILE_LOG(logDEBUG1) << "added vertex: " << add_vertex() << endl;
-        FILE_LOG(logDEBUG1) << "added vertex: " << add_vertex() << endl;
+        for(int i = 1;i <5;++i)
+            FILE_LOG(logDEBUG1) << "added "<< i << " vertex: " << add_vertex() << endl;
+
         add_edge(0, 5);
         commit();
-        remove_vertex(1);
-        FILE_LOG(logDEBUG1) << "removed vertex " << 1;
+        check();
+   //     remove_vertex(1);
+   //     FILE_LOG(logDEBUG1) << "removed vertex " << 1;
         commit();
+        check();
+        FILE_LOG(logDEBUG1) << "test finished";
     }
     void check(){
         for (typename std::map<int,Graph>::iterator it=snapshots.begin(); it!=snapshots.end(); ++it)
@@ -194,15 +198,17 @@ void test_case1(test_container& t){
 
 int main()
 {
-    FILELog::ReportingLevel() = logERROR;
+    FILELog::ReportingLevel() = logDEBUG4;
     FILE* log_fd = fopen( "mylogfile.txt", "w" );
     Output2FILE::Stream() = log_fd;
     //create an -undirected- graph type, using vectors as the underlying containers
     //and an adjacency_list as the basic representation
-    typedef boost::adjacency_list<vecS, vecS, undirectedS, extra_info> UndirectedGraph;
-    typedef boost::adjacency_list<vecS, vecS, undirectedS> SimpleGraph;
-    typedef boost::adjacency_list<vecS, vecS, undirectedS, extra_info,extra_info> ExtendedGraph;
+    typedef boost::adjacency_list<listS, listS, undirectedS, extra_info> UndirectedGraph;
+    typedef boost::adjacency_list<listS, listS, undirectedS> SimpleGraph;
+    typedef boost::adjacency_list<listS, listS, undirectedS, extra_info,extra_info> ExtendedGraph;
 
+    cout << endl << "Graph with data on vertices" << endl;
+    FILE_LOG(logDEBUG1) << "Graph with data on vertices";
     graph_test<UndirectedGraph> g;
     g.test();
 
@@ -213,7 +219,7 @@ int main()
 
     g.check();
 
-    FILELog::ReportingLevel() = logDEBUG3;
+    FILELog::ReportingLevel() = logDEBUG4;
     cout << endl << "Graph with no extra data" << endl;
     FILE_LOG(logDEBUG1) << "Graph with no extra data";
     graph_test<SimpleGraph> simple;

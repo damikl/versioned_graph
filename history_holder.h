@@ -4,18 +4,26 @@
 
 template<typename vertex_typename>
 struct vertex_id{
+    int identifier;
     typedef vertex_typename vertex_type;
-    vertex_type id;
+    vertex_type desc;
     int revision;
-    vertex_id(vertex_type id, int rev) : id(id),revision(rev){}
-    vertex_id(){}
+    vertex_id(vertex_type desc, int rev,int ident=-1) : identifier(ident),desc(desc),revision(rev){}
+    vertex_id():revision(0){}
     bool operator<(const vertex_id& obj)const{
-        if(this->id == obj.id)
-            return abs(this->revision) > abs(obj.revision);
-        return this->id < obj.id;
+        if(this->identifier == obj.identifier){
+            if(this->desc == obj.desc)
+            {
+                return abs(this->revision) > abs(obj.revision);
+            } else
+                 return this->desc < obj.desc;
+        } else
+            return this->identifier < obj.identifier;
     }
     bool operator==(const vertex_id& obj)const{
-        if(this->id == obj.id && this->revision == obj.revision)
+        if((this->identifier == obj.identifier || obj.identifier) &&
+                this->desc == obj.desc &&
+                this->revision == obj.revision)
             return true;
         return false;
     }
@@ -24,27 +32,30 @@ struct vertex_id{
     }
     static vertex_id get_max(vertex_type id){
          vertex_id arch;
-         arch.id = id;
+         arch.desc = id;
          arch.revision = std::numeric_limits<int>::max();
          return arch;
     }
     static vertex_id get_min(vertex_type id){
          vertex_id arch;
-         arch.id = id;
+         arch.desc = id;
          arch.revision = 0;
          return arch;
     }
 };
 template<typename vertex_typename>
 struct edge_id{
+   int identifier;
    typedef vertex_typename vertex_type;
    vertex_type source;
    vertex_type target;
    int revision;
-   edge_id(){}
+   edge_id():revision(0){}
    edge_id(vertex_type source,
-                vertex_type target,
-                int revision):  source(source),
+           vertex_type target,
+           int revision,
+           int ident = -1): identifier(ident),
+                                source(source),
                                 target(target),
                                 revision(revision){}
 
@@ -57,7 +68,8 @@ struct edge_id{
        return this->source < obj.source;
    }
    bool operator==(const edge_id& obj)const{
-       if(this->source == obj.source &&
+       if((this->identifier == obj.identifier || obj.identifier<0) &&
+          this->source == obj.source &&
           this->target == obj.target &&
           this->revision == obj.revision)
             return true;
@@ -98,11 +110,11 @@ template<typename Graph>
 std::ostream& operator<<(std::ostream& os, const vertex_id<Graph>& obj)
 {
   // write obj to stream
-    return os << "(" << obj.id <<") rev: "<< obj.revision <<"";
+    return os << "(" << obj.desc <<") rev: "<< obj.revision <<"";
 }
 template<typename Graph>
 bool thesame(const vertex_id<Graph>& f,const vertex_id<Graph>& s){
-    return f.id == s.id;
+    return f.desc == s.desc;
 }
 template<typename Graph>
 bool thesame(const edge_id<Graph>& f,const edge_id<Graph>& s){
@@ -126,7 +138,7 @@ class history_holder_iterator : public std::iterator<std::forward_iterator_tag, 
         history_holder_iterator(Type* cont, int rev) : container(cont),revision(rev) {
             this->current = this->container->history_records.begin();
             size_t size = this->container->history_records.size();
-            FILE_LOG(logDEBUG4) << "history_holder_iterator ctor, container size " << this->container->history_records.size() << " rev " << revision;
+            FILE_LOG(logDEBUG4) << "history_holder_iterator ctor, container size " << size << " rev " << revision;
             if(size > 1){
                 typename Type::key_type curr = this->container->get_key(current);
                 FILE_LOG(logDEBUG4) << "history_holder_iterator ctor, head revision" << curr.revision;
@@ -142,6 +154,7 @@ class history_holder_iterator : public std::iterator<std::forward_iterator_tag, 
         history_holder_iterator(const history_holder_iterator& iter) {
             this->current = iter.current;
             this->container = iter.container;
+            this->revision = iter.revision;
         }
 
 
@@ -150,7 +163,9 @@ class history_holder_iterator : public std::iterator<std::forward_iterator_tag, 
                 return( *this ) ;
             }
             current = other.current ;
-            return( *this ) ;
+            this->container = other.container;
+            this->revision = other.revision;
+            return( *this );
         }
         bool operator==(const history_holder_iterator& o) const{
             return o.current == this->current;
@@ -171,14 +186,19 @@ class history_holder_iterator : public std::iterator<std::forward_iterator_tag, 
             FILE_LOG(logDEBUG4) << "++history_holder_iterator, wanted rev: " << revision;
             FILE_LOG(logDEBUG4) << "++history_holder_iterator, was at " << curr;
             curr.revision = 0;
+            typename Type::key_type target;
             current = this->container->history_records.upper_bound(curr);
             do{
                 curr = this->container->get_key(*this);
+                FILE_LOG(logDEBUG4) << "++history_holder_iterator intermediate " << curr;
+                if(curr < this->container->get_key(this->container->begin(revision)))
+                    break;
                 curr.revision = revision;
-                FILE_LOG(logDEBUG4) << "++history_holder_iterator intermediate " << this->container->get_key(*this);
                 current = this->container->history_records.lower_bound(curr);
-            } while(!thesame(curr,this->container->get_key(*this)));
-            FILE_LOG(logDEBUG4) << "++history_holder_iterator finished at " << this->container->get_key(*this);
+                target = this->container->get_key(current);
+                FILE_LOG(logDEBUG4) << "++history_holder_iterator target " << target << " current " << curr;
+            } while(!thesame(curr,target) && current != this->container->history_records.end());
+            FILE_LOG(logDEBUG4) << "++history_holder_iterator finished at " << target;
             return *this;
         }
         history_holder_iterator& operator++(int){
@@ -210,25 +230,21 @@ struct history_holder{
     typedef history_holder_iterator<const self_type,exception_range_checking,typename container::const_iterator> const_iterator;
 
     typedef std::pair<const versioned_key_type, property_type> value_type;
-    std::pair<typename container::iterator,bool> insert(const key_type& key, const property_type& property){
+    std::pair<typename container::iterator,bool> insert(key_type key, const property_type& property){
+        int id = get_identifier(key);
+        key.identifier = id;
+        FILE_LOG(logDEBUG4)  << "inserted " << key;
         return history_records.insert(std::make_pair(key, property));
     }
     template<typename Graph, typename descriptor>
     static bool changed(descriptor v, iterator it,const Graph& g) {
         return g[v] != it->second;
     }
-    key_type get_key(typename container::const_iterator it) const {
+    template<typename iter>
+    key_type get_key(iter it) const {
         return it->first;
     }
-    key_type get_key(typename container::iterator it) {
-        return it->first;
-    }
-    key_type get_key(const_iterator it) const {
-        return it->first;
-    }
-    key_type get_key(iterator it) {
-        return it->first;
-    }
+
     template<typename Graph>
     void set_edge_property(const_iterator it,
                            Graph& graph,
@@ -242,6 +258,18 @@ struct history_holder{
                            typename key_type::vertex_type s,
                            typename key_type::vertex_type t){
         graph[edge(s, t, graph).first] = it->second;
+    }
+    int get_max_identifier()const{
+        if(size()==0)
+            return 1;
+        return get_key(history_records.rbegin()).identifier;
+    }
+    int get_identifier(key_type key )const{
+        key.identifier = -1;
+        const_iterator it = lower_bound(key);
+        if(it == cend())
+            return get_max_identifier()+1;
+        return get_key(it).identifier;
     }
     iterator begin(int revision){
         return iterator(this,revision);
@@ -279,6 +307,12 @@ struct history_holder{
     iterator lower_bound (const key_type& val) {
         return iterator(this,history_records.lower_bound(val));
     }
+    iterator find(const key_type& val) {
+        return iterator(this,history_records.find(val));
+    }
+    const_iterator find(const key_type& val) const {
+        return const_iterator(this,history_records.find(val));
+    }
     std::size_t size() const {
         return history_records.size();
     }
@@ -297,25 +331,34 @@ struct history_holder<versioned_key_type,boost::no_property>{
     typedef history_holder_iterator<self_type,exception_range_checking,typename container::iterator> iterator;
     typedef history_holder_iterator<const self_type,exception_range_checking,typename container::const_iterator> const_iterator;
     typedef versioned_key_type value_type;
-    std::pair<typename container::iterator,bool> insert(const key_type& key, const boost::no_property&){
+    std::pair<typename container::iterator,bool> insert(key_type key, const boost::no_property&){
+        int id = get_identifier(key);
+        key.identifier = id;
+        FILE_LOG(logDEBUG4)  << "inserted " << key;
         return history_records.insert(key);
     }
     template<typename Graph, typename descriptor>
     static bool changed(descriptor, iterator ,const Graph&) {
         return false;
     }
-    key_type get_key(typename container::const_iterator it) const {
+
+    int get_max_identifier()const{
+        if(size()==0)
+            return 1;
+        return get_key(history_records.rbegin()).identifier;
+    }
+    int get_identifier(key_type key )const{
+        key.identifier = -1;
+        const_iterator it = lower_bound(key);
+        if(it == cend())
+            return get_max_identifier()+1;
+        return get_key(it).identifier;
+    }
+    template<typename iter>
+    key_type get_key(iter it) const {
         return *it;
     }
-    key_type get_key(typename container::iterator it) {
-        return *it;
-    }
-    key_type get_key(const_iterator it) const {
-        return *it;
-    }
-    key_type get_key(iterator it) {
-        return *it;
-    }
+
     template<typename Graph>
     void set_edge_property(const_iterator,
                            Graph&,
@@ -358,7 +401,12 @@ struct history_holder<versioned_key_type,boost::no_property>{
     iterator lower_bound (const key_type& val) {
         return iterator(this,history_records.lower_bound(val));
     }
-
+    iterator find(const key_type& val) {
+        return iterator(this,history_records.find(val));
+    }
+    const_iterator find(const key_type& val) const {
+        return const_iterator(this,history_records.find(val));
+    }
     std::size_t size() const{
         return history_records.size();
     }
