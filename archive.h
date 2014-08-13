@@ -16,13 +16,16 @@ class graph_archive
 
     typedef typename boost::graph_traits<Graph>::edge_iterator edge_iterator;
     typedef typename boost::graph_traits<Graph>::vertex_iterator vertex_iterator;
-    typedef vertex_id<typename Graph::vertex_descriptor> vertex_key;
-    typedef edge_id<typename Graph::vertex_descriptor> edge_key;
+    typedef key_id<typename Graph::vertex_descriptor> vertex_key;
+    typedef key_id<std::pair<typename Graph::vertex_descriptor,typename Graph::vertex_descriptor> > edge_key;
+    typedef typename boost::graph_traits<Graph>::vertex_descriptor vertex_descriptor;
 public:
     typedef typename boost::vertex_bundle_type<Graph>::type vertex_properties;
     typedef typename boost::edge_bundle_type<Graph>::type edge_properties;
     typedef history_holder<vertex_key,vertex_properties> vertices_container;
     typedef history_holder<edge_key,edge_properties> edges_container;
+    typedef std::map<vertex_descriptor,int> mapping_type;
+
 
     friend struct helper<Graph,vertex_properties>;
     graph_archive(Graph& graph) : g(graph), _head_rev(0){
@@ -36,8 +39,6 @@ public:
         print_edges();
         print_vertices();
 #endif
-
-        typedef typename boost::graph_traits<Graph>::vertex_descriptor vertex_descriptor;
         {
             std::set<vertex_descriptor> ah_vertices; // vertices that are already here
             for(vertex_iterator vertex_iter = vi.first; vertex_iter != vi.second;++vertex_iter){
@@ -79,7 +80,7 @@ public:
             typename edges_container::const_iterator e_it = edges.cbegin(head_rev());
             while(e_it !=edges.cend()){
                 edge_key curr = edges.get_key(e_it);
-                std::pair<vertex_descriptor,vertex_descriptor> edge = std::make_pair(curr.source,curr.target);
+                std::pair<vertex_descriptor,vertex_descriptor> edge = curr.desc;
                 if(abs(curr.revision) < head_rev() && ah_edges.find(edge)== ah_edges.end()) {
                     del_commit(edge,-head_rev());
                 }
@@ -110,6 +111,12 @@ public:
         vertex_key ed = vertex_key::get_max(v);
         vertex_key tmp = vertices.lower_bound(ed)->first;
         return thesame(ed,tmp) && tmp.revision >=0;
+    }
+    int num_edges(int revision){
+        return std::distance(edges.cbegin(revision),edges.cend());
+    }
+    int num_vertices(int revision){
+        return std::distance(vertices.cbegin(revision),vertices.cend());
     }
     bool contains_edge(const edge_key& e) const{
         typename edges_container::const_iterator e_it = edges.lower_bound(e);
@@ -154,22 +161,22 @@ public:
         while(e_it != edges.end()){
             edge_key curr_edge = edges.get_key(e_it);
             if(curr_edge.revision >=0){// negative revision == removed
-                boost::add_edge(curr_edge.source,curr_edge.target,n);
+                boost::add_edge(source(curr_edge),target(curr_edge),n);
 #ifdef DEBUG
-                std::cout << "checked out: " << curr_edge.source << " " << curr_edge.target << " rev: "<< curr_edge.revision << " wanted: " << rev << std::endl;
-                FILE_LOG(logDEBUG2) << "checked out: " << curr_edge.source << " " << curr_edge.target << " rev: "<< curr_edge.revision << " wanted: " << rev;
+                std::cout << "checked out: " << source(curr_edge) << " " << target(curr_edge) << " rev: "<< curr_edge.revision << " wanted: " << rev << std::endl;
+                FILE_LOG(logDEBUG2) << "checked out: " << source(curr_edge) << " " << target(curr_edge) << " rev: "<< curr_edge.revision << " wanted: " << rev;
 #endif
-                edges.set_edge_property(e_it,n,curr_edge.source,curr_edge.target);
+                edges.set_edge_property(e_it,n,curr_edge);
             }else{
 #ifdef DEBUG
-                std::cout << "NOT checked out: " << curr_edge.source << " " << curr_edge.target << " rev: "<< curr_edge.revision << " wanted: " << rev << std::endl;
-                FILE_LOG(logDEBUG2)  << "NOT checked out: " << curr_edge.source << " " << curr_edge.target << " rev: "<< curr_edge.revision << " wanted: " << rev;
+                std::cout << "NOT checked out: " << source(curr_edge) << " " << target(curr_edge) << " rev: "<< curr_edge.revision << " wanted: " << rev << std::endl;
+                FILE_LOG(logDEBUG2)  << "NOT checked out: " << source(curr_edge) << " " << target(curr_edge) << " rev: "<< curr_edge.revision << " wanted: " << rev;
 #endif
             }
-
             ++e_it;
         }
-        correct_missing_vertices(n,rev);
+        mapping_type mapping;
+        correct_missing_vertices(n,rev,mapping);
         helper<Graph,vertex_properties>::set_vertex_properties(n,vertices, rev);
 #ifdef DEBUG
         std::cout << "checkout of revision " << rev << " finished" << std::endl;
@@ -245,13 +252,13 @@ private:
 
     typename edges_container::iterator
     lower_bound(const typename boost::graph_traits<Graph>::edge_descriptor e, int revision) {
-        edge_key ed = edge_key(source(e, g),target(e, g),revision);
+        edge_key ed = edge_key(std::make_pair(source(e, g),target(e, g)),revision);
         typename edges_container::iterator it = edges.lower_bound(ed);
         if(it == edges.end())
             return it;
         edge_key curr = edges.get_key(it);
-        if(source(e, g) != curr.source ||
-           target(e, g) != curr.target ||
+        if(boost::source(e, g) != source(curr) ||
+           boost::target(e, g) != target(curr) ||
            curr.revision < 0)
             return edges.end();
         return it;
@@ -274,7 +281,11 @@ private:
     }
 
     vertex_key commit(typename boost::graph_traits<Graph>::vertex_descriptor v, int revision){
-        vertex_key el(v,revision);
+ /*       typename std::map<vertex_descriptor,int>::const_iterator it = mapping.find(v);
+        int ident = -1;
+        if(it != mapping.end())
+            ident = it->second;
+ */       vertex_key el(v,revision/*,ident*/);
         FILE_LOG(logDEBUG2) << "COMMIT vertex: " << el;
         vertices.insert(el, helper<Graph,vertex_properties>::get_properties(g,v));
         return el;
@@ -286,7 +297,7 @@ private:
         return el;
     }
     edge_key commit(typename boost::graph_traits<Graph>::edge_descriptor v, int revision){
-        edge_key el(source(v, g),target(v, g),revision);
+        edge_key el(std::make_pair(source(v, g),target(v, g)),revision);
         FILE_LOG(logDEBUG2) << "COMMIT edge: " << el;
         edges.insert(el, helper<Graph,edge_properties>::get_properties(g,v));
         return el;
@@ -294,13 +305,13 @@ private:
     edge_key del_commit(std::pair<  typename boost::graph_traits<Graph>::vertex_descriptor,
                                 typename boost::graph_traits<Graph>::vertex_descriptor> v,
                     int revision){
-        edge_key el(v.first,v.second,revision);
+        edge_key el(std::make_pair(v.first,v.second),revision);
         FILE_LOG(logDEBUG2) << "COMMIT edge delete: " << el;
         edges.insert(el, edge_properties());
         return el;
     }
 
-    void correct_missing_vertices(Graph& graph, int rev) const {
+    void correct_missing_vertices(Graph& graph, int rev, mapping_type& mapping) const {
         typename graph_archive<Graph>::vertices_container::const_iterator v_it = vertices.cbegin(rev);
         FILE_LOG(logDEBUG2) << "adding missing vertices rev: " << rev;
         unsigned int repo_size = std::distance(v_it,vertices.cend());
@@ -314,8 +325,11 @@ private:
             ++v_it;
         }
         FILE_LOG(logDEBUG2) << "start adding " << repo_size << " " << v_size << " vertices from rev: " << rev;
-        for(unsigned int i = 0; i< repo_size - v_size;++i)
-            FILE_LOG(logDEBUG2) << "ADD VARTEX " << boost::add_vertex(graph);
+        for(unsigned int i = 0; i< repo_size - v_size;++i){
+            vertex_descriptor d = boost::add_vertex(graph);
+            mapping.insert(std::make_pair(d,vertices.get_max_identifier()));
+            FILE_LOG(logDEBUG2) << "ADD VARTEX " << d;
+        }
         assert(repo_size==boost::num_vertices(graph));
     }
 

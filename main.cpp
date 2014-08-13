@@ -100,6 +100,7 @@ template<typename Graph>
 class graph_test{
 public:
     typedef typename graph_traits < Graph >::vertex_descriptor Vertex;
+    typedef typename graph_traits < Graph >::edge_descriptor Edge;
     graph_test() : archive(current),current() {
         fill_graph(current);
         commit();
@@ -150,6 +151,13 @@ public:
         std::advance(it_u,u);
         return *it_u;
     }
+
+    Edge getEdge(int _u, int _v){
+        Vertex u = getVertex(_u);
+        Vertex v = getVertex(_v);
+        return boost::edge(u,v,current).first;
+    }
+
     Vertex add_vertex(){
         return boost::add_vertex(current);
     }
@@ -157,6 +165,7 @@ public:
         typedef typename boost::graph_traits<Graph>::vertex_iterator vertex_iterator;
         vertex_iterator it_u = vertices(current).first;
         advance(it_u,u);
+        FILE_LOG(logDEBUG1) << "removed vertex " << *it_u;
         boost::clear_vertex(*it_u,current);
         boost::remove_vertex(*it_u,current);
     }
@@ -167,20 +176,29 @@ public:
     void test(){
         archive.commit();
         for(int i = 1;i <5;++i)
-            FILE_LOG(logDEBUG1) << "added "<< i << " vertex: " << add_vertex() << endl;
+            FILE_LOG(logDEBUG1) << "TEST: added "<< i << " vertex: " << add_vertex() << endl;
 
         add_edge(0, 5);
         commit();
+        FILE_LOG(logDEBUG1) << "TEST: Check vertices count";
+        int v_num = archive.num_vertices(1);
+        FILE_LOG(logDEBUG1) << "TEST: Check vertices count is equal: " << v_num;
+        assert(v_num==5);
+        FILE_LOG(logDEBUG1) << "TEST: Check edges count";
+        int e_num = archive.num_edges(1);
+        FILE_LOG(logDEBUG1) << "TEST: Check edges count is equal: " << e_num;
+        assert(e_num==7);
         check();
-   //     remove_vertex(1);
-   //     FILE_LOG(logDEBUG1) << "removed vertex " << 1;
+        remove_vertex(5);
         commit();
         check();
         FILE_LOG(logDEBUG1) << "test finished";
     }
     void check(){
-        for (typename std::map<int,Graph>::iterator it=snapshots.begin(); it!=snapshots.end(); ++it)
+        for (typename std::map<int,Graph>::iterator it=snapshots.begin(); it!=snapshots.end(); ++it){
+            FILE_LOG(logDEBUG1) << "CHECK REVISION: " << it->first;
             check_equality(it->second,archive.checkout(it->first));
+        }
     }
 
 private:
@@ -233,7 +251,7 @@ int main()
 
     ex.getGraph()[ex.getVertex(5)].simple_name = "other";
     ex.getGraph()[ex.getVertex(3)].simple_name = "just something";
-
+    ex.getGraph()[ex.getEdge(0,3)].simple_name = "path weight";
     ex.commit();
 
     ex.check();
