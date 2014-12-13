@@ -379,5 +379,4 @@ private:
 };
 
 
-
 #endif // HISTORY_HOLDER_H
