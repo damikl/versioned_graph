@@ -1,84 +1,7 @@
 #ifndef HISTORY_HOLDER_H
 #define HISTORY_HOLDER_H
 #include "log.h"
-
-template< typename T >
-struct key_type{
-    typedef T vertex_type;
-};
-
-template< typename T >
-struct key_type<std::pair<T,T> >{
-    typedef T vertex_type;
-};
-
-template<typename descriptor_typename>
-struct key_id{
-    int identifier;
-    typedef descriptor_typename descriptor_type;
-    typedef typename key_type<descriptor_type>::vertex_type vertex_type;
-    descriptor_type desc;
-    int revision;
-    key_id(descriptor_type desc, int rev,int ident=-1) : identifier(ident),desc(desc),revision(rev){}
-    key_id():revision(0){}
-    bool operator<(const key_id& obj)const{
-        if(this->identifier == obj.identifier || obj.identifier < 0 || this->identifier < 0){
-            if(this->desc == obj.desc)
-            {
-                return abs(this->revision) > abs(obj.revision);
-            } else
-                 return this->desc < obj.desc;
-        } else
-            return this->identifier < obj.identifier;
-    }
-    bool operator==(const key_id& obj)const{
-        if((this->identifier == obj.identifier || obj.identifier < 0|| this->identifier < 0) &&
-                this->desc == obj.desc &&
-                this->revision == obj.revision)
-            return true;
-        return false;
-    }
-    bool operator!=(const key_id& obj)const{
-        return !(*this ==obj);
-    }
-    static key_id get_max(descriptor_type id){
-         key_id arch;
-         arch.desc = id;
-         arch.revision = std::numeric_limits<int>::max();
-         return arch;
-    }
-    static key_id get_min(descriptor_type id){
-         key_id arch;
-         arch.desc = id;
-         arch.revision = 0;
-         return arch;
-    }
-};
-
-template<typename key_type>
-typename key_type::vertex_type source(key_type key){
-    return key.desc.first;
-}
-
-template<typename key_type>
-typename key_type::vertex_type target(key_type key){
-    return key.desc.second;
-}
-
-template<typename T>
-std::ostream& operator<<(std::ostream& os, const std::pair<T,T>& obj) {
-    return os << obj.first << ", " << obj.second;
-}
-
-template<typename Graph>
-std::ostream& operator<<(std::ostream& os, const key_id<Graph>& obj) {
-  // write obj to stream
-    return os << obj.identifier << "(" << obj.desc <<") rev: "<< obj.revision <<"";
-}
-template<typename Graph>
-bool thesame(const key_id<Graph>& f,const key_id<Graph>& s){
-    return f.identifier == s.identifier || f.desc == s.desc;
-}
+#include "key.h"
 
 template<typename Graph, typename vertex_prop_type>
 struct helper;
@@ -100,7 +23,8 @@ class history_holder_iterator : public std::iterator<std::forward_iterator_tag, 
             FILE_LOG(logDEBUG4) << "history_holder_iterator ctor, container size " << size << " rev " << revision;
             if(size > 1){
                 typename Type::key_type curr = this->container->get_key(current);
-                FILE_LOG(logDEBUG4) << "history_holder_iterator ctor, head revision" << curr.revision;
+                FILE_LOG(logDEBUG4) << "history_holder_iterator ctor, head revision " << curr.revision;
+                FILE_LOG(logDEBUG4) << "first entry: " << curr;
                 curr.revision = revision;
                 current = this->container->history_records.lower_bound(curr);
             }
@@ -145,7 +69,9 @@ class history_holder_iterator : public std::iterator<std::forward_iterator_tag, 
             FILE_LOG(logDEBUG4) << "++history_holder_iterator, wanted rev: " << revision;
             FILE_LOG(logDEBUG4) << "++history_holder_iterator, was at " << curr;
 
-            typename Type::key_type target;
+            typename Type::key_type target = curr;// fake assignment, because there is no default constructor
+            target.revision = -2;
+            target.identifier = -2;
             do{
                 curr.revision = 0;
                 current = this->container->history_records.upper_bound(curr);
@@ -154,6 +80,7 @@ class history_holder_iterator : public std::iterator<std::forward_iterator_tag, 
                 curr = this->container->get_key(*this);
                 FILE_LOG(logDEBUG4) << "++history_holder_iterator intermediate " << curr;
                 if(curr < this->container->get_key(this->container->begin(revision))){
+                    FILE_LOG(logDEBUG4) << "end key: " << this->container->get_key(this->container->end());
                     FILE_LOG(logDEBUG4) << "++history_holder_iterator target overflow";
                     break;
                 }
@@ -252,6 +179,24 @@ struct history_holder{
     const_iterator cend() const{
         return const_iterator(this,history_records.end());
     }
+    typename container::iterator begin_full(){
+        return history_records.begin();
+    }
+    typename container::const_iterator begin_full() const{
+        return history_records.begin();
+    }
+    typename container::const_iterator cbegin_full() const{
+        return history_records.cbegin();
+    }
+    typename container::iterator end_full(){
+        return history_records.end();
+    }
+    typename container::const_iterator end_full() const{
+        return history_records.end();
+    }
+    typename container::const_iterator cend_full() const{
+        return history_records.cend();
+    }
     bool empty() const{
         return history_records.empty();
     }
@@ -345,6 +290,24 @@ struct history_holder<versioned_key_type,boost::no_property>{
     }
     const_iterator cend() const{
         return const_iterator(this,history_records.end());
+    }
+    typename container::iterator begin_full(){
+        return history_records.begin();
+    }
+    typename container::const_iterator begin_full() const{
+        return history_records.begin();
+    }
+    typename container::const_iterator cbegin_full() const{
+        return history_records.cbegin();
+    }
+    typename container::iterator end_full(){
+        return history_records.end();
+    }
+    typename container::const_iterator end_full() const{
+        return history_records.end();
+    }
+    typename container::const_iterator cend_full() const{
+        return history_records.cend();
     }
     bool empty() const{
         return history_records.empty();

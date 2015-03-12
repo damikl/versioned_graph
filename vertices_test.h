@@ -9,28 +9,21 @@ class VertexGraphTest : public GraphTest<T> {
 TYPED_TEST_CASE_P(VertexGraphTest);
 
 TYPED_TEST_P(VertexGraphTest, simple) {
-    FILELog::ReportingLevel() = logDEBUG2;
-    this->test();
-    ASSERT_TRUE(this->check());
-}
-
-TYPED_TEST_P(VertexGraphTest, simpleWithRemove) {
-    FILELog::ReportingLevel() = logDEBUG2;
-    this->test();
-    this->test_removal();
+    FILELog::ReportingLevel() = logDEBUG4;
+    ASSERT_NO_FATAL_FAILURE(this->test());
     ASSERT_TRUE(this->check());
 }
 
 TYPED_TEST_P(VertexGraphTest, attributeModification) {
-    FILELog::ReportingLevel() = logDEBUG2;
-    this->test();
+    FILELog::ReportingLevel() = logDEBUG4;
+    ASSERT_NO_FATAL_FAILURE(this->test());
     this->getGraph()[this->getVertex(5)].simple_name = "other";
     this->getGraph()[this->getVertex(3)].simple_name = "just something";
-    this->commit();
+    FILE_LOG(logDEBUG1) << "attributes changed";
+    ASSERT_TRUE(this->check());
+    FILE_LOG(logDEBUG1) << "data consistent";
+    ASSERT_NO_FATAL_FAILURE(this->commit());
     ASSERT_TRUE(this->check());
 }
-
-REGISTER_TYPED_TEST_CASE_P(VertexGraphTest,simple,simpleWithRemove,attributeModification);
-
 
 #endif // VERTICES_TEST_H

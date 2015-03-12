@@ -2,8 +2,9 @@
 #define EDGES_TEST_H
 #include "tests.h"
 
-template <class T>
-class EdgesGraphTest : public GraphTest<T> {
+template <class Graph>
+class EdgesGraphTest : public GraphTest<Graph> {
+    typedef archive_handle<Graph> handle_type;
 };
 
 TYPED_TEST_CASE_P(EdgesGraphTest);
@@ -11,29 +12,22 @@ TYPED_TEST_CASE_P(EdgesGraphTest);
 
 TYPED_TEST_P(EdgesGraphTest, simple) {
     FILELog::ReportingLevel() = logDEBUG2;
-    this->test();
-    ASSERT_TRUE(this->check());
-}
-
-TYPED_TEST_P(EdgesGraphTest, withRemoval) {
-    FILELog::ReportingLevel() = logDEBUG2;
-    this->test();
-    this->test_removal();
-    this->commit();
+    ASSERT_NO_FATAL_FAILURE(this->test());
     ASSERT_TRUE(this->check());
 }
 
 TYPED_TEST_P(EdgesGraphTest, attributeModification) {
-    FILELog::ReportingLevel() = logDEBUG2;
-    this->test();
+    FILELog::ReportingLevel() = logDEBUG3;
+    ASSERT_NO_FATAL_FAILURE(this->test());
     ASSERT_TRUE(this->check());
     this->getGraph()[this->getVertex(5)].simple_name = "other";
     this->getGraph()[this->getVertex(3)].simple_name = "just something";
     this->getGraph()[this->getEdge(0,3)].simple_name = "path weight";
-    this->commit();
+    FILE_LOG(logDEBUG1) << "attributes changed";
+    ASSERT_TRUE(this->check());
+    FILE_LOG(logDEBUG1) << "data consistent";
+    ASSERT_NO_FATAL_FAILURE(this->commit());
     ASSERT_TRUE(this->check());
 }
-
-REGISTER_TYPED_TEST_CASE_P(EdgesGraphTest,simple,withRemoval,attributeModification);
 
 #endif // EDGES_TEST_H

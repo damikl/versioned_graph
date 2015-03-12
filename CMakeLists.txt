@@ -3,7 +3,7 @@ project(BackTracking)
 enable_testing()
 find_package (Threads)
 
-ADD_DEFINITIONS ( -Wall -DDEBUG -pedantic -Wextra )
+ADD_DEFINITIONS ( -Wall -DDEBUG -pedantic -Wextra -std=c++0x -g )
 
 ADD_DEFINITIONS ( -DTEST_ONLY_LIST )
 add_executable(VerticesTestList vertices_list_test.cpp archive.h  handler.h  history_holder.h  log.h  tests.h vertices_test.h )
@@ -15,7 +15,7 @@ target_link_libraries(EdgesTestList gtest gtest_main pthread)
 target_link_libraries(SimpleTestList gtest gtest_main pthread)
 
 ADD_DEFINITIONS ( -DTEST_ONLY_VEC )
-add_executable(VerticesTestVec vertices_test.cpp archive.h  handler.h  history_holder.h  log.h  tests.h )
+add_executable(VerticesTestVec vertices_test.cpp archive.h  handler.h  history_holder.h  log.h  tests.h key.h)
 add_executable(EdgesTestVec edges_test.cpp archive.h  handler.h  history_holder.h  log.h  tests.h)
 add_executable(SimpleTestVec simple_test.cpp archive.h  handler.h  history_holder.h  log.h  tests.h)
 

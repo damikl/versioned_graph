@@ -3,10 +3,56 @@
 
 #include <iostream>
 #include <vector>
+#include <memory>
 #include "archive.h"
+#include "handler.h"
 #include "gtest/gtest.h"
+#include "boost/graph/copy.hpp"
+
+
+template<typename Graph>
+Graph clone_graph(const Graph& g){
+    typedef typename boost::graph_traits < Graph >::vertex_descriptor Vertex;
+    typedef typename boost::graph_traits<Graph>::edge_iterator edge_iterator;
+    typedef typename boost::graph_traits<Graph>::vertex_iterator vertex_iterator;
+    typedef typename boost::vertex_bundle_type<Graph>::type vertex_property;
+    typedef typename boost::edge_bundle_type<Graph>::type edge_property;
+    std::map<Vertex,Vertex> v_map;
+    Graph clone;
+    std::pair<vertex_iterator, vertex_iterator> v_g1 = boost::vertices(g);
+    for(vertex_iterator it = v_g1.first; it!=v_g1.second;++it){
+        vertex_property p = g[*it];
+        Vertex v = boost::add_vertex(p,clone);
+        v_map.insert(std::make_pair(*it,v));
+        FILE_LOG(logDEBUG4) << "cloned vertex " << *it << " as " << v;
+    }
+    assert (boost::num_vertices(clone) == boost::num_vertices(g));
+    FILE_LOG(logDEBUG3) << "cloned vertices";
+    std::pair<edge_iterator, edge_iterator> e_g1 = boost::edges(g);
+    for(edge_iterator it = e_g1.first; it!=e_g1.second;++it){
+        Vertex oryg_source = boost::source(*it,g);
+        FILE_LOG(logDEBUG4) << "find vertex for " << oryg_source;
+        auto result = v_map.find(oryg_source);
+        assert (result != v_map.end());
+        Vertex s = result->second;
+        result = v_map.find(boost::target(*it,g));
+        assert (result != v_map.end());
+        Vertex t = result->second;
+        edge_property p = g[*it];
+        boost::add_edge(s,t,p,clone)
+                ;
+    //    clone[e] = g[*it];
+    }
+    assert (boost::num_edges(clone) == boost::num_edges(g));
+    FILE_LOG(logDEBUG3) << "cloned edges";
+    return clone;
+
+}
 
 struct extra_info {
+private:
+    static int counter;
+public:
     std::string simple_name;
     int othervalue;
     std::vector<int> some_values;
@@ -17,9 +63,24 @@ struct extra_info {
         return this->simple_name != vertex.simple_name;
     }
     std::string to_string() const{
-        return simple_name + std::string(" ");
+        return simple_name + std::string(" ") + std::to_string(othervalue) + std::string(" ");
     }
+    extra_info() : othervalue(counter){
+        ++counter;
+    }
+
 };
+int extra_info::counter = 0;
+
+std::ostream& operator<< (std::ostream& stream, const extra_info& info){
+    stream << info.to_string() << &info << " ";
+    return stream;
+}
+
+std::ostream& operator<< (std::ostream& stream, const boost::no_property& ){
+    stream << " no_property ";
+    return stream;
+}
 
 template<typename properties_type>
 struct edge_printer{
@@ -92,39 +153,48 @@ public:
     typedef typename boost::graph_traits < Graph >::vertex_descriptor Vertex;
     typedef typename boost::graph_traits < Graph >::edge_descriptor Edge;
     typedef typename boost::graph_traits<Graph>::vertex_iterator vertex_iterator;
-    GraphTest() : archive(current),current() {
+    typedef archive_handle<Graph> handle_type;
+
+    GraphTest() : archive(),handle(archive),snapshots() {
+        FILE* log_fd = fopen( "mylogfile.txt", "w" );
+        Output2FILE::Stream() = log_fd;
+        FILELog::ReportingLevel() = logDEBUG4;
         fill_graph();
-        commit();
+     //   handle_type h = ::commit(archive,current);
+     //   handle(new archive_handle<Graph>(h));
+        handle.commit();
     }
     virtual void fill_graph(){
 
         Vertex A,B,C,D,E;
-        A = boost::add_vertex(current);
-        B = boost::add_vertex(current);
-        C = boost::add_vertex(current);
-        D = boost::add_vertex(current);
-        E = boost::add_vertex(current);
-        boost::add_edge(A,B,current);
-        boost::add_edge(A,D,current);
-        boost::add_edge(C,A,current);
-        boost::add_edge(D,C,current);
-        boost::add_edge(C,E,current);
-        boost::add_edge(B,D,current);
-        boost::add_edge(D,E,current);
+        A = boost::add_vertex(handle.getGraph());
+        B = boost::add_vertex(handle.getGraph());
+        C = boost::add_vertex(handle.getGraph());
+        D = boost::add_vertex(handle.getGraph());
+        E = boost::add_vertex(handle.getGraph());
+        boost::add_edge(A,B,handle.getGraph());
+        boost::add_edge(A,D,handle.getGraph());
+        boost::add_edge(C,A,handle.getGraph());
+        boost::add_edge(D,C,handle.getGraph());
+        boost::add_edge(C,E,handle.getGraph());
+        boost::add_edge(B,D,handle.getGraph());
+        boost::add_edge(D,E,handle.getGraph());
+        EXPECT_EQ(5,boost::num_vertices(handle.getGraph()));
+        EXPECT_EQ(7,boost::num_edges(handle.getGraph()));
     }
     void add_edge(int u, int v){
         vertex_iterator it_u = getVertexIterator(u);
         vertex_iterator it_v = getVertexIterator(v);
-        boost::add_edge(*it_u,*it_v,current);
+        boost::add_edge(*it_u,*it_v,handle.getGraph());
     }
     void remove_edge(int u,int v){
         vertex_iterator it_u = getVertexIterator(u);
         vertex_iterator it_v = getVertexIterator(v);
-        boost::remove_edge(*it_u,*it_v,current);
+        boost::remove_edge(*it_u,*it_v,handle.getGraph());
     }
 
     Graph& getGraph(){
-        return current;
+        return handle.getGraph();
     }
     Vertex getVertex(int u){
         return *getVertexIterator(u);
@@ -133,40 +203,50 @@ public:
     Edge getEdge(int _u, int _v){
         Vertex u = getVertex(_u);
         Vertex v = getVertex(_v);
-        return boost::edge(u,v,current).first;
+        return boost::edge(u,v,handle.getGraph()).first;
     }
 
     Vertex add_vertex(){
-        return boost::add_vertex(current);
+        return boost::add_vertex(handle.getGraph());
     }
     void remove_vertex(int u){
+        int count = boost::num_vertices(handle.getGraph());
         vertex_iterator it_u = getVertexIterator(u);
         FILE_LOG(logDEBUG1) << "removed vertex " << *it_u;
-        boost::clear_vertex(*it_u,current);
-        boost::remove_vertex(*it_u,current);
+        boost::clear_vertex(*it_u,handle.getGraph());
+        boost::remove_vertex(*it_u,handle.getGraph());
+        ASSERT_EQ(count-1,boost::num_vertices(handle.getGraph()));
     }
     void commit(){
-        archive.commit();
-        this->snapshots.insert(make_pair(archive.head_rev(),current));
+        handle = ::commit(handle);
+        FILE_LOG(logDEBUG4) << "COMMITED " << archive.head_rev();
+        Graph g_temp = clone_graph(handle.getGraph());
+        //boost::copy_graph(handle.getGraph(),g_temp);
+        ASSERT_TRUE(check_equality(handle.getGraph(),g_temp));
+        this->snapshots.insert(std::make_pair(archive.head_rev(),g_temp));
     }
     void test(){
-        archive.commit();
+        check();
+        ASSERT_EQ(archive.head_rev(),1);
         for(int i = 1;i <5;++i)
             FILE_LOG(logDEBUG1) << "TEST: added "<< i << " vertex: " << add_vertex() << std::endl;
 
         add_edge(0, 5);
+        ASSERT_EQ(archive.num_vertices(1),5);
+        ASSERT_EQ(archive.num_edges(1),7);
         commit();
         FILE_LOG(logDEBUG1) << "TEST: Check vertices count";
         ASSERT_EQ(archive.num_vertices(1),5);
         ASSERT_EQ(archive.num_edges(1),7);
         check();
+        ASSERT_EQ(archive.head_rev(),2);
     }
     void test_removal(){
         remove_vertex(5);
         commit();
         check();
     }
-    bool check_equality(const Graph& g1,const Graph& g2 ){
+    bool check_equality(const Graph& g1,const Graph& g2 ) const {
         bool res = equal(g1,g2);
         if(res){
             std::cout << "versions are equal" << std::endl;
@@ -180,11 +260,17 @@ public:
         }
         return true;
     }
-    bool check(){
-        for (typename std::map<int,Graph>::iterator it=snapshots.begin(); it!=snapshots.end(); ++it){
+    bool check() const {
+        for (typename std::map<int,Graph>::const_iterator it=snapshots.begin(); it!=snapshots.end(); ++it){
             FILE_LOG(logDEBUG1) << "CHECK REVISION: " << it->first;
-            if(!check_equality(it->second,archive.checkout(it->first))){
+            int r = it->first;
+            archive_handle<Graph> h = ::checkout(handle,r);
+            std::cout << "successfully checked out" << std::endl;
+            if(!check_equality(it->second,h.getGraph())){
+                FILE_LOG(logERROR) << "real graph != repository";
                 return false;
+            } else {
+                FILE_LOG(logDEBUG1) << "CHECK REVISION: " << it->first << " SUCCESS";
             }
         }
         return true;
@@ -193,7 +279,7 @@ public:
 protected:
 
     vertex_iterator getVertexIterator(int u){
-        std::pair<vertex_iterator, vertex_iterator> vi = vertices(current);
+        std::pair<vertex_iterator, vertex_iterator> vi = vertices(handle.getGraph());
         assert(std::distance(vi.first,vi.second) > u);
         vertex_iterator it_u = vi.first;
         std::advance(it_u,u);
@@ -202,7 +288,8 @@ protected:
 
     graph_archive<Graph> archive;
     std::map<int,Graph> snapshots;
-    Graph current;
+ //   Graph current;
+    handle_type handle;
 };
 
 
