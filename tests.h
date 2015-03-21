@@ -227,7 +227,7 @@ public:
     }
     void test(){
         check();
-        ASSERT_EQ(archive.head_rev(),1);
+        ASSERT_EQ(int(archive.head_rev()),1);
         for(int i = 1;i <5;++i)
             FILE_LOG(logDEBUG1) << "TEST: added "<< i << " vertex: " << add_vertex() << std::endl;
 

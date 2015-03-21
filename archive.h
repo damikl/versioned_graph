@@ -59,8 +59,8 @@ public:
             while(v_it !=vertices.cend()){
                vertex_key curr = vertices.get_key(v_it);
                FILE_LOG(logDEBUG1) << "vertex " << curr << " checked for deletion";
-               if(abs(curr.revision) < head_rev() && ah_vertices.find(curr.desc)== ah_vertices.end()) {
-                    del_commit(curr.desc,-head_rev());
+               if(curr.get_revision() < head_rev() && ah_vertices.find(curr.get_desc())== ah_vertices.end()) {
+                    del_commit(curr.get_desc(),head_rev());
                }
                ++v_it;
             }
@@ -85,9 +85,9 @@ public:
             typename edges_container::const_iterator e_it = edges.cbegin(head_rev());
             while(e_it !=edges.cend()){
                 edge_key curr = edges.get_key(e_it);
-                std::pair<vertex_descriptor,vertex_descriptor> edge = curr.desc;
-                if(abs(curr.revision) < head_rev() && ah_edges.find(edge)== ah_edges.end()) {
-                    del_commit(edge,-head_rev());
+                std::pair<vertex_descriptor,vertex_descriptor> edge = curr.get_desc();
+                if(curr.get_revision() < head_rev() && ah_edges.find(edge)== ah_edges.end()) {
+                    del_commit(edge,head_rev());
                 }
                 ++e_it;
             }
@@ -181,17 +181,17 @@ public:
         typename edges_container::const_iterator e_it = edges.begin(rev); // init with head revision
         while(e_it != edges.end()){
             edge_key curr_edge = edges.get_key(e_it);
-            if(curr_edge.revision >=0){// negative revision == removed
+            if(!curr_edge.is_deleted()){// negative revision == removed
                 boost::add_edge(source(curr_edge),target(curr_edge),n);
 #ifdef DEBUG
-                std::cout << "checked out: " << source(curr_edge) << " " << target(curr_edge) << " rev: "<< curr_edge.revision << " wanted: " << rev << std::endl;
-                FILE_LOG(logDEBUG2) << "checked out: " << source(curr_edge) << " " << target(curr_edge) << " rev: "<< curr_edge.revision << " wanted: " << rev;
+                std::cout << "checked out: " << source(curr_edge) << " " << target(curr_edge) << " rev: "<< curr_edge.get_revision() << " wanted: " << rev << std::endl;
+                FILE_LOG(logDEBUG2) << "checked out: " << source(curr_edge) << " " << target(curr_edge) << " rev: "<< curr_edge.get_revision() << " wanted: " << rev;
 #endif
                 edges.set_edge_property(e_it,n,curr_edge);
             }else{
 #ifdef DEBUG
-                std::cout << "NOT checked out: " << source(curr_edge) << " " << target(curr_edge) << " rev: "<< curr_edge.revision << " wanted: " << rev << std::endl;
-                FILE_LOG(logDEBUG2)  << "NOT checked out: " << source(curr_edge) << " " << target(curr_edge) << " rev: "<< curr_edge.revision << " wanted: " << rev;
+                std::cout << "NOT checked out: " << source(curr_edge) << " " << target(curr_edge) << " rev: "<< curr_edge.get_revision() << " wanted: " << rev << std::endl;
+                FILE_LOG(logDEBUG2)  << "NOT checked out: " << source(curr_edge) << " " << target(curr_edge) << " rev: "<< curr_edge.get_revision() << " wanted: " << rev;
 #endif
             }
             ++e_it;
@@ -247,7 +247,7 @@ public:
         }
     }
 
-    int head_rev() const{
+    revision head_rev() const{
         return _head_rev;
     }
 
@@ -279,7 +279,7 @@ private:
         edge_key curr = edges.get_key(it);
         if(boost::source(e, g) != source(curr) ||
            boost::target(e, g) != target(curr) ||
-           curr.revision < 0)
+           curr.is_deleted())
             return edges.end();
         return it;
     }
@@ -295,39 +295,41 @@ private:
         if(it == vertices.end())
             return it;
         vertex_key curr = vertices.get_key(it);
-        if(v != curr.desc || curr.revision < 0)
+        if(v != curr.get_desc() || curr.is_deleted())
             return vertices.end();
         return it;
     }
 
-    vertex_key commit(const Graph&g, typename boost::graph_traits<Graph>::vertex_descriptor v, int revision){
+    vertex_key commit(const Graph&g, typename boost::graph_traits<Graph>::vertex_descriptor v, revision rev){
  /*       typename std::map<vertex_descriptor,int>::const_iterator it = mapping.find(v);
         int ident = -1;
         if(it != mapping.end())
             ident = it->second;
- */       vertex_key el(v,revision/*,ident*/);
+ */       vertex_key el(v,rev/*,ident*/);
         FILE_LOG(logDEBUG2) << "COMMIT vertex: " << el;
         vertices.insert(el, helper<Graph,vertex_properties>::get_properties(g,v));
         return el;
     }
-    vertex_key del_commit(typename boost::graph_traits<Graph>::vertex_descriptor v, int revision){
-        assert(revision<0);
-        vertex_key el(v,revision);
+    vertex_key del_commit(typename boost::graph_traits<Graph>::vertex_descriptor v, revision rev){
+        revision r = revision(-rev);
+        vertex_key el(v,r);
+        assert(el.is_deleted());
         FILE_LOG(logDEBUG2) << "COMMIT vertex delete: " << el;
         vertices.insert(el, vertex_properties());
         return el;
     }
-    edge_key commit(const Graph& g, typename boost::graph_traits<Graph>::edge_descriptor v, int revision){
-        edge_key el(std::make_pair(source(v, g),target(v, g)),revision);
+    edge_key commit(const Graph& g, typename boost::graph_traits<Graph>::edge_descriptor v, revision rev){
+        edge_key el(std::make_pair(source(v, g),target(v, g)),rev);
         FILE_LOG(logDEBUG2) << "COMMIT edge: " << el;
         edges.insert(el, helper<Graph,edge_properties>::get_properties(g,v));
         return el;
     }
     edge_key del_commit(std::pair<  typename boost::graph_traits<Graph>::vertex_descriptor,
                                 typename boost::graph_traits<Graph>::vertex_descriptor> v,
-                    int revision){
-        assert(revision<0);
-        edge_key el(std::make_pair(v.first,v.second),revision);
+                    revision rev){
+        revision r = revision(-rev);
+        edge_key el(std::make_pair(v.first,v.second),r);
+        assert(el.is_deleted());
         FILE_LOG(logDEBUG2) << "COMMIT edge delete: " << el;
         edges.insert(el, edge_properties());
         return el;
@@ -359,7 +361,7 @@ private:
 //    Graph& g;
     vertices_container vertices;
     edges_container edges;
-    int _head_rev;
+    revision _head_rev;
 };
 
 template<typename Graph, typename property_type>
