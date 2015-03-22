@@ -23,8 +23,7 @@ class history_holder_iterator : public std::iterator<std::forward_iterator_tag, 
             FILE_LOG(logDEBUG4) << "history_holder_iterator ctor, container size " << size << " rev " << this->rev;
             if(size > 1){
                 typename Type::key_type curr = this->container->get_key(current);
-                FILE_LOG(logDEBUG4) << "history_holder_iterator ctor, head revision " << curr.get_revision();
-                FILE_LOG(logDEBUG4) << "history_holder_iterator ctor, first entry: " << curr;
+                FILE_LOG(logDEBUG4) << "history_holder_iterator ctor " <<  this << ", first entry: " << curr;
                 curr.set_revision(rev);
                 current = this->container->history_records.lower_bound(curr);
             }
@@ -39,7 +38,6 @@ class history_holder_iterator : public std::iterator<std::forward_iterator_tag, 
                                                                        container(iter.container),
                                                                        rev(iter.rev) {
         }
-
 
         history_holder_iterator& operator=(const history_holder_iterator& other){
             if( this == &other ){
@@ -65,20 +63,22 @@ class history_holder_iterator : public std::iterator<std::forward_iterator_tag, 
 
         history_holder_iterator& operator++(){
             range_check_policy::range_check(current == this->container->history_records.end());
-            typename Type::key_type curr = this->container->get_key(*this);
-            FILE_LOG(logDEBUG4) << "++history_holder_iterator, wanted rev: " << rev;
+            typedef typename Type::key_type key;
+            key curr = this->container->get_key(*this);
+            key begin = this->container->get_key(this->container->begin(rev));
+            FILE_LOG(logDEBUG4) << "++history_holder_iterator " << this <<", wanted rev: " << rev;
             FILE_LOG(logDEBUG4) << "++history_holder_iterator, was at " << curr;
-
-            typename Type::key_type target(curr.get_desc(),-2,-2);// fake assignment, because there is no default constructor
+            holder end = this->container->history_records.end();
+            key target(curr.get_desc(),-2,-2);// fake assignment, because there is no default constructor
             do{
                 curr.set_revision(0);
                 current = this->container->history_records.upper_bound(curr);
-                if(current == this->container->history_records.end())
+                if(current == end)
                     return *this;
                 curr = this->container->get_key(*this);
                 // first revision of next node
                 FILE_LOG(logDEBUG4) << "++history_holder_iterator intermediate " << curr;
-                if(curr < this->container->get_key(this->container->begin(rev))){
+                if(curr < begin){
                     FILE_LOG(logDEBUG4) << "end key: " << this->container->get_key(this->container->end());
                     FILE_LOG(logDEBUG4) << "++history_holder_iterator target overflow";
                     break;
@@ -86,9 +86,10 @@ class history_holder_iterator : public std::iterator<std::forward_iterator_tag, 
                 curr.set_revision(rev);
                 current = this->container->history_records.lower_bound(curr);
                 target = this->container->get_key(current);
-                FILE_LOG(logDEBUG4) << "++history_holder_iterator target " << target << " current " << curr;
-            } while((!thesame(curr,target) && current != this->container->history_records.end()) || target.is_deleted() );
+                FILE_LOG(logDEBUG4) << "++history_holder_iterator target " << target << " current " << curr << " same ? " << thesame(curr,target);
+            } while((!thesame(curr,target) && current != end) || target.is_deleted() );
             FILE_LOG(logDEBUG4) << "++history_holder_iterator finished at " << target;
+            FILE_LOG(logDEBUG4) << "--------------------------------------";
             return *this;
         }
         history_holder_iterator& operator++(int){
@@ -150,15 +151,18 @@ struct history_holder{
     int get_max_identifier()const{
         if(size()==0)
             return 1;
-        FILE_LOG(logDEBUG4)  << "get_max_identifier: " << size();
-        return get_key(history_records.rbegin()).get_identifier();
+        int ident = get_key(history_records.rbegin()).get_identifier();
+        FILE_LOG(logDEBUG4)  << "get_max_identifier: " << ident;
+        return ident;
     }
     int get_identifier(key_type key )const{
-        key.set_identifier(-1);
+    //    key.set_identifier(-1);
         const_iterator it = lower_bound(key);
         if(it == cend())
             return get_max_identifier()+1;
-        return get_key(it).get_identifier();
+        key_type k = get_key(it);
+        FILE_LOG(logDEBUG4) << "lower_bound: " << k << " for " << key;
+        return k.get_identifier();
     }
     iterator begin(int revision){
         return iterator(this,revision);
@@ -252,15 +256,18 @@ struct history_holder<versioned_key_type,boost::no_property>{
     int get_max_identifier()const{
         if(size()==0)
             return 1;
-        FILE_LOG(logDEBUG4)  << "get_max_identifier: " << size();
-        return get_key(history_records.rbegin()).get_identifier();
+        int ident = get_key(history_records.rbegin()).get_identifier();
+        FILE_LOG(logDEBUG4)  << "get_max_identifier: " << ident;
+        return ident;
     }
     int get_identifier(key_type key )const{
-        key.set_identifier(-1);
+    //    key.set_identifier(-1);
         const_iterator it = lower_bound(key);
         if(it == cend())
             return get_max_identifier()+1;
-        return get_key(it).get_identifier();
+        key_type k = get_key(it);
+        FILE_LOG(logDEBUG4) << "lower_bound: " << k << " for " << key;
+        return k.get_identifier();
     }
     template<typename iter>
     key_type get_key(iter it) const {

@@ -239,7 +239,7 @@ public:
         ASSERT_EQ(archive.num_vertices(1),5);
         ASSERT_EQ(archive.num_edges(1),7);
         check();
-        ASSERT_EQ(archive.head_rev(),2);
+        ASSERT_EQ(int(archive.head_rev()),2);
     }
     void test_removal(){
         remove_vertex(5);
