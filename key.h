@@ -1,6 +1,7 @@
 #ifndef KEY_H
 #define KEY_H
 #include "log.h"
+#include "utils.h"
 
 template< typename T >
 struct key_type{
@@ -10,32 +11,6 @@ struct key_type{
 template< typename T >
 struct key_type<std::pair<T,T> >{
     typedef T vertex_type;
-};
-
-struct revision{
-    int rev;
-    bool operator<(const revision& r) const{
-        return abs(rev) < abs(r.rev);
-    }
-    bool operator==(const revision& r) const{
-        return abs(rev) == abs(r.rev);
-    }
-    revision& operator++(){
-        FILE_LOG(logDEBUG2) << "increment revision";
-        assert(rev >=0);
-        ++rev;
-        FILE_LOG(logDEBUG2) << "incremented";
-        return *this;
-    }
-    revision(int r) : rev(r){ }
-    operator int()
-    {
-         return rev;
-    }
-    int get_rev() const {
-        return rev;
-    }
-
 };
 
 /**
@@ -72,18 +47,18 @@ public:
         FILE_LOG(logDEBUG4) << "key_id created : " << *this;
     }
     key_id(const key_id& key) : identifier(key.identifier),desc(key.desc),rev(key.rev){
-        FILE_LOG(logDEBUG4) << "key_id copied : " << *this;
+//        FILE_LOG(logDEBUG4) << "key_id copied : " << *this;
     }
 //    key_id():revision(0){}
     bool operator<(const key_id& obj)const{
-        if(this->identifier == obj.identifier || obj.identifier < 0 || this->identifier < 0){
+        if(this->get_identifier() == obj.get_identifier() || obj.get_identifier() < 0 || this->get_identifier() < 0){
             if(this->desc == obj.desc)
             {
-                return abs(this->rev.get_rev()) > abs(obj.rev.get_rev());
+                return this->get_revision() > obj.get_revision();
             } else
-                 return this->desc < obj.desc;
+                 return this->get_desc() < obj.get_desc();
         } else
-            return this->identifier < obj.identifier;
+            return this->get_identifier() < obj.get_identifier();
     }
     bool operator==(const key_id& obj)const{
         if((this->identifier == obj.identifier || obj.identifier < 0|| this->identifier < 0) &&
@@ -112,6 +87,17 @@ public:
         return int(rev) < 0;
     }
 };
+
+template<typename key_type>
+bool match(const key_type& k1, const key_type& k2){
+    if(k1.get_identifier() == k2.get_identifier() || k2.get_identifier() < 0 || k1.get_identifier() < 0){
+        if(k1.get_desc() == k2.get_desc()){
+            return k1.get_revision() > k2.get_revision();
+        } else
+             return k1.get_desc() < k2.get_desc();
+    } else
+        return k1.get_identifier() < k2.get_identifier();
+}
 
 template<typename key_type>
 typename key_type::vertex_type source(key_type key){

@@ -7,8 +7,8 @@ ADD_DEFINITIONS ( -Wall -DDEBUG -pedantic -Wextra -std=c++0x -g )
 
 ADD_DEFINITIONS ( -DTEST_ONLY_LIST )
 add_executable(VerticesTestList vertices_list_test.cpp archive.h  handler.h  history_holder.h  log.h  tests.h vertices_test.h )
-add_executable(EdgesTestList edges_list_test.cpp archive.h  handler.h  history_holder.h  log.h  tests.h edges_test.h)
-add_executable(SimpleTestList simple_list_test.cpp archive.h  handler.h  history_holder.h  log.h  tests.h simple_test.h)
+add_executable(EdgesTestList edges_list_test.cpp archive.h  handler.h  history_holder.h  log.h  tests.h edges_test.h mapping.h utils.h)
+add_executable(SimpleTestList simple_list_test.cpp archive.h  handler.h  history_holder.h  log.h  tests.h simple_test.h simple_key.h unordered_history_holder.h)
 
 target_link_libraries(VerticesTestList gtest gtest_main pthread)
 target_link_libraries(EdgesTestList gtest gtest_main pthread)

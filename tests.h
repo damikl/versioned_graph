@@ -155,7 +155,7 @@ public:
     typedef typename boost::graph_traits<Graph>::vertex_iterator vertex_iterator;
     typedef archive_handle<Graph> handle_type;
 
-    GraphTest() : archive(),handle(archive),snapshots() {
+    GraphTest() : handle(archive),archive(),snapshots() {
         FILE* log_fd = fopen( "mylogfile.txt", "w" );
         Output2FILE::Stream() = log_fd;
         FILELog::ReportingLevel() = logDEBUG4;
@@ -262,7 +262,7 @@ public:
     }
     bool check() const {
         for (typename std::map<int,Graph>::const_iterator it=snapshots.begin(); it!=snapshots.end(); ++it){
-            FILE_LOG(logDEBUG1) << "CHECK REVISION: " << it->first;
+            FILE_LOG(logINFO) << "CHECK REVISION: " << it->first;
             int r = it->first;
             archive_handle<Graph> h = ::checkout(handle,r);
             std::cout << "successfully checked out" << std::endl;
@@ -286,10 +286,11 @@ protected:
         return it_u;
     }
 
+    handle_type handle;
     graph_archive<Graph> archive;
     std::map<int,Graph> snapshots;
  //   Graph current;
-    handle_type handle;
+
 };
 
 

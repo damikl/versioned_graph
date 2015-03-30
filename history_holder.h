@@ -32,7 +32,7 @@ class history_holder_iterator : public std::iterator<std::forward_iterator_tag, 
                                                       rev(0) {
             rev = container->get_key(current).get_revision();
         }
-        history_holder_iterator() : current(NULL),container(NULL) {}
+        history_holder_iterator() : current(NULL),container(NULL),rev(0) {}
 
         history_holder_iterator(const history_holder_iterator& iter) : current(iter.current),
                                                                        container(iter.container),
@@ -45,7 +45,7 @@ class history_holder_iterator : public std::iterator<std::forward_iterator_tag, 
             }
             current = other.current ;
             this->container = other.container;
-            this->revision = other.revision;
+            this->rev = other.rev;
             return( *this );
         }
         bool operator==(const history_holder_iterator& o) const{
@@ -122,47 +122,48 @@ struct history_holder{
 
     typedef std::pair<const versioned_key_type, property_type> value_type;
     std::pair<typename container::iterator,bool> insert(key_type key, const property_type& property){
-        int id = get_identifier(key);
+        //   int id = get_identifier(key);
+        int id = get_max_identifier();
         key.set_identifier(id);
         FILE_LOG(logDEBUG4)  << "inserted " << key << " prev size " << size();
         return history_records.insert(std::make_pair(key, property));
     }
-    template<typename Graph, typename descriptor>
-    static bool changed(descriptor v, iterator it,const Graph& g) {
+    template<typename Graph, typename descriptor, typename iter>
+    static bool changed(descriptor v, iter it,const Graph& g) {
         return g[v] != it->second;
     }
     template<typename iter>
     key_type get_key(iter it) const {
+        FILE_LOG(logDEBUG4) << "get_key: " << it->first;
         return it->first;
     }
 
     template<typename Graph>
     void set_edge_property(const_iterator it,
                            Graph& graph,
-                           key_type p)const{
+                           const key_type& p)const{
         graph[edge(source(p), target(p), graph).first] = it->second;
     }
     template<typename Graph>
     void set_edge_property(iterator it,
                            Graph& graph,
-                           key_type p){
+                           const key_type& p){
         graph[edge(source(p), target(p), graph).first] = it->second;
     }
     int get_max_identifier()const{
         if(size()==0)
             return 1;
-        int ident = get_key(history_records.rbegin()).get_identifier();
+        int ident = get_key(history_records.rbegin()).get_identifier()+1;
         FILE_LOG(logDEBUG4)  << "get_max_identifier: " << ident;
         return ident;
     }
-    int get_identifier(key_type key )const{
-    //    key.set_identifier(-1);
+    int get_identifier(const key_type& key )const{
         const_iterator it = lower_bound(key);
         if(it == cend())
             return get_max_identifier()+1;
-        key_type k = get_key(it);
+        const key_type k = get_key(it);
         FILE_LOG(logDEBUG4) << "lower_bound: " << k << " for " << key;
-        return k.get_identifier();
+        return k.get_identifier()+1;
     }
     iterator begin(int revision){
         return iterator(this,revision);
@@ -243,7 +244,8 @@ struct history_holder<versioned_key_type,boost::no_property>{
     typedef history_holder_iterator<const self_type,exception_range_checking,typename container::const_iterator> const_iterator;
     typedef versioned_key_type value_type;
     std::pair<typename container::iterator,bool> insert(key_type key, const boost::no_property&){
-        int id = get_identifier(key);
+     //   int id = get_identifier(key);
+        int id = get_max_identifier()+1;
         key.set_identifier(id);
         FILE_LOG(logDEBUG4)  << "inserted " << key << " prev size " << size();
         return history_records.insert(key);
@@ -260,24 +262,24 @@ struct history_holder<versioned_key_type,boost::no_property>{
         FILE_LOG(logDEBUG4)  << "get_max_identifier: " << ident;
         return ident;
     }
-    int get_identifier(key_type key )const{
-    //    key.set_identifier(-1);
+    int get_identifier(const key_type& key )const{
         const_iterator it = lower_bound(key);
         if(it == cend())
             return get_max_identifier()+1;
-        key_type k = get_key(it);
+        const key_type k = get_key(it);
         FILE_LOG(logDEBUG4) << "lower_bound: " << k << " for " << key;
-        return k.get_identifier();
+        return k.get_identifier()+1;
     }
     template<typename iter>
     key_type get_key(iter it) const {
+        FILE_LOG(logDEBUG4) << "get_key: " << *it;
         return *it;
     }
 
     template<typename Graph>
     void set_edge_property(const_iterator,
                            Graph&,
-                           key_type)const{
+                           const key_type&)const{
     }
     iterator begin(int revision){
         return iterator(this,revision);

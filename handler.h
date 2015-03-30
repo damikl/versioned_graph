@@ -1,49 +1,7 @@
 #ifndef HANDLER_H
 #define HANDLER_H
-#include <boost/bimap.hpp>
+#include "mapping.h"
 #include "archive.h"
-
-template<typename internal_type,typename external_type>
-class mapping{
-    typedef boost::bimap<internal_type,external_type> mapping_type;
-public:
-    const internal_type& get_internal_id(const external_type& id) const {
-        return map.left.at(id);
-    }
-    internal_type& get_internal_id(const external_type& id) {
-        return map.left.at(id);
-    }
-
-    const external_type& get_external_id(const internal_type& id) const {
-        return map.right.at(id);
-    }
-    external_type& get_external_id(const internal_type& id) {
-        return map.right.at(id);
-    }
-    void insert(const internal_type& iternal_id, const external_type& external_id){
-        map.insert( typename mapping_type::value_type(iternal_id, external_id) );
-    }
-    bool erase_internal(const internal_type& id){
-        std::size_t n = map.right.erase(id);
-        if(n==1){
-             return true;
-        } else {
-            assert(n==0);
-            return false;
-        }
-    }
-    bool erase_external(const external_type& id){
-        std::size_t n = map.left.erase(id);
-        if(n==1){
-             return true;
-        } else {
-            assert(n==0);
-            return false;
-        }
-    }
-private:
-    mapping_type map;
-};
 
 template<typename Graph>
 class archive_handle {
@@ -51,9 +9,11 @@ class archive_handle {
     typedef mapping<int,typename Graph::vertex_descriptor> mapping_type;
 
 public:
-    archive_handle(graph_archive<Graph>& archive,Graph& g) : archive(archive),graph(g),rev(0){
+    archive_handle( graph_archive<Graph>& archive,const Graph& g) : archive(archive),graph(g),rev(0){
     }
-    archive_handle(graph_archive<Graph>& archive) : archive(archive),graph(),rev(0){
+    archive_handle( graph_archive<Graph>& archive,const Graph& g, int _rev) : archive(archive),graph(g),rev(_rev){
+    }
+    archive_handle( graph_archive<Graph>& archive) : archive(archive),graph(),rev(0){
     }
     archive_handle& operator=(const archive_handle& other){
         if (this != &other) // protect against invalid self-assignment
@@ -79,10 +39,9 @@ public:
 
     archive_handle checkout(int _rev) const {
         Graph graph = archive.checkout(_rev,map);
-        FILE_LOG(logDEBUG4) << "graph checked out";
-        archive_handle handle(archive,graph);
+        FILE_LOG(logDEBUG4) << "handler: graph checked out";
+        archive_handle handle(archive,graph,_rev);
         FILE_LOG(logDEBUG4) << "handle created";
-        handle.rev = _rev;
         // Mapping?
         return handle;
     }
