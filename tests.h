@@ -162,7 +162,8 @@ public:
         fill_graph();
      //   handle_type h = ::commit(archive,current);
      //   handle(new archive_handle<Graph>(h));
-        handle.commit();
+    //    handle.commit();
+        commit();
     }
     virtual void fill_graph(){
 
@@ -218,12 +219,14 @@ public:
         ASSERT_EQ(count-1,boost::num_vertices(handle.getGraph()));
     }
     void commit(){
+        FILE_LOG(logDEBUG4) << "TEST COMMIT " << archive.head_rev();
         handle = ::commit(handle);
         FILE_LOG(logDEBUG4) << "COMMITED " << archive.head_rev();
         Graph g_temp = clone_graph(handle.getGraph());
         //boost::copy_graph(handle.getGraph(),g_temp);
         ASSERT_TRUE(check_equality(handle.getGraph(),g_temp));
         this->snapshots.insert(std::make_pair(archive.head_rev(),g_temp));
+        FILE_LOG(logDEBUG4) << "TEST COMMIT " << archive.head_rev() << " ENDED";
     }
     void test(){
         check();

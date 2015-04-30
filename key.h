@@ -17,18 +17,18 @@ struct key_type<std::pair<T,T> >{
     descriptor_typename  -vertex or edge
 **/
 template<typename descriptor_typename>
-struct key_id{
+struct vertex_id{
     typedef descriptor_typename descriptor_type;
-    typedef typename key_type<descriptor_type>::vertex_type vertex_type;
+//    typedef typename key_type<descriptor_type>::vertex_type vertex_type;
 private:
-    int identifier;
+    internal_vertex identifier;
     descriptor_type desc;
     revision rev;
 public:
     revision get_revision() const {
         return rev;
     }
-    int get_identifier() const {
+    internal_vertex get_identifier() const {
         return identifier;
     }
     descriptor_type get_desc() const {
@@ -43,42 +43,29 @@ public:
     void set_desc(const descriptor_type& d) {
         this->desc = d;
     }
-    key_id(descriptor_type desc, int rev,int ident=-1) : identifier(ident),desc(desc),rev(rev){
-        FILE_LOG(logDEBUG4) << "key_id created : " << *this;
+    vertex_id(descriptor_type desc, int rev,internal_vertex ident) : identifier(ident),desc(desc),rev(rev){
     }
-    key_id(const key_id& key) : identifier(key.identifier),desc(key.desc),rev(key.rev){
-//        FILE_LOG(logDEBUG4) << "key_id copied : " << *this;
+    vertex_id(const vertex_id& key) : identifier(key.identifier),desc(key.desc),rev(key.rev){
     }
-//    key_id():revision(0){}
-    bool operator<(const key_id& obj)const{
-        if(this->get_identifier() == obj.get_identifier() || obj.get_identifier() < 0 || this->get_identifier() < 0){
-            if(this->desc == obj.desc)
-            {
-                return this->get_revision() > obj.get_revision();
-            } else
-                 return this->get_desc() < obj.get_desc();
-        } else
-            return this->get_identifier() < obj.get_identifier();
-    }
-    bool operator==(const key_id& obj)const{
+    bool operator==(const vertex_id& obj)const{
         if((this->identifier == obj.identifier || obj.identifier < 0|| this->identifier < 0) &&
                 this->desc == obj.desc &&
                 this->rev.rev == obj.rev.rev)
             return true;
         return false;
     }
-    bool operator!=(const key_id& obj)const{
+    bool operator!=(const vertex_id& obj)const{
         return !(*this ==obj);
     }
-    static key_id get_max(descriptor_type id){
-         key_id arch;
+    static vertex_id get_max(descriptor_type id){
+         vertex_id arch;
          arch.desc = id;
 
          arch.revision = std::numeric_limits<int>::max();
          return arch;
     }
-    static key_id get_min(descriptor_type id){
-         key_id arch;
+    static vertex_id get_min(descriptor_type id){
+         vertex_id arch;
          arch.desc = id;
          arch.revision = 0;
          return arch;
@@ -87,6 +74,63 @@ public:
         return int(rev) < 0;
     }
 };
+
+template<typename descriptor_typename>
+struct edge_id{
+    typedef descriptor_typename descriptor_type;
+private:
+    revision rev;
+    descriptor_type desc;
+    std::pair<internal_vertex,internal_vertex> identifier;
+public:
+    revision get_revision() const {
+        return rev;
+    }
+    std::pair<internal_vertex,internal_vertex> get_identifier() const {
+        return identifier;
+    }
+    void set_revision(int rev) {
+        this->rev = rev;
+    }
+    void set_source(const std::pair<internal_vertex,internal_vertex>& ident) {
+        this->identifier =  ident;
+    }
+    edge_id(descriptor_type d,int rev,const std::pair<internal_vertex,internal_vertex>& ident) : rev(rev),desc(d),identifier(ident){
+    }
+    edge_id(const edge_id& key) : rev(key.rev), desc(key.desc),identifier(key.identifier){
+    }
+    bool operator==(const edge_id& obj)const{
+        if((this->identifier == obj.identifier) &&
+                this->rev.rev == obj.rev.rev)
+            return true;
+        return false;
+    }
+    bool operator!=(const edge_id& obj)const{
+        return !(*this ==obj);
+    }
+    bool is_deleted(){
+        return int(rev) < 0;
+    }
+    descriptor_type get_desc() const{
+        return desc;
+    }
+    void set_desc(const descriptor_type &value){
+        this->desc = value;
+    }
+};
+
+template<typename descriptor_type>
+vertex_id<descriptor_type> create_vertex_id(descriptor_type desc, int rev,int ident=-1){
+    return vertex_id<descriptor_type>(desc,rev,ident);
+}
+template<typename descriptor_type>
+vertex_id<descriptor_type> create_vertex_id(descriptor_type desc, int rev,internal_vertex ident){
+    return vertex_id<descriptor_type>(desc,rev,ident);
+}
+template<typename descriptor_type>
+edge_id<descriptor_type> create_edge_id(const descriptor_type& desc,int rev,const std::pair<internal_vertex,internal_vertex>& ident){
+    return edge_id<descriptor_type>(desc,rev,ident);
+}
 
 template<typename key_type>
 bool match(const key_type& k1, const key_type& k2){
@@ -100,12 +144,12 @@ bool match(const key_type& k1, const key_type& k2){
 }
 
 template<typename key_type>
-typename key_type::vertex_type source(key_type key){
+typename key_type::descriptor_type::first_type source(const key_type& key){
     return key.get_desc().first;
 }
 
 template<typename key_type>
-typename key_type::vertex_type target(key_type key){
+typename key_type::descriptor_type::second_type target(const key_type& key){
     return key.get_desc().second;
 }
 
@@ -114,17 +158,18 @@ std::ostream& operator<<(std::ostream& os, const std::pair<T,T>& obj) {
     return os << obj.first << ", " << obj.second;
 }
 
-std::ostream& operator<<(std::ostream& os, const revision& obj) {
-    return os << obj.get_rev() << " ";
-}
-
 template<typename Graph>
-std::ostream& operator<<(std::ostream& os, const key_id<Graph>& obj) {
+std::ostream& operator<<(std::ostream& os, const vertex_id<Graph>& obj) {
   // write obj to stream
     return os << obj.get_identifier() << "(" << obj.get_desc() <<") rev: "<< obj.get_revision() <<"";
 }
+template<typename T>
+std::ostream& operator<<(std::ostream& os, const edge_id<T>& obj) {
+  // write obj to stream
+    return os << "(" << obj.get_identifier() <<") rev: "<< obj.get_revision() <<"";
+}
 template<typename Graph>
-bool thesame(const key_id<Graph>& f,const key_id<Graph>& s){
+bool thesame(const vertex_id<Graph>& f,const vertex_id<Graph>& s){
     return f.get_identifier() == s.get_identifier() || f.get_desc() == s.get_desc();
 }
 

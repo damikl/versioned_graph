@@ -6,7 +6,8 @@
 template<typename Graph>
 class archive_handle {
 
-    typedef mapping<int,typename Graph::vertex_descriptor> mapping_type;
+    typedef mapping<internal_vertex,typename Graph::vertex_descriptor> vertex_mapping_type;
+    typedef mapping<std::pair<internal_vertex,internal_vertex>,typename Graph::edge_descriptor> edge_mapping_type;
 
 public:
     archive_handle( graph_archive<Graph>& archive,const Graph& g) : archive(archive),graph(g),rev(0){
@@ -34,11 +35,11 @@ public:
         return graph;
     }
     void commit(){
-        rev = archive.commit(graph,map);
+        rev = archive.commit(graph,map,edge_map);
     }
 
     archive_handle checkout(int _rev) const {
-        Graph graph = archive.checkout(_rev,map);
+        Graph graph = archive.checkout(_rev,map,edge_map);
         FILE_LOG(logDEBUG4) << "handler: graph checked out";
         archive_handle handle(archive,graph,_rev);
         FILE_LOG(logDEBUG4) << "handle created";
@@ -49,7 +50,8 @@ public:
 private:
     graph_archive<Graph>& archive;
     Graph graph;
-    mapping_type map;
+    vertex_mapping_type map;
+    edge_mapping_type edge_map;
     int rev;
 };
 

@@ -21,7 +21,7 @@ class history_holder_iterator : public std::iterator<std::forward_iterator_tag, 
             this->current = this->container->history_records.begin();
             size_t size = this->container->history_records.size();
             FILE_LOG(logDEBUG4) << "history_holder_iterator ctor, container size " << size << " rev " << this->rev;
-            if(size > 1){
+            if(size > 1) {
                 typename Type::key_type curr = this->container->get_key(current);
                 FILE_LOG(logDEBUG4) << "history_holder_iterator ctor " <<  this << ", first entry: " << curr;
                 curr.set_revision(rev);
