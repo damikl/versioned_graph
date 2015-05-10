@@ -39,8 +39,7 @@ Graph clone_graph(const Graph& g){
         assert (result != v_map.end());
         Vertex t = result->second;
         edge_property p = g[*it];
-        boost::add_edge(s,t,p,clone)
-                ;
+        boost::add_edge(s,t,p,clone);
     //    clone[e] = g[*it];
     }
     assert (boost::num_edges(clone) == boost::num_edges(g));
@@ -250,7 +249,7 @@ public:
         check();
     }
     bool check_equality(const Graph& g1,const Graph& g2 ) const {
-        bool res = equal(g1,g2);
+        bool res = check_isomorphism(g1,g2);
         if(res){
             std::cout << "versions are equal" << std::endl;
         } else{

@@ -34,15 +34,23 @@ public:
     const Graph& getGraph() const{
         return graph;
     }
+    const vertex_mapping_type& get_vertex_mapping() const {
+        return map;
+    }
+    const edge_mapping_type& get_edge_mapping() const {
+        return map;
+    }
     void commit(){
         rev = archive.commit(graph,map,edge_map);
     }
 
     archive_handle checkout(int _rev) const {
-        Graph graph = archive.checkout(_rev,map,edge_map);
-        FILE_LOG(logDEBUG4) << "handler: graph checked out";
-        archive_handle handle(archive,graph,_rev);
+        Graph n;
         FILE_LOG(logDEBUG4) << "handle created";
+        archive_handle handle(archive,n,_rev);
+        Graph graph = archive.checkout(_rev,handle.map,handle.edge_map);
+        handle.graph = graph;
+        FILE_LOG(logDEBUG4) << "handler: graph checked out";
         // Mapping?
         return handle;
     }

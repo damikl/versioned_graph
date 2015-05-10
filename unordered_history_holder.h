@@ -300,6 +300,15 @@ struct unordered_history_holder{
         assert(iter != e.end());
         return iter->first;
     }
+    property_type get_property(const_iterator it,const revision& max_rev) const {
+        entries e = it->second;
+        inner_const_iterator iter = e.begin();
+        while(iter != e.end() && max_rev < iter->first){
+            ++iter;
+        }
+        assert(iter != e.end());
+        return iter->second;
+    }
     template<typename iter>
     std::pair<inner_const_iterator,bool> get_entry(iter it,const revision& rev )const {
         entries l = it->second;

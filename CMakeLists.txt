@@ -3,7 +3,7 @@ project(BackTracking)
 enable_testing()
 find_package (Threads)
 
-ADD_DEFINITIONS ( -Wall -DDEBUG -pedantic -Wextra -std=c++1y -g )
+ADD_DEFINITIONS ( -Wall -DDEBUG -pedantic -Wextra -std=c++1y -g -ftemplate-backtrace-limit=0 )
 
 ADD_DEFINITIONS ( -DTEST_ONLY_LIST )
 add_executable(VerticesTestList vertices_list_test.cpp archive.h  handler.h  history_holder.h  log.h  tests.h vertices_test.h )

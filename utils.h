@@ -34,6 +34,9 @@ public:
     bool operator<(const internal_vertex& v)const{
         return this->identifier<v.identifier;
     }
+    int get_identifier()const{
+        return identifier;
+    }
 };
 int internal_vertex::counter = 0;
 
@@ -98,7 +101,9 @@ struct revision{
     }
 
 };
-
+bool is_deleted(const revision& rev){
+    return rev.get_rev()<0;
+}
 std::ostream& operator<<(std::ostream& os, const revision& obj) {
     return os << obj.get_rev() << " ";
 }

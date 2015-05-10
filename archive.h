@@ -13,6 +13,12 @@
 #include "key.h"
 #include "mapping.h"
 
+#include <boost/config.hpp>
+#include <boost/graph/isomorphism.hpp>
+#include <boost/graph/graph_utility.hpp>
+#include <boost/property_map/property_map.hpp>
+
+
 template<typename T>
 void print_to_log(T t){
     FILE_LOG(logDEBUG4) << t;
@@ -55,6 +61,14 @@ class graph_archive
     typedef mapping<std::pair<internal_vertex,internal_vertex>,typename Graph::edge_descriptor> edge_mapping_type;
     typedef typename boost::graph_traits<Graph>::edge_descriptor edge_descriptor;
 
+    vertex_descriptor
+    get_vertex_descriptor(const vertex_mapping_type& vm,
+                        const internal_vertex& identifier
+                                                )const{
+        auto vertex_p = vm.find(identifier);
+        assert(vertex_p.second);
+        return vertex_p.first->second;
+    }
     edge_descriptor
     get_edge_descriptor(const edge_mapping_type& em,
                         const std::pair<internal_vertex,internal_vertex>& identifiers_pair
@@ -176,17 +190,25 @@ public:
                 auto edge = get_edges(mapping,*edge_iter,g);
                 typename edges_container::outer_const_iterator e_it = edges.find(edge);
                 if(e_it!=edges.end_full()){
+                    // edge already exist, check for changes
+                    std::pair<internal_vertex,internal_vertex> identifier = e_it->first;
                     auto p = edges.get_head_entry(e_it);
                     if(p.second){
                         typename edges_container::inner_const_iterator ie_it = p.first;
                         if(e_it == edges.end_full() || helper<Graph,edge_properties>::changed(*edge_iter,ie_it,g)){
-                            commit_edge(g,edge_mapping,*edge_iter,head_rev());
+                            commit_edge(g,identifier,*edge_iter,head_rev());
                         } else {
                             ah_edges.insert(std::make_pair(source(*edge_iter,g),target(*edge_iter,g)));
                         }
                     }
                 } else {
-                    commit_edge(g,edge_mapping,*edge_iter,head_rev());
+                    // edge do not exist in archive yet
+                    edge_descriptor desc = *edge_iter;
+                    internal_vertex source = get_internal_vertex(mapping,boost::source(*edge_iter,g));
+                    internal_vertex target = get_internal_vertex(mapping,boost::target(*edge_iter,g));
+                    auto edge = std::make_pair(source,target);
+                    commit_edge(g,edge,*edge_iter,head_rev());
+                    edge_mapping.insert(edge,desc);
                 }
             }
             // mark currently missing edges as removed (negative revision)
@@ -244,10 +266,11 @@ public:
         FILE_LOG(logDEBUG3) << "print all edges:";
         for(auto it=edges.begin_full();it!=edges.end_full();++it){
         //    edge_key e = edges.get_key(it);
-            FILE_LOG(logDEBUG3) << it->first;
+            std::pair<internal_vertex,internal_vertex> p = it->first;
+            FILE_LOG(logDEBUG3) << p;
         }
         FILE_LOG(logDEBUG3) << "all edges printed";
-        return print_edges(head_rev());
+        print_edges(head_rev());
     }
     void print_edges(int revision)const{
       //  std::cout << "edges in revision: " << revision << std::endl;
@@ -269,7 +292,7 @@ public:
             FILE_LOG(logDEBUG3) << v;
         }
         FILE_LOG(logDEBUG3) << "all vertices printed";
-        return print_vertices(head_rev());
+        print_vertices(head_rev());
     }
     void print_vertices(int revision)const{
       //  std::cout << "vertices in revision: " << revision << std::endl;
@@ -288,37 +311,47 @@ public:
     Graph checkout(int rev, vertex_mapping_type vertex_mapping, edge_mapping_type edge_mapping) const {
         Graph n;
         revision r(rev);
-        typename edges_container::const_iterator e_it = edges.begin(rev);
-        if(e_it == edges.end()){
+        typename vertices_container::const_iterator v_it = vertices.cbegin(rev);
+        if(v_it == vertices.cend()){
+            FILE_LOG(logDEBUG2) << "No vertices to add";
+        }
+        while(v_it != vertices.cend()){
+            internal_vertex vertex = v_it->first;
+            vertex_descriptor d = boost::add_vertex(n);
+            FILE_LOG(logDEBUG2) << "checkout, adding vertex: " << vertex << " as: " << d;
+            vertex_mapping.insert(vertex,d);
+            ++v_it;
+        }
+        typename edges_container::const_iterator e_it = edges.cbegin(rev);
+        if(e_it == edges.cend()){
             FILE_LOG(logDEBUG2) << "No edges to add";
         }
-        while(e_it != edges.end()){
-            edge_key curr_edge = get_edge_key(n,edge_mapping,e_it,r);
-            if(!curr_edge.is_deleted()){
-                boost::add_edge(source(curr_edge),target(curr_edge),n);
+        while(e_it != edges.cend()){
+            std::pair<internal_vertex,internal_vertex> identifiers_pair = edges.get_key(e_it);
+            revision edge_rev = edges.get_revision(e_it,r);
+            vertex_descriptor source = get_vertex_descriptor(vertex_mapping,identifiers_pair.first);
+            vertex_descriptor target = get_vertex_descriptor(vertex_mapping,identifiers_pair.second);
+
+            if(!is_deleted(edge_rev)){
+                auto e = boost::add_edge(source,target,n);
+                assert(e.second);
+                edge_descriptor desc = e.first;
 #ifdef DEBUG
-                std::cout << "checked out: " << source(curr_edge) << " " << target(curr_edge) << " rev: "<< curr_edge.get_revision() << " wanted: " << rev << std::endl;
-                FILE_LOG(logDEBUG2) << "checked out: " << source(curr_edge) << " " << target(curr_edge) << " rev: "<< curr_edge.get_revision() << " wanted: " << rev;
+                std::cout << "checked out: " << source << " " << target << " rev: "<< edge_rev << " wanted: " << rev << std::endl;
+                FILE_LOG(logDEBUG2) << "checked out: " << source << " " << target << " rev: "<< edge_rev << " wanted: " << rev;
 #endif
  //               edges.set_edge_property(e_it,n,curr_edge);
-                auto it = e_it->second.begin();
-                auto end = e_it->second.end();
-                while(it!=end){
-                    if(it->first==r){
-                        break;
-                    }
-                    ++it;
-                }
-                n[boost::edge(source(curr_edge), target(curr_edge), n).first] = it->second;
+                n[desc] = edges.get_property(e_it,edge_rev);
+                edge_mapping.insert(identifiers_pair,desc);
             }else{
 #ifdef DEBUG
-                std::cout << "NOT checked out: " << source(curr_edge) << " " << target(curr_edge) << " rev: "<< curr_edge.get_revision() << " wanted: " << rev << std::endl;
-                FILE_LOG(logDEBUG2)  << "NOT checked out: " << source(curr_edge) << " " << target(curr_edge) << " rev: "<< curr_edge.get_revision() << " wanted: " << rev;
+                std::cout << "NOT checked out: " << source << " " << target << " rev: "<< edge_rev << " wanted: " << rev << std::endl;
+                FILE_LOG(logDEBUG2)  << "NOT checked out: " << source << " " << target << " rev: "<< edge_rev << " wanted: " << rev;
 #endif
             }
             ++e_it;
         }
-        correct_missing_vertices(n,rev,vertex_mapping);
+//        correct_missing_vertices(n,rev,vertex_mapping);
         helper<Graph,vertex_properties>::set_vertex_properties(n,vertices,vertex_mapping, rev);
 #ifdef DEBUG
         std::cout << "checkout of revision " << rev << " finished" << std::endl;
@@ -444,15 +477,10 @@ private:
         FILE_LOG(logDEBUG2) << "COMMIT vertex delete: " << v << " with revision " << r;
         vertices.insert(v,r, vertex_properties());
     }
-    void commit_edge(const Graph& g,const edge_mapping_type& edge_mapping ,edge_descriptor v, revision rev){
-        auto result = edge_mapping.find(v);
-        if(!result.second){
-            // not found in mapping
-        } else {
-            std::pair<internal_vertex,internal_vertex> p = result.first->second;
-            edge_properties prop = helper<Graph,edge_properties>::get_properties(g,v);
-            edges.insert(p,rev, prop);
-        }
+    void commit_edge(const Graph& g,const std::pair<internal_vertex,internal_vertex>& edge ,edge_descriptor v, revision rev){
+        FILE_LOG(logDEBUG2) << "COMMIT edge: " << edge;
+        edge_properties prop = helper<Graph,edge_properties>::get_properties(g,v);
+        edges.insert(edge,rev, prop);
     }
     void del_commit_edge(std::pair<internal_vertex,internal_vertex> e,revision rev){
         revision r = revision(-rev);
@@ -467,15 +495,20 @@ private:
        unsigned int repo_size = 0;
         std::unordered_set<internal_vertex> already_known;
         while(v_it!=vertices.cend()){
+            internal_vertex identifier = v_it->first;
             FILE_LOG(logDEBUG2) << vertices.get_key(v_it);
-            already_known.insert(v_it->first);
-            auto vertex_p = map.find(v_it->first);
-            if(!vertex_p.second){
-                FILE_LOG(logDEBUG2) << "adding missing vertex: " << v_it->first;
+            already_known.insert(identifier);
+            auto vertex_p = map.find(identifier);
+            bool exist = vertex_p.second;
+            if(!exist){
+                FILE_LOG(logDEBUG2) << "adding missing vertex: " << identifier;
                 vertex_descriptor d = boost::add_vertex(graph);
-                map.insert(v_it->first,d);
-                ++repo_size;
+                map.insert(identifier,d);
+            } else {
+                vertex_descriptor desc = vertex_p.first->second;
+                FILE_LOG(logDEBUG2) << "vertex: " << identifier << " not missing, found: " << desc;
             }
+            ++repo_size;
             ++v_it;
         }/*
         if(repo_size <= v_size){
@@ -624,6 +657,120 @@ bool equal(const Graph& g1, const Graph& g2){
     }
     FILE_LOG(logDEBUG1) << "GRAPH COMPARE: match";
     return true;
+}
+
+enum vertex_desc_t { vertex_desc };
+namespace boost {
+    BOOST_INSTALL_PROPERTY(vertex, desc);
+}
+
+template<typename Graph>
+class VertexIndexMap //maps vertex to index
+{
+public:
+    typedef boost::readable_property_map_tag category;
+    typedef int  value_type;
+    typedef value_type reference;
+    typedef typename Graph::vertex_descriptor key_type;
+
+    VertexIndexMap(const mapping<internal_vertex,key_type>& m): map(m) {}
+    VertexIndexMap(): map() {}
+    mapping<internal_vertex,key_type> map;
+    value_type get_value(key_type key) const{
+        return map.find(key).first->second.get_identifier();
+    }
+};
+
+template<typename UniquePairAssociativeContainer>
+struct index_map : boost::associative_property_map< UniquePairAssociativeContainer >{
+    index_map(){}
+    index_map(UniquePairAssociativeContainer map): boost::associative_property_map< UniquePairAssociativeContainer >(m), m(map){
+    }
+    UniquePairAssociativeContainer m;
+};
+
+namespace boost {
+
+template<typename Graph>
+struct property_map<Graph, vertex_index_t > {
+    typedef std::map<typename graph_traits<Graph>::vertex_descriptor, int> my_vertex_mapping;
+    typedef index_map< my_vertex_mapping > const_type;
+    //typedef type const_type ; //-- we do not define type as "vertex_index_t" map is read-only
+};
+
+template<typename Graph>
+typename property_map<Graph, vertex_index_t >::const_type get(vertex_index_t, const Graph & g )
+{
+    typedef std::map<typename graph_traits<Graph>::vertex_descriptor, int> vertex_mapping;
+    vertex_mapping v_indexes;
+    index_map< vertex_mapping > v1_index_map(v_indexes);
+    int id = 0;
+    typename graph_traits<Graph>::vertex_iterator i, end;
+    for (boost::tie(i, end) = vertices(g); i != end; ++i, ++id) {
+        put(v1_index_map, *i, id);
+    }
+    return v1_index_map;
+}
+
+
+} //namespace boost
+
+template<typename Graph>
+bool check_isomorphism(const Graph& g1,const Graph& g2) {
+    using namespace boost;
+    int n = num_vertices(g1);
+    if(boost::num_edges(g1)!=boost::num_edges(g2)){
+        FILE_LOG(logDEBUG1) << "not isomorphic edges g1= " << boost::num_edges(g1) << " g2= " << boost::num_edges(g2) ;
+        return false;
+    }
+    if(boost::num_vertices(g1)!=boost::num_vertices(g2)){
+        FILE_LOG(logDEBUG1) << "not isomorphic, vertices g1= " << boost::num_vertices(g1) << " g2= " << boost::num_vertices(g2) ;
+        return false;
+    }
+//    std::vector<typename graph_traits<Graph>::vertex_descriptor> v1(n), v2(n);
+
+//    typedef std::map<typename graph_traits<Graph>::vertex_descriptor, int> vertex_mapping;
+//    vertex_mapping v_indexes1,v_indexes2;
+//    boost::associative_property_map< vertex_mapping >
+//        v1_index_map(v_indexes1);
+//    boost::associative_property_map< vertex_mapping >
+//        v2_index_map(v_indexes2);
+
+//    VertexIndexMap<Graph> v1_index_map(g1_mapping);
+    typename property_map<Graph, vertex_index_t>::const_type
+        v1_index_map = get(vertex_index, g1),
+        v2_index_map = get(vertex_index, g2);
+/*
+    typename graph_traits<Graph>::vertex_iterator i, end;
+    int id = 0;
+    for (boost::tie(i, end) = vertices(g1); i != end; ++i, ++id) {
+        put(v1_index_map, *i, id);
+//        v1[id] = *i;
+    }
+    id = 0;
+    for (boost::tie(i, end) = vertices(g2); i != end; ++i, ++id) {
+        put(v2_index_map, *i, id);
+//        v2[id] = *i;
+    }
+*/
+    std::vector<typename graph_traits<Graph>::vertex_descriptor> f(n);
+
+    #if defined(BOOST_MSVC) && BOOST_MSVC <= 1300
+      bool ret = isomorphism
+        (g1, g2, make_iterator_property_map(f.begin(), v1_index_map, f[0]),
+         degree_vertex_invariant(), get(vertex_index, g1), get(vertex_index, g2));
+    #else
+      bool ret = isomorphism
+        (g1, g2, isomorphism_map
+         (make_iterator_property_map(f.begin(), v1_index_map, f[0])).vertex_index1_map(v1_index_map));
+    #endif
+
+    FILE_LOG(logDEBUG1) << "isomorphic? " << ret << "order: ";
+    for (std::size_t v = 0; v != f.size(); ++v){
+        auto tmp = get(vertex_index, g2);
+        FILE_LOG(logDEBUG1) << get(tmp, f[v]);
+    }
+    return ret;
 }
 
 
