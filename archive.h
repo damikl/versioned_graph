@@ -754,21 +754,20 @@ bool check_isomorphism(const Graph& g1,const Graph& g2) {
     }
 */
     std::vector<typename graph_traits<Graph>::vertex_descriptor> f(n);
-
+    auto iso_map = make_iterator_property_map(f.begin(), v1_index_map, f[0]);
     #if defined(BOOST_MSVC) && BOOST_MSVC <= 1300
       bool ret = isomorphism
-        (g1, g2, make_iterator_property_map(f.begin(), v1_index_map, f[0]),
+        (g1, g2, iso_map,
          degree_vertex_invariant(), get(vertex_index, g1), get(vertex_index, g2));
     #else
-      bool ret = isomorphism
-        (g1, g2, isomorphism_map
-         (make_iterator_property_map(f.begin(), v1_index_map, f[0])).vertex_index1_map(v1_index_map));
+      bool ret = isomorphism(g1, g2, isomorphism_map(iso_map).vertex_index1_map(v1_index_map));
     #endif
 
     FILE_LOG(logDEBUG1) << "isomorphic? " << ret << "order: ";
+    auto tmp = get(vertex_index, g2);
     for (std::size_t v = 0; v != f.size(); ++v){
-        auto tmp = get(vertex_index, g2);
-        FILE_LOG(logDEBUG1) << get(tmp, f[v]);
+        FILE_LOG(logDEBUG1) << "g2: " <<f[v] << " -> " <<get(tmp, f[v]);
+        FILE_LOG(logDEBUG1) << "iso: " <<f[v] << " -> " <<get(iso_map, f[v]);
     }
     return ret;
 }
