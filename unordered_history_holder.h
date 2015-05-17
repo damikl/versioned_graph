@@ -233,6 +233,8 @@ public:
             if(r<=rev){
                 FILE_LOG(logDEBUG4) << "filter_predicate: found rev: " << r << " and while wanted: " << rev << " for vertex: " << elem;
                 return true;
+            } else {
+                FILE_LOG(logDEBUG4) << "filter_predicate: skipped rev: " << r << " and while wanted: " << rev << " for vertex: " << elem;
             }
         }
         FILE_LOG(logDEBUG4) << "filter_predicate: not found " << rev << " for vertex: " << elem;
@@ -339,18 +341,18 @@ struct unordered_history_holder{
         return e.first;
     }
 */
-    iterator begin(int rev){
-        filter_predicate<typename container::value_type> predicate(revision(rev));
+    iterator begin(const revision& rev){
+        filter_predicate<typename container::value_type> predicate(rev);
         iterator filter_iter_first(predicate, history_records.begin(), history_records.end());
         return filter_iter_first;
     }
-    const_iterator begin(int rev) const{
+    const_iterator begin(const revision& rev) const{
         revision r(rev);
         filter_predicate<typename container::value_type> predicate(r);
         const_iterator filter_iter_first(predicate, history_records.begin(), history_records.end());
         return filter_iter_first;
     }
-    const_iterator cbegin(int rev) const{
+    const_iterator cbegin(const revision& rev) const{
         revision r(rev);
         filter_predicate<typename container::value_type> predicate(r);
         const_iterator filter_iter_first(predicate, history_records.cbegin(), history_records.cend());

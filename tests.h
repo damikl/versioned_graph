@@ -67,9 +67,35 @@ public:
     extra_info() : othervalue(counter){
         ++counter;
     }
-
 };
 int extra_info::counter = 0;
+
+namespace std{
+    template<>
+    struct hash<extra_info>
+    {
+        typedef extra_info argument_type;
+        typedef size_t result_type;
+
+        result_type operator()(argument_type const& s) const
+        {
+            return hash<std::string>()(s.simple_name)
+                    ^ boost::hash<std::vector<int> >()(s.some_values)
+                    ^ hash<int>()(s.othervalue);
+        }
+    };
+    template<>
+    struct hash<boost::no_property>
+    {
+        typedef boost::no_property argument_type;
+        typedef size_t result_type;
+
+        result_type operator()(argument_type const&) const
+        {
+            return hash<int>()(0);
+        }
+    };
+}
 
 std::ostream& operator<< (std::ostream& stream, const extra_info& info){
     stream << info.to_string() << &info << " ";
@@ -229,7 +255,7 @@ public:
     }
     void test(){
         check();
-        ASSERT_EQ(int(archive.head_rev()),1);
+        ASSERT_EQ(archive.head_rev(),revision(1));
         for(int i = 1;i <5;++i)
             FILE_LOG(logDEBUG1) << "TEST: added "<< i << " vertex: " << add_vertex() << std::endl;
 
@@ -241,12 +267,11 @@ public:
         ASSERT_EQ(archive.num_vertices(1),5);
         ASSERT_EQ(archive.num_edges(1),7);
         check();
-        ASSERT_EQ(int(archive.head_rev()),2);
+        ASSERT_EQ(archive.head_rev(),revision(2));
     }
     void test_removal(){
         remove_vertex(5);
         commit();
-        check();
     }
     bool check_equality(const Graph& g1,const Graph& g2 ) const {
         bool res = check_isomorphism(g1,g2);
@@ -263,9 +288,9 @@ public:
         return true;
     }
     bool check() const {
-        for (typename std::map<int,Graph>::const_iterator it=snapshots.begin(); it!=snapshots.end(); ++it){
+        for (typename std::map<revision,Graph>::const_iterator it=snapshots.begin(); it!=snapshots.end(); ++it){
             FILE_LOG(logINFO) << "CHECK REVISION: " << it->first;
-            int r = it->first;
+            revision r = it->first;
             archive_handle<Graph> h = ::checkout(handle,r);
             std::cout << "successfully checked out" << std::endl;
             if(!check_equality(it->second,h.getGraph())){
@@ -290,7 +315,7 @@ protected:
 
     handle_type handle;
     graph_archive<Graph> archive;
-    std::map<int,Graph> snapshots;
+    std::map<revision,Graph> snapshots;
  //   Graph current;
 
 };

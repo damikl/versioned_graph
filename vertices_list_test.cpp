@@ -3,14 +3,16 @@
 using namespace std;
 using namespace boost;
 
-TYPED_TEST_P(VertexGraphTest, simpleWithRemove) {
+TYPED_TEST_P(VertexGraphTest, verticesWithRemove) {
     FILELog::ReportingLevel() = logDEBUG2;
+    FILE_LOG(logINFO) << "verticesWithRemove test " << std::endl;
     ASSERT_NO_FATAL_FAILURE(this->test());
+    FILE_LOG(logINFO) << "test removal" << std::endl;
     ASSERT_NO_FATAL_FAILURE(this->test_removal());
     ASSERT_TRUE(this->check());
 }
 
-REGISTER_TYPED_TEST_CASE_P(VertexGraphTest,simple,simpleWithRemove,attributeModification);
+REGISTER_TYPED_TEST_CASE_P(VertexGraphTest,simple,verticesWithRemove,attributeModification);
 
 typedef boost::adjacency_list<listS, listS, undirectedS, extra_info> UndirectedGraphList;
 

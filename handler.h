@@ -12,7 +12,7 @@ class archive_handle {
 public:
     archive_handle( graph_archive<Graph>& archive,const Graph& g) : archive(archive),graph(g),rev(0){
     }
-    archive_handle( graph_archive<Graph>& archive,const Graph& g, int _rev) : archive(archive),graph(g),rev(_rev){
+    archive_handle( graph_archive<Graph>& archive,const Graph& g, const revision& _rev) : archive(archive),graph(g),rev(_rev){
     }
     archive_handle( graph_archive<Graph>& archive) : archive(archive),graph(),rev(0){
     }
@@ -44,7 +44,7 @@ public:
         rev = archive.commit(graph,map,edge_map);
     }
 
-    archive_handle checkout(int _rev) const {
+    archive_handle checkout(const revision& _rev) const {
         Graph n;
         FILE_LOG(logDEBUG4) << "handle created";
         archive_handle handle(archive,n,_rev);
@@ -60,7 +60,7 @@ private:
     Graph graph;
     vertex_mapping_type map;
     edge_mapping_type edge_map;
-    int rev;
+    revision rev;
 };
 
 template<typename archive_type, typename Graph>
@@ -79,7 +79,7 @@ archive_handle<Graph>& commit(archive_handle<Graph>& handle){
 }
 
 template<typename Graph>
-archive_handle<Graph> checkout(const archive_handle<Graph>& handle, int rev){
+archive_handle<Graph> checkout(const archive_handle<Graph>& handle, const revision& rev){
     return handle.checkout(rev);
 }
 

@@ -34,7 +34,7 @@ public:
     descriptor_type get_desc() const {
         return desc;
     }
-    void set_revision(int rev) {
+    void set_revision(const revision& rev) {
         this->rev = rev;
     }
     void set_identifier(int ident) {
@@ -43,7 +43,7 @@ public:
     void set_desc(const descriptor_type& d) {
         this->desc = d;
     }
-    vertex_id(descriptor_type desc, int rev,internal_vertex ident) : identifier(ident),desc(desc),rev(rev){
+    vertex_id(descriptor_type desc, const revision& rev,internal_vertex ident) : identifier(ident),desc(desc),rev(rev){
     }
     vertex_id(const vertex_id& key) : identifier(key.identifier),desc(key.desc),rev(key.rev){
     }
@@ -89,13 +89,13 @@ public:
     std::pair<internal_vertex,internal_vertex> get_identifier() const {
         return identifier;
     }
-    void set_revision(int rev) {
+    void set_revision(const revision& rev) {
         this->rev = rev;
     }
     void set_source(const std::pair<internal_vertex,internal_vertex>& ident) {
         this->identifier =  ident;
     }
-    edge_id(descriptor_type d,int rev,const std::pair<internal_vertex,internal_vertex>& ident) : rev(rev),desc(d),identifier(ident){
+    edge_id(descriptor_type d,const revision& rev,const std::pair<internal_vertex,internal_vertex>& ident) : rev(rev),desc(d),identifier(ident){
     }
     edge_id(const edge_id& key) : rev(key.rev), desc(key.desc),identifier(key.identifier){
     }
@@ -120,15 +120,15 @@ public:
 };
 
 template<typename descriptor_type>
-vertex_id<descriptor_type> create_vertex_id(descriptor_type desc, int rev,int ident=-1){
+vertex_id<descriptor_type> create_vertex_id(descriptor_type desc, const revision& rev,int ident=-1){
     return vertex_id<descriptor_type>(desc,rev,ident);
 }
 template<typename descriptor_type>
-vertex_id<descriptor_type> create_vertex_id(descriptor_type desc, int rev,internal_vertex ident){
+vertex_id<descriptor_type> create_vertex_id(descriptor_type desc, const revision& rev,internal_vertex ident){
     return vertex_id<descriptor_type>(desc,rev,ident);
 }
 template<typename descriptor_type>
-edge_id<descriptor_type> create_edge_id(const descriptor_type& desc,int rev,const std::pair<internal_vertex,internal_vertex>& ident){
+edge_id<descriptor_type> create_edge_id(const descriptor_type& desc,const revision& rev,const std::pair<internal_vertex,internal_vertex>& ident){
     return edge_id<descriptor_type>(desc,rev,ident);
 }
 

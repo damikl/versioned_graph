@@ -130,7 +130,7 @@ public:
     }
 
  //   template<typename mapping_type>
-    int commit(const Graph& g, vertex_mapping_type& mapping, edge_mapping_type& edge_mapping){
+    revision commit(const Graph& g, vertex_mapping_type& mapping, edge_mapping_type& edge_mapping){
         std::pair<edge_iterator, edge_iterator> ei = boost::edges(g);
         std::pair<vertex_iterator, vertex_iterator> vi = boost::vertices(g);
         ++_head_rev;
@@ -217,8 +217,10 @@ public:
                 const edge_key curr = get_edge_key(g,edge_mapping,e_it,head_rev());
                 FILE_LOG(logDEBUG1) << "commit, check if delete " << curr;
                 auto edge = curr.get_desc();
-                const int degree = std::max(boost::out_degree(edge.first,g),boost::out_degree(edge.second,g));
-                if(curr.get_revision() < head_rev() && ah_edges.find(edge)== ah_edges.end() && degree==0 ) {
+        //        const int degree = std::max(boost::out_degree(edge.first,g),boost::out_degree(edge.second,g));
+        //        FILE_LOG(logDEBUG4) << "vertices have max " << degree << " degree";
+                if(curr.get_revision() < head_rev() && ah_edges.find(edge)== ah_edges.end()
+                        && !boost::edge(edge.first,edge.second,g).second ) {
                     del_commit_edge(curr.get_identifier(),head_rev());
                 }
                 ++e_it;
@@ -272,10 +274,10 @@ public:
         FILE_LOG(logDEBUG3) << "all edges printed";
         print_edges(head_rev());
     }
-    void print_edges(int revision)const{
+    void print_edges(const revision& rev)const{
       //  std::cout << "edges in revision: " << revision << std::endl;
-        FILE_LOG(logDEBUG2) << "edges in revision: " << revision;
-        typename edges_container::const_iterator e_it = edges.cbegin(revision);
+        FILE_LOG(logDEBUG2) << "edges in revision: " << rev;
+        typename edges_container::const_iterator e_it = edges.cbegin(rev);
         while(e_it != edges.end()){
      //       edge_key curr_edge = edges.get_key(e_it);
          //   std::cout << "edge: " << curr_edge << std::endl;
@@ -294,10 +296,10 @@ public:
         FILE_LOG(logDEBUG3) << "all vertices printed";
         print_vertices(head_rev());
     }
-    void print_vertices(int revision)const{
+    void print_vertices(const revision& rev)const{
       //  std::cout << "vertices in revision: " << revision << std::endl;
-        FILE_LOG(logDEBUG2) << "vertices in revision: " << revision  << " size: " << vertices.size();
-        typename vertices_container::const_iterator v_it = vertices.cbegin(revision);
+        FILE_LOG(logDEBUG2) << "vertices in revision: " << rev  << " size: " << vertices.size();
+        typename vertices_container::const_iterator v_it = vertices.cbegin(rev);
         while(v_it != vertices.cend()){
             FILE_LOG(logDEBUG2) << "vertex: " << vertices.get_key(v_it);
             ++v_it;
@@ -308,7 +310,7 @@ public:
         return checkout(head_rev());
     }
     template<typename vertex_mapping_type, typename edge_mapping_type>
-    Graph checkout(int rev, vertex_mapping_type vertex_mapping, edge_mapping_type edge_mapping) const {
+    Graph checkout(const revision& rev, vertex_mapping_type vertex_mapping, edge_mapping_type edge_mapping) const {
         Graph n;
         revision r(rev);
         typename vertices_container::const_iterator v_it = vertices.cbegin(rev);
@@ -317,9 +319,14 @@ public:
         }
         while(v_it != vertices.cend()){
             internal_vertex vertex = v_it->first;
-            vertex_descriptor d = boost::add_vertex(n);
-            FILE_LOG(logDEBUG2) << "checkout, adding vertex: " << vertex << " as: " << d;
-            vertex_mapping.insert(vertex,d);
+            revision vertex_rev = vertices.get_revision(v_it,r);
+            if(!is_deleted(vertex_rev)){
+                vertex_descriptor d = boost::add_vertex(n);
+                FILE_LOG(logDEBUG2) << "checkout, adding vertex: " << vertex << " as: " << d;
+                vertex_mapping.insert(vertex,d);
+            } else {
+                FILE_LOG(logDEBUG2) << "checkout, vertex: " << vertex << " skipped";
+            }
             ++v_it;
         }
         typename edges_container::const_iterator e_it = edges.cbegin(rev);
@@ -329,10 +336,9 @@ public:
         while(e_it != edges.cend()){
             std::pair<internal_vertex,internal_vertex> identifiers_pair = edges.get_key(e_it);
             revision edge_rev = edges.get_revision(e_it,r);
-            vertex_descriptor source = get_vertex_descriptor(vertex_mapping,identifiers_pair.first);
-            vertex_descriptor target = get_vertex_descriptor(vertex_mapping,identifiers_pair.second);
-
             if(!is_deleted(edge_rev)){
+                vertex_descriptor source = get_vertex_descriptor(vertex_mapping,identifiers_pair.first);
+                vertex_descriptor target = get_vertex_descriptor(vertex_mapping,identifiers_pair.second);
                 auto e = boost::add_edge(source,target,n);
                 assert(e.second);
                 edge_descriptor desc = e.first;
@@ -345,8 +351,8 @@ public:
                 edge_mapping.insert(identifiers_pair,desc);
             }else{
 #ifdef DEBUG
-                std::cout << "NOT checked out: " << source << " " << target << " rev: "<< edge_rev << " wanted: " << rev << std::endl;
-                FILE_LOG(logDEBUG2)  << "NOT checked out: " << source << " " << target << " rev: "<< edge_rev << " wanted: " << rev;
+                std::cout << "NOT checked out: " << identifiers_pair.first << " " << identifiers_pair.second << " rev: "<< edge_rev << " wanted: " << rev << std::endl;
+                FILE_LOG(logDEBUG2)  << "NOT checked out: " << identifiers_pair.first << " " << identifiers_pair.second << " rev: "<< edge_rev << " wanted: " << rev;
 #endif
             }
             ++e_it;
@@ -473,7 +479,7 @@ private:
         vertices.insert(vertex,rev, prop);
     }
     void del_commit_vertex(const internal_vertex& v, revision rev){
-        revision r = revision(-rev);
+        revision r = make_deleted(rev);
         FILE_LOG(logDEBUG2) << "COMMIT vertex delete: " << v << " with revision " << r;
         vertices.insert(v,r, vertex_properties());
     }
@@ -483,7 +489,8 @@ private:
         edges.insert(edge,rev, prop);
     }
     void del_commit_edge(std::pair<internal_vertex,internal_vertex> e,revision rev){
-        revision r = revision(-rev);
+        revision r = make_deleted(rev);
+        FILE_LOG(logDEBUG2) << "COMMIT edge delete: " << e << " with revision " << r;
         edges.insert(e,r, edge_properties());
     }
 
@@ -538,7 +545,7 @@ struct helper{
     static void set_vertex_properties(Graph& graph,
                                       const typename graph_archive<Graph>::vertices_container& vertices,
                                       const vertex_mapping_type& map,
-                                      int rev){
+                                      const revision& rev){
 #ifdef DEBUG
             FILE_LOG(logDEBUG3) << "started setting vertex properties for revision " << rev;
 #endif
@@ -597,7 +604,7 @@ struct helper<Graph,boost::no_property>{
     static void set_vertex_properties(Graph&,
                                       const typename graph_archive<Graph>::vertices_container&,
                                       const vertex_mapping_type&,
-                                      int){
+                                      const revision&){
     }
     template<typename descriptor>
     static boost::no_property get_properties(const Graph& , descriptor ){
@@ -659,6 +666,40 @@ bool equal(const Graph& g1, const Graph& g2){
     return true;
 }
 
+template <typename Graph>
+unsigned attribute_vertex_invariant(const typename boost::graph_traits<Graph>::vertex_descriptor &v, const Graph &g){
+    typedef typename boost::vertex_bundle_type<Graph>::type vertex_properties;
+    vertex_properties prop = g[v];
+    std::hash<vertex_properties> h;
+    return h(prop);
+}
+
+template <typename Graph>
+class attribute_vertex_invariant_functor
+{
+    typedef typename boost::graph_traits<Graph>::vertex_descriptor vertex_t;
+    const Graph &graph;
+public:
+    typedef unsigned int result_type;
+    typedef vertex_t argument_type;
+    attribute_vertex_invariant_functor(const Graph &g):graph(g){}
+    result_type operator()(argument_type v)const
+    {
+        return (attribute_vertex_invariant(v,graph) ^ boost::in_degree(v,graph)) % max();
+    }
+    result_type max() const
+    {
+        return boost::num_vertices(graph)*(boost::num_vertices(graph)+1);
+    //    return std::numeric_limits<result_type>::max();
+    }
+};
+
+template <typename Graph>
+attribute_vertex_invariant_functor<Graph> make_attribute_vertex_invariant(const Graph &g) {
+    return attribute_vertex_invariant_functor<Graph>(g);
+}
+
+
 enum vertex_desc_t { vertex_desc };
 namespace boost {
     BOOST_INSTALL_PROPERTY(vertex, desc);
@@ -707,6 +748,7 @@ typename property_map<Graph, vertex_index_t >::const_type get(vertex_index_t, co
     int id = 0;
     typename graph_traits<Graph>::vertex_iterator i, end;
     for (boost::tie(i, end) = vertices(g); i != end; ++i, ++id) {
+        FILE_LOG(logDEBUG4) << "put property: " << *i << " -> " << id;
         put(v1_index_map, *i, id);
     }
     return v1_index_map;
@@ -737,37 +779,42 @@ bool check_isomorphism(const Graph& g1,const Graph& g2) {
 //        v2_index_map(v_indexes2);
 
 //    VertexIndexMap<Graph> v1_index_map(g1_mapping);
+    FILE_LOG(logDEBUG3) << "get index map";
     typename property_map<Graph, vertex_index_t>::const_type
-        v1_index_map = get(vertex_index, g1),
-        v2_index_map = get(vertex_index, g2);
-/*
+        v1_index_map = get(vertex_index, g1);
+
     typename graph_traits<Graph>::vertex_iterator i, end;
     int id = 0;
-    for (boost::tie(i, end) = vertices(g1); i != end; ++i, ++id) {
+/*    for (boost::tie(i, end) = vertices(g1); i != end; ++i, ++id) {
         put(v1_index_map, *i, id);
 //        v1[id] = *i;
     }
-    id = 0;
+    */
+//    int id = 0;
     for (boost::tie(i, end) = vertices(g2); i != end; ++i, ++id) {
-        put(v2_index_map, *i, id);
+        FILE_LOG(logDEBUG3) << "g2: " << *i << " -> " << id;
 //        v2[id] = *i;
     }
-*/
+    id = 0;
+
+    FILE_LOG(logDEBUG4) << "create iso map";
     std::vector<typename graph_traits<Graph>::vertex_descriptor> f(n);
     auto iso_map = make_iterator_property_map(f.begin(), v1_index_map, f[0]);
+    FILE_LOG(logDEBUG4) << "calculate isomorphism";
     #if defined(BOOST_MSVC) && BOOST_MSVC <= 1300
       bool ret = isomorphism
         (g1, g2, iso_map,
          degree_vertex_invariant(), get(vertex_index, g1), get(vertex_index, g2));
     #else
-      bool ret = isomorphism(g1, g2, isomorphism_map(iso_map).vertex_index1_map(v1_index_map));
+      bool ret = isomorphism(g1, g2, isomorphism_map(iso_map).vertex_index1_map(v1_index_map)
+                             .vertex_invariant1(make_attribute_vertex_invariant(g1))
+                             .vertex_invariant2(make_attribute_vertex_invariant(g2)));
     #endif
 
-    FILE_LOG(logDEBUG1) << "isomorphic? " << ret << "order: ";
+    FILE_LOG(logDEBUG1) << "isomorphic? " << ret << " order: ";
     auto tmp = get(vertex_index, g2);
     for (std::size_t v = 0; v != f.size(); ++v){
         FILE_LOG(logDEBUG1) << "g2: " <<f[v] << " -> " <<get(tmp, f[v]);
-        FILE_LOG(logDEBUG1) << "iso: " <<f[v] << " -> " <<get(iso_map, f[v]);
     }
     return ret;
 }

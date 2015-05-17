@@ -76,9 +76,19 @@ std::ostream& operator<<(std::ostream& os, const internal_vertex& obj) {
 struct revision{
     int rev;
     bool operator<(const revision& r) const{
+        FILE_LOG(logDEBUG4) << "revision " << rev << " < " << r.rev << " == " << (abs(rev) < abs(r.rev));
         return abs(rev) < abs(r.rev);
     }
+    bool operator>(const revision& r) const{
+        FILE_LOG(logDEBUG4) << "revision " << rev << " < " << r.rev << " == " << (abs(rev) < abs(r.rev));
+        return abs(rev) > abs(r.rev);
+    }
+    bool operator<=(const revision& r) const{
+        FILE_LOG(logDEBUG4) << "revision " << rev << " <= " << r.rev << " == " << (abs(rev) <= abs(r.rev));
+        return abs(rev) <= abs(r.rev);
+    }
     bool operator==(const revision& r) const{
+        FILE_LOG(logDEBUG4) << "revision " << rev << " == " << r.rev << " == " << (abs(rev) == abs(r.rev));
         return abs(rev) == abs(r.rev);
     }
     bool is_older(const revision& r)const{
@@ -92,15 +102,21 @@ struct revision{
         return *this;
     }
     revision(int r) : rev(r){ }
-    operator int()
-    {
-         return rev;
-    }
+//    operator int()
+//    {
+//         return rev;
+//    }
     int get_rev() const {
         return rev;
     }
 
 };
+
+revision make_deleted(const revision& r){
+    revision rev = r;
+    rev.rev = -rev.rev;
+    return rev;
+}
 bool is_deleted(const revision& rev){
     return rev.get_rev()<0;
 }

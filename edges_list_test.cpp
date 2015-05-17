@@ -9,7 +9,9 @@ typedef boost::adjacency_list<listS, listS, undirectedS, extra_info,extra_info> 
 
 TYPED_TEST_P(EdgesGraphTest, withRemoval) {
     FILELog::ReportingLevel() = logDEBUG2;
+    FILE_LOG(logINFO) << "edgesWithRemove test " << std::endl;
     ASSERT_NO_FATAL_FAILURE(this->test());
+    FILE_LOG(logINFO) << "test removal" << std::endl;
     ASSERT_NO_FATAL_FAILURE(this->test_removal());
     this->commit();
     ASSERT_TRUE(this->check());
