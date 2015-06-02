@@ -283,7 +283,18 @@ struct unordered_history_holder{
         }
     }
 */
-
+    void drop_revisions_above(const revision& rev){
+        auto iter = history_records.begin();
+        auto end = history_records.end();
+        while(iter!=end){
+            entries l = iter->second;
+            while(l.begin()!=l.end() && l.begin()->first>rev){
+                FILE_LOG(logDEBUG3)  << "remove rev " << l.begin()->first.get_rev() << " for: " << iter->first;
+                l.pop_front();
+            }
+            ++iter;
+        }
+    }
     key_type get_key(iterator it) const {
         FILE_LOG(logDEBUG4) << "get_key: " << it->first;
         return it->first;

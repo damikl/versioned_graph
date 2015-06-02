@@ -20,10 +20,12 @@ TYPED_TEST_P(EdgesGraphTest, attributeModification) {
     FILELog::ReportingLevel() = logDEBUG3;
     ASSERT_NO_FATAL_FAILURE(this->test());
     ASSERT_TRUE(this->check());
+    ASSERT_TRUE(this->same_as_head());
     this->getGraph()[this->getVertex(5)].simple_name = "other";
     this->getGraph()[this->getVertex(3)].simple_name = "just something";
     this->getGraph()[this->getEdge(0,3)].simple_name = "path weight";
     FILE_LOG(logDEBUG1) << "attributes changed";
+    ASSERT_FALSE(this->same_as_head());
     ASSERT_TRUE(this->check());
     FILE_LOG(logDEBUG1) << "data consistent";
     ASSERT_NO_FATAL_FAILURE(this->commit());

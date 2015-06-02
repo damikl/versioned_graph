@@ -16,6 +16,12 @@ public:
     }
     archive_handle( graph_archive<Graph>& archive) : archive(archive),graph(),rev(0){
     }
+    archive_handle( const archive_handle<Graph>& h) : archive(h.archive),
+                                                graph(h.getGraph()),
+                                                map(h.map),
+                                                edge_map(h.edge_map),
+                                                rev(h.get_revision())
+                                             {}
     archive_handle& operator=(const archive_handle& other){
         if (this != &other) // protect against invalid self-assignment
         {
@@ -43,7 +49,16 @@ public:
     void commit(){
         rev = archive.commit(graph,map,edge_map);
     }
-
+    archive_handle truncate_to(const revision& rev){
+        archive.truncate_to(rev);
+        if(rev<this->rev){
+            return checkout(rev);
+        }
+        return *this;
+    }
+    const revision& get_revision() const{
+        return rev;
+    }
     archive_handle checkout(const revision& _rev) const {
         Graph n;
         FILE_LOG(logDEBUG4) << "handle created";
@@ -73,13 +88,25 @@ archive_handle<Graph> commit(archive_type archive, Graph g){
 }
 
 template<typename Graph>
-archive_handle<Graph>& commit(archive_handle<Graph>& handle){
+void commit(archive_handle<Graph>& handle){
     handle.commit();
-    return handle;
+ //   return handle;
 }
-
+/*
+template<typename Graph>
+archive_handle<Graph> commit(const archive_handle<Graph>& handle){
+    archive_handle<Graph> a = archive_handle<Graph>(handle);
+    a.commit();
+    return a;
+}
+*/
 template<typename Graph>
 archive_handle<Graph> checkout(const archive_handle<Graph>& handle, const revision& rev){
+    return handle.checkout(rev);
+}
+template<typename Graph>
+archive_handle<Graph> revert_to(archive_handle<Graph>& handle, const revision& rev){
+
     return handle.checkout(rev);
 }
 

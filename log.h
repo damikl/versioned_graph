@@ -1,6 +1,12 @@
 #ifndef __LOG_H__
 #define __LOG_H__
 
+/**
+    Logging In C++
+    By Petru Marginean, September 05, 2007
+    http://www.drdobbs.com/cpp/logging-in-c/201804215?pgno=1
+**/
+
 #include <sstream>
 #include <string>
 #include <stdio.h>

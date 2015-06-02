@@ -5,7 +5,9 @@
 #include <vector>
 #include <memory>
 #include "archive.h"
+#include "isomorphism_checking.h"
 #include "handler.h"
+
 #include "gtest/gtest.h"
 #include "boost/graph/copy.hpp"
 
@@ -245,7 +247,9 @@ public:
     }
     void commit(){
         FILE_LOG(logDEBUG4) << "TEST COMMIT " << archive.head_rev();
-        handle = ::commit(handle);
+        auto old_rev = handle.get_revision();
+        ::commit(handle);
+        ASSERT_LT(old_rev,handle.get_revision());
         FILE_LOG(logDEBUG4) << "COMMITED " << archive.head_rev();
         Graph g_temp = clone_graph(handle.getGraph());
         //boost::copy_graph(handle.getGraph(),g_temp);
@@ -262,6 +266,7 @@ public:
         add_edge(0, 5);
         ASSERT_EQ(archive.num_vertices(1),5);
         ASSERT_EQ(archive.num_edges(1),7);
+        ASSERT_FALSE(same_as_head());
         commit();
         FILE_LOG(logDEBUG1) << "TEST: Check vertices count";
         ASSERT_EQ(archive.num_vertices(1),5);
@@ -271,6 +276,7 @@ public:
     }
     void test_removal(){
         remove_vertex(5);
+        ASSERT_FALSE(same_as_head());
         commit();
     }
     bool check_equality(const Graph& g1,const Graph& g2 ) const {
@@ -286,6 +292,9 @@ public:
             return false;
         }
         return true;
+    }
+    bool same_as_head() const {
+        return check_isomorphism(handle.getGraph(),handle.checkout(handle.get_revision()).getGraph());
     }
     bool check() const {
         for (typename std::map<revision,Graph>::const_iterator it=snapshots.begin(); it!=snapshots.end(); ++it){

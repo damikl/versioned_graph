@@ -11,6 +11,7 @@ TYPED_TEST_P(EdgesGraphTest, withRemoval) {
     FILELog::ReportingLevel() = logDEBUG2;
     FILE_LOG(logINFO) << "edgesWithRemove test " << std::endl;
     ASSERT_NO_FATAL_FAILURE(this->test());
+    ASSERT_TRUE(this->same_as_head());
     FILE_LOG(logINFO) << "test removal" << std::endl;
     ASSERT_NO_FATAL_FAILURE(this->test_removal());
     this->commit();

@@ -13,10 +13,13 @@
 #include "key.h"
 #include "mapping.h"
 
+#include <boost/assert.hpp>
 #include <boost/config.hpp>
 #include <boost/graph/isomorphism.hpp>
 #include <boost/graph/graph_utility.hpp>
 #include <boost/property_map/property_map.hpp>
+#include <boost/graph/adjacency_list.hpp>
+#include <boost/graph/vf2_sub_graph_iso.hpp>
 
 
 template<typename T>
@@ -39,7 +42,7 @@ auto get_vertex_key(const vertex_container& vertices,const vertex_mapping_type& 
     auto identifier = it->first;
     revision rev = vertices.get_revision(it,r);
     auto vertex_p = m.find(identifier);
-    assert(vertex_p.second);
+    BOOST_ASSERT_MSG(vertex_p.second, (std::string("missing vertex in mapping ") +std::to_string(identifier.get_identifier())).c_str());
     auto vertex_desc = vertex_p.first->second;
     return create_vertex_id(vertex_desc,rev,identifier);
 }
@@ -155,6 +158,7 @@ public:
                         typename vertices_container::inner_const_iterator iv_it = p.first;
                         if(helper<Graph,vertex_properties>::changed(*vertex_iter,iv_it,g)){
                             vertex_descriptor desc = *vertex_iter;
+                            FILE_LOG(logDEBUG2) << "COMMIT changed vertex " << v_identifier << " for desc: " << desc << std::endl;
                             commit_vertex(g,v_identifier,desc,head_rev());
                         } else {
                             ah_vertices.insert(*vertex_iter);// note already existing vertex
@@ -164,6 +168,7 @@ public:
                     v_it = vertices.end_full();
                     vertex_descriptor desc = *vertex_iter;
                     internal_vertex vertex = internal_vertex::create();
+                    FILE_LOG(logDEBUG2) << "COMMIT new vertex " << vertex << " for desc: " << desc << std::endl;
                     commit_vertex(g,vertex,desc,head_rev());
                     mapping.insert(vertex,desc);
                 }
@@ -241,6 +246,10 @@ public:
         edge_key tmp = edges.lower_bound(ed)->first;
         return thesame(ed,tmp) && tmp.revision >=0;
     }
+    void truncate_to(const revision& rev){
+        edges.drop_revisions_above(rev);
+        vertices.drop_revisions_above(rev);
+    }
     /**
       check if vertex exist in head revision
     **/
@@ -306,13 +315,15 @@ public:
         }
         FILE_LOG(logDEBUG2) << "Printing vertices finished";
     }
-    Graph checkout(){
-        return checkout(head_rev());
-    }
+//    Graph checkout(){
+//        return checkout(head_rev());
+//    }
     template<typename vertex_mapping_type, typename edge_mapping_type>
     Graph checkout(const revision& rev, vertex_mapping_type vertex_mapping, edge_mapping_type edge_mapping) const {
         Graph n;
         revision r(rev);
+        FILE_LOG(logDEBUG1) << "Checkout of revision: " << r;
+        FILE_LOG(logDEBUG4) << "at start has " << boost::num_vertices(n) << " vertices and " << boost::num_edges(n) << " edges";
         typename vertices_container::const_iterator v_it = vertices.cbegin(rev);
         if(v_it == vertices.cend()){
             FILE_LOG(logDEBUG2) << "No vertices to add";
@@ -664,159 +675,6 @@ bool equal(const Graph& g1, const Graph& g2){
     }
     FILE_LOG(logDEBUG1) << "GRAPH COMPARE: match";
     return true;
-}
-
-template <typename Graph>
-unsigned attribute_vertex_invariant(const typename boost::graph_traits<Graph>::vertex_descriptor &v, const Graph &g){
-    typedef typename boost::vertex_bundle_type<Graph>::type vertex_properties;
-    vertex_properties prop = g[v];
-    std::hash<vertex_properties> h;
-    return h(prop);
-}
-
-template <typename Graph>
-class attribute_vertex_invariant_functor
-{
-    typedef typename boost::graph_traits<Graph>::vertex_descriptor vertex_t;
-    const Graph &graph;
-public:
-    typedef unsigned int result_type;
-    typedef vertex_t argument_type;
-    attribute_vertex_invariant_functor(const Graph &g):graph(g){}
-    result_type operator()(argument_type v)const
-    {
-        return (attribute_vertex_invariant(v,graph) ^ boost::in_degree(v,graph)) % max();
-    }
-    result_type max() const
-    {
-        return boost::num_vertices(graph)*(boost::num_vertices(graph)+1);
-    //    return std::numeric_limits<result_type>::max();
-    }
-};
-
-template <typename Graph>
-attribute_vertex_invariant_functor<Graph> make_attribute_vertex_invariant(const Graph &g) {
-    return attribute_vertex_invariant_functor<Graph>(g);
-}
-
-
-enum vertex_desc_t { vertex_desc };
-namespace boost {
-    BOOST_INSTALL_PROPERTY(vertex, desc);
-}
-
-template<typename Graph>
-class VertexIndexMap //maps vertex to index
-{
-public:
-    typedef boost::readable_property_map_tag category;
-    typedef int  value_type;
-    typedef value_type reference;
-    typedef typename Graph::vertex_descriptor key_type;
-
-    VertexIndexMap(const mapping<internal_vertex,key_type>& m): map(m) {}
-    VertexIndexMap(): map() {}
-    mapping<internal_vertex,key_type> map;
-    value_type get_value(key_type key) const{
-        return map.find(key).first->second.get_identifier();
-    }
-};
-
-template<typename UniquePairAssociativeContainer>
-struct index_map : boost::associative_property_map< UniquePairAssociativeContainer >{
-    index_map(){}
-    index_map(UniquePairAssociativeContainer map): boost::associative_property_map< UniquePairAssociativeContainer >(m), m(map){
-    }
-    UniquePairAssociativeContainer m;
-};
-
-namespace boost {
-
-template<typename Graph>
-struct property_map<Graph, vertex_index_t > {
-    typedef std::map<typename graph_traits<Graph>::vertex_descriptor, int> my_vertex_mapping;
-    typedef index_map< my_vertex_mapping > const_type;
-    //typedef type const_type ; //-- we do not define type as "vertex_index_t" map is read-only
-};
-
-template<typename Graph>
-typename property_map<Graph, vertex_index_t >::const_type get(vertex_index_t, const Graph & g )
-{
-    typedef std::map<typename graph_traits<Graph>::vertex_descriptor, int> vertex_mapping;
-    vertex_mapping v_indexes;
-    index_map< vertex_mapping > v1_index_map(v_indexes);
-    int id = 0;
-    typename graph_traits<Graph>::vertex_iterator i, end;
-    for (boost::tie(i, end) = vertices(g); i != end; ++i, ++id) {
-        FILE_LOG(logDEBUG4) << "put property: " << *i << " -> " << id;
-        put(v1_index_map, *i, id);
-    }
-    return v1_index_map;
-}
-
-
-} //namespace boost
-
-template<typename Graph>
-bool check_isomorphism(const Graph& g1,const Graph& g2) {
-    using namespace boost;
-    int n = num_vertices(g1);
-    if(boost::num_edges(g1)!=boost::num_edges(g2)){
-        FILE_LOG(logDEBUG1) << "not isomorphic edges g1= " << boost::num_edges(g1) << " g2= " << boost::num_edges(g2) ;
-        return false;
-    }
-    if(boost::num_vertices(g1)!=boost::num_vertices(g2)){
-        FILE_LOG(logDEBUG1) << "not isomorphic, vertices g1= " << boost::num_vertices(g1) << " g2= " << boost::num_vertices(g2) ;
-        return false;
-    }
-//    std::vector<typename graph_traits<Graph>::vertex_descriptor> v1(n), v2(n);
-
-//    typedef std::map<typename graph_traits<Graph>::vertex_descriptor, int> vertex_mapping;
-//    vertex_mapping v_indexes1,v_indexes2;
-//    boost::associative_property_map< vertex_mapping >
-//        v1_index_map(v_indexes1);
-//    boost::associative_property_map< vertex_mapping >
-//        v2_index_map(v_indexes2);
-
-//    VertexIndexMap<Graph> v1_index_map(g1_mapping);
-    FILE_LOG(logDEBUG3) << "get index map";
-    typename property_map<Graph, vertex_index_t>::const_type
-        v1_index_map = get(vertex_index, g1);
-
-    typename graph_traits<Graph>::vertex_iterator i, end;
-    int id = 0;
-/*    for (boost::tie(i, end) = vertices(g1); i != end; ++i, ++id) {
-        put(v1_index_map, *i, id);
-//        v1[id] = *i;
-    }
-    */
-//    int id = 0;
-    for (boost::tie(i, end) = vertices(g2); i != end; ++i, ++id) {
-        FILE_LOG(logDEBUG3) << "g2: " << *i << " -> " << id;
-//        v2[id] = *i;
-    }
-    id = 0;
-
-    FILE_LOG(logDEBUG4) << "create iso map";
-    std::vector<typename graph_traits<Graph>::vertex_descriptor> f(n);
-    auto iso_map = make_iterator_property_map(f.begin(), v1_index_map, f[0]);
-    FILE_LOG(logDEBUG4) << "calculate isomorphism";
-    #if defined(BOOST_MSVC) && BOOST_MSVC <= 1300
-      bool ret = isomorphism
-        (g1, g2, iso_map,
-         degree_vertex_invariant(), get(vertex_index, g1), get(vertex_index, g2));
-    #else
-      bool ret = isomorphism(g1, g2, isomorphism_map(iso_map).vertex_index1_map(v1_index_map)
-                             .vertex_invariant1(make_attribute_vertex_invariant(g1))
-                             .vertex_invariant2(make_attribute_vertex_invariant(g2)));
-    #endif
-
-    FILE_LOG(logDEBUG1) << "isomorphic? " << ret << " order: ";
-    auto tmp = get(vertex_index, g2);
-    for (std::size_t v = 0; v != f.size(); ++v){
-        FILE_LOG(logDEBUG1) << "g2: " <<f[v] << " -> " <<get(tmp, f[v]);
-    }
-    return ret;
 }
 
 
