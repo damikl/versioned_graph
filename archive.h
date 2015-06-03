@@ -139,8 +139,8 @@ public:
         ++_head_rev;
 #ifdef DEBUG
         FILE_LOG(logDEBUG1) << "before COMMIT " << head_rev() << std::endl;
-        print_edges();
-        print_vertices();
+        print_edges(edge_mapping);
+        print_vertices(mapping);
 #endif
 
         {
@@ -273,27 +273,45 @@ public:
             return false;
         return e_it->first.revision >=0;
     }
+    void print_edges(const edge_mapping_type& edge_mapping)const{
+        FILE_LOG(logDEBUG3) << "print all edges:";
+        for(auto it=edges.begin_full();it!=edges.end_full();++it){
+            std::pair<internal_vertex,internal_vertex> p = it->first;
+            edge_descriptor desc = get_edge_descriptor(edge_mapping,p);
+            FILE_LOG(logDEBUG3) << p << " desc: " << desc;
+        }
+        FILE_LOG(logDEBUG3) << "all edges printed";
+        print_edges(head_rev());
+    }
     void print_edges()const{
         FILE_LOG(logDEBUG3) << "print all edges:";
         for(auto it=edges.begin_full();it!=edges.end_full();++it){
-        //    edge_key e = edges.get_key(it);
             std::pair<internal_vertex,internal_vertex> p = it->first;
             FILE_LOG(logDEBUG3) << p;
         }
         FILE_LOG(logDEBUG3) << "all edges printed";
         print_edges(head_rev());
     }
-    void print_edges(const revision& rev)const{
-      //  std::cout << "edges in revision: " << revision << std::endl;
+
+    void print_edges(const revision& rev) const {
         FILE_LOG(logDEBUG2) << "edges in revision: " << rev;
         typename edges_container::const_iterator e_it = edges.cbegin(rev);
         while(e_it != edges.end()){
-     //       edge_key curr_edge = edges.get_key(e_it);
-         //   std::cout << "edge: " << curr_edge << std::endl;
             std::pair<internal_vertex,internal_vertex> p = e_it->first;
             FILE_LOG(logDEBUG2) << "edge: " << p;
             ++e_it;
         }
+    }
+    void print_vertices(const vertex_mapping_type& vertex_mapping)const{
+        FILE_LOG(logDEBUG3) << "print all vertices:";
+        assert(std::distance(vertices.begin_full(),vertices.end_full())==vertices.size());
+        for(auto it=vertices.begin_full();it!=vertices.end_full();++it){
+            internal_vertex v = it->first;
+            vertex_descriptor desc = get_vertex_descriptor(vertex_mapping,v);
+            FILE_LOG(logDEBUG3) << v << " desc: " << desc;
+        }
+        FILE_LOG(logDEBUG3) << "all vertices printed";
+        print_vertices(head_rev());
     }
     void print_vertices()const{
         FILE_LOG(logDEBUG3) << "print all vertices:";
@@ -306,7 +324,6 @@ public:
         print_vertices(head_rev());
     }
     void print_vertices(const revision& rev)const{
-      //  std::cout << "vertices in revision: " << revision << std::endl;
         FILE_LOG(logDEBUG2) << "vertices in revision: " << rev  << " size: " << vertices.size();
         typename vertices_container::const_iterator v_it = vertices.cbegin(rev);
         while(v_it != vertices.cend()){
@@ -318,8 +335,7 @@ public:
 //    Graph checkout(){
 //        return checkout(head_rev());
 //    }
-    template<typename vertex_mapping_type, typename edge_mapping_type>
-    Graph checkout(const revision& rev, vertex_mapping_type vertex_mapping, edge_mapping_type edge_mapping) const {
+    Graph checkout(const revision& rev, vertex_mapping_type& vertex_mapping, edge_mapping_type& edge_mapping) const {
         Graph n;
         revision r(rev);
         FILE_LOG(logDEBUG1) << "Checkout of revision: " << r;
@@ -505,8 +521,7 @@ private:
         edges.insert(e,r, edge_properties());
     }
 
-    template<typename mapping_type>
-    void correct_missing_vertices(Graph& graph, int rev, mapping_type& map) const {
+    void correct_missing_vertices(Graph& graph, const revision& rev, vertex_mapping_type& map) const {
         typename graph_archive<Graph>::vertices_container::const_iterator v_it = vertices.cbegin(rev);
         FILE_LOG(logDEBUG2) << "adding missing vertices rev: " << rev;
   //     unsigned int v_size = boost::num_vertices(graph);
@@ -541,7 +556,7 @@ private:
             FILE_LOG(logDEBUG2) << "ADD MISSING VERTEX " << d;
         }*/
         int num = boost::num_vertices(graph);
-        MY_ASSERT(repo_size==num,std::to_string(repo_size) + " !=" + std::to_string(num));
+        BOOST_ASSERT_MSG(repo_size==num,(std::to_string(repo_size) + " !=" + std::to_string(num)).c_str());
     }
 
 //    Graph& g;
