@@ -233,8 +233,8 @@ public:
         }
 #ifdef DEBUG
         FILE_LOG(logDEBUG1) << "after COMMIT " << head_rev();
-        print_edges();
-        print_vertices();
+        print_edges(edge_mapping);
+        print_vertices(mapping);
 #endif
         return _head_rev;
     }
@@ -248,7 +248,9 @@ public:
     }
     void truncate_to(const revision& rev){
         edges.drop_revisions_above(rev);
+        print_edges();
         vertices.drop_revisions_above(rev);
+        print_vertices();
     }
     /**
       check if vertex exist in head revision

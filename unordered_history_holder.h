@@ -289,9 +289,10 @@ struct unordered_history_holder{
         while(iter!=end){
             entries l = iter->second;
             while(l.begin()!=l.end() && l.begin()->first>rev){
-                FILE_LOG(logDEBUG3)  << "remove rev " << l.begin()->first.get_rev() << " for: " << iter->first;
+                FILE_LOG(logDEBUG3)  << "remove rev " << l.front().first.get_rev() << " for: " << iter->first;
                 l.pop_front();
             }
+            BOOST_ASSERT_MSG(l.begin()->first<=rev,("failed to remove entries above "+ std::to_string(rev.get_rev()) + " found " + std::to_string(l.begin()->first.get_rev())).c_str());
             ++iter;
         }
     }
