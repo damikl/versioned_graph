@@ -285,7 +285,7 @@ class SimpleBacktrackingTest : public ::testing::Test {
                 }
                 if(min_degree<target_degree){
                     FILE_LOG(logDEBUG1) << "small min_degree: " << min_degree;
-                    if(level<8){
+                    if(level<4){
                         backtrack(results,target_degree,level+1);
                     } else {
                         FILE_LOG(logDEBUG1) << "level too high: " << level;

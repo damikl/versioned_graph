@@ -372,7 +372,6 @@ public:
                 assert(e.second);
                 edge_descriptor desc = e.first;
 #ifdef DEBUG
-                std::cout << "checked out: " << source << " " << target << " rev: "<< edge_rev << " wanted: " << rev << std::endl;
                 FILE_LOG(logDEBUG2) << "checked out: " << source << " " << target << " rev: "<< edge_rev << " wanted: " << rev;
 #endif
  //               edges.set_edge_property(e_it,n,curr_edge);
@@ -380,7 +379,6 @@ public:
                 edge_mapping.insert(identifiers_pair,desc);
             }else{
 #ifdef DEBUG
-                std::cout << "NOT checked out: " << identifiers_pair.first << " " << identifiers_pair.second << " rev: "<< edge_rev << " wanted: " << rev << std::endl;
                 FILE_LOG(logDEBUG2)  << "NOT checked out: " << identifiers_pair.first << " " << identifiers_pair.second << " rev: "<< edge_rev << " wanted: " << rev;
 #endif
             }
@@ -389,7 +387,6 @@ public:
 //        correct_missing_vertices(n,rev,vertex_mapping);
         helper<Graph,vertex_properties>::set_vertex_properties(n,vertices,vertex_mapping, rev);
 #ifdef DEBUG
-        std::cout << "checkout of revision " << rev << " finished" << std::endl;
         FILE_LOG(logDEBUG2)  << "checked out of revision " << rev << " finished";
 #endif
         return n;
@@ -612,7 +609,7 @@ struct helper{
         }
 */
 #ifdef DEBUG
-            std::cout << "all vertex properties set" << std::endl;
+            FILE_LOG(logDEBUG3) << "all vertex properties set";
 #endif
     }
     template<typename descriptor>
