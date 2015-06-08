@@ -131,6 +131,7 @@ auto make_rule(const pattern_graph_type& pattern,
     return make_rule(pattern,result,callback,boost::always_equivalent(), boost::always_equivalent());
 }
 
+/*
 TEST(Backtracking, checkIfDetectIsomorphism) {
     typedef adjacency_list<vecS, vecS, undirectedS,external_data,external_data> graph_type;
 
@@ -151,6 +152,8 @@ TEST(Backtracking, checkIfDetectIsomorphism) {
     // Vertices and edges are assumed to be always equivalent.
     EXPECT_TRUE(vf2_subgraph_iso(graph1, graph2, callback));
 }
+
+*/
 
 template < typename Graph> void
 print_dependencies(std::ostream & out, const Graph & g) {
@@ -269,6 +272,8 @@ TEST_F(SimpleBacktrackingTest, checkFullBacktracking) {
 }
 
 TEST(Backtracking, checkSimpleBackTracking) {
+    FILE* log_fd = fopen( "mylogfile_backtracking1.txt", "w" );
+    Output2FILE::Stream() = log_fd;
     FILELog::ReportingLevel() = logDEBUG3;
     typedef adjacency_list<vecS, vecS, undirectedS,external_data,external_data> graph_type;
 
