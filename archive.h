@@ -192,19 +192,29 @@ public:
         {
             std::set<std::pair<vertex_descriptor,vertex_descriptor> > ah_edges; // edges that are already here
             for(edge_iterator edge_iter = ei.first; edge_iter != ei.second; ++edge_iter) {
-                auto edge = get_edges(mapping,*edge_iter,g);
-                typename edges_container::outer_const_iterator e_it = edges.find(edge);
-                if(e_it!=edges.end_full()){
-                    // edge already exist, check for changes
-                    std::pair<internal_vertex,internal_vertex> identifier = e_it->first;
-                    auto p = edges.get_head_entry(e_it);
-                    if(p.second){
-                        typename edges_container::inner_const_iterator ie_it = p.first;
-                        if(e_it == edges.end_full() || helper<Graph,edge_properties>::changed(*edge_iter,ie_it,g)){
-                            commit_edge(g,identifier,*edge_iter,head_rev());
-                        } else {
-                            ah_edges.insert(std::make_pair(source(*edge_iter,g),target(*edge_iter,g)));
+                auto s_vertex_p = mapping.find(boost::source(*edge_iter,g));
+                auto t_vertex_p = mapping.find(boost::target(*edge_iter,g));
+                if(t_vertex_p.second && t_vertex_p.second){
+                    internal_vertex source_vertex = s_vertex_p.first->second;
+                    internal_vertex target_vertex = t_vertex_p.first->second;
+                    typename edges_container::outer_const_iterator e_it = this->edges.find(std::make_pair(source_vertex,target_vertex));
+                    if(e_it!=edges.end_full()){
+                        // edge already exist, check for changes
+                        std::pair<internal_vertex,internal_vertex> identifier = e_it->first;
+                        auto p = edges.get_head_entry(e_it);
+                        if(p.second){
+                            typename edges_container::inner_const_iterator ie_it = p.first;
+                            if(e_it == edges.end_full() || helper<Graph,edge_properties>::changed(*edge_iter,ie_it,g)){
+                                commit_edge(g,identifier,*edge_iter,head_rev());
+                            } else {
+                                ah_edges.insert(std::make_pair(source(*edge_iter,g),target(*edge_iter,g)));
+                            }
                         }
+                    } else {
+                        // vertices exist, but edge not
+                        auto edge = std::make_pair(source_vertex,target_vertex);
+                        commit_edge(g,edge,*edge_iter,head_rev());
+                        edge_mapping.insert(edge,*edge_iter);
                     }
                 } else {
                     // edge do not exist in archive yet

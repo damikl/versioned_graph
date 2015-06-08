@@ -4,6 +4,7 @@
 #include "archive.h"
 #include "handler.h"
 #include "subgraph_test.h"
+#include "isomorphism_checking.h"
 
 using namespace boost;
 using namespace std;
@@ -153,7 +154,7 @@ TEST(Backtracking, checkIfDetectIsomorphism) {
 
 class SimpleBacktrackingTest : public ::testing::Test {
  protected:
-  typedef adjacency_list<vecS, vecS, bidirectionalS,external_data,external_data> graph_type;
+  typedef adjacency_list<vecS, vecS, bidirectionalS,int,int> graph_type;
   typedef typename boost::graph_traits<graph_type>::vertex_iterator vertex_iterator;
     SimpleBacktrackingTest() : handle(repo),repo() {
         FILE* log_fd = fopen( "mylogfile_backtracking.txt", "w" );
@@ -166,6 +167,7 @@ class SimpleBacktrackingTest : public ::testing::Test {
         }
     }
     virtual void TearDown() { }
+    /*
     void backtrack(vertex_iterator vi, vertex_iterator vi2, vertex_iterator vi_end, vertex_iterator vi2_end, list<graph_type>& results, int target_degree){
         while(true){
             if(vi==vi_end){
@@ -196,7 +198,7 @@ class SimpleBacktrackingTest : public ::testing::Test {
             ASSERT_TRUE(e.second);
             auto desc = e.first;
             FILE_LOG(logDEBUG1) << "add edge: " << *vi << " -> " << *vi2;
-            handle.getGraph()[desc].value = rev.get_rev(); // alter attribute
+            handle.getGraph()[desc] = rev.get_rev(); // alter attribute
             int min_degree=10000, max_degree = 0;
             typename boost::graph_traits<graph_type>::vertex_iterator vs,ve;
             for (boost::tie(vs, ve) = boost::vertices(handle.getGraph()); vs != ve; ++vs){
@@ -210,9 +212,20 @@ class SimpleBacktrackingTest : public ::testing::Test {
             }
             FILE_LOG(logDEBUG1) << "max_degree: " << max_degree << " min_degree: " << min_degree << " num_edges: "<< num_edges(handle.getGraph());
             if((max_degree==target_degree) && (min_degree ==target_degree)){
-                graph_type g(handle.getGraph());
-                results.push_front(g);
-                FILE_LOG(logDEBUG1) << "success, rollback to rev: " << rev;
+                bool already_exist = false;
+                for(graph_type g : results){
+                    if(check_isomorphism(g,handle.getGraph())){
+                        already_exist = true;
+                        break;
+                    }
+                }
+                if(!already_exist){
+                    graph_type g(handle.getGraph());
+                    results.push_front(g);
+                    FILE_LOG(logDEBUG1) << "success, rollback to rev: " << rev;
+                } else {
+                    FILE_LOG(logDEBUG1) << "already found similar graph, rollback to rev: " << rev;
+                }
                 handle = handle.truncate_to(rev);
                 return;
             }
@@ -232,7 +245,7 @@ class SimpleBacktrackingTest : public ::testing::Test {
             ++vi2;
         }
     }
-
+*/
     void backtrack(list<graph_type>& results, int target_degree, int level){
         vertex_iterator vi, vi_end;
         for(boost::tie(vi, vi_end) = boost::vertices(handle.getGraph()); vi!=vi_end; ++vi){
@@ -254,7 +267,7 @@ class SimpleBacktrackingTest : public ::testing::Test {
                 ASSERT_TRUE(e.second);
                 auto desc = e.first;
                 FILE_LOG(logDEBUG1) << "add edge: " << *vi << " -> " << *vi2;
-                handle.getGraph()[desc].value = rev.get_rev(); // alter attribute
+                handle.getGraph()[desc] = rev.get_rev(); // alter attribute
                 int min_degree=10000, max_degree = 0;
                 typename boost::graph_traits<graph_type>::vertex_iterator vs,ve;
                 for (boost::tie(vs, ve) = boost::vertices(handle.getGraph()); vs != ve; ++vs){
@@ -269,9 +282,20 @@ class SimpleBacktrackingTest : public ::testing::Test {
                 }
                 FILE_LOG(logDEBUG1) << "max_degree: " << max_degree << " min_degree: " << min_degree << " num_edges: "<< num_edges(handle.getGraph());
                 if((max_degree==target_degree) && (min_degree ==target_degree)){
-                    graph_type g(handle.getGraph());
-                    results.push_front(g);
-                    FILE_LOG(logDEBUG1) << "success, rollback to rev: " << rev;
+                    bool already_exist = false;
+                    for(graph_type g : results){
+                        if(check_isomorphism(g,handle.getGraph())){
+                            already_exist = true;
+                            break;
+                        }
+                    }
+                    if(!already_exist){
+                        graph_type g(handle.getGraph());
+                        results.push_front(g);
+                        FILE_LOG(logDEBUG1) << "success, rollback to rev: " << rev;
+                    } else {
+                        FILE_LOG(logDEBUG1) << "already found similar graph, rollback to rev: " << rev;
+                    }
                     handle = handle.truncate_to(rev);
                     return;
                 }
@@ -297,10 +321,6 @@ class SimpleBacktrackingTest : public ::testing::Test {
 
     int backtrack(){
         list<graph_type> results;
-    //    vertex_iterator vi, vi2, vi_end, vi2_end;
-    //    boost::tie(vi, vi_end) = boost::vertices(handle.getGraph());
-    //    boost::tie(vi2, vi2_end) = boost::vertices(handle.getGraph());
-    //    backtrack(vi,vi2,vi_end,vi2_end,results,2);
         backtrack(results,2,1);
         FILE_LOG(logDEBUG1) << "found " << results.size() << " results" << endl;
         return results.size();
