@@ -152,6 +152,14 @@ TEST(Backtracking, checkIfDetectIsomorphism) {
     EXPECT_TRUE(vf2_subgraph_iso(graph1, graph2, callback));
 }
 
+template < typename Graph> void
+print_dependencies(std::ostream & out, const Graph & g) {
+  typename graph_traits < Graph >::edge_iterator ei, ei_end;
+  for (boost::tie(ei, ei_end) = edges(g); ei != ei_end; ++ei)
+    out << boost::source(*ei, g) << " (" << g[boost::source(*ei, g)] << ") -$>$ "
+      << boost::target(*ei, g) << " (" << g[boost::target(*ei, g)] << ") property: " << g[*ei] << std::endl;
+}
+
 class SimpleBacktrackingTest : public ::testing::Test {
  protected:
   typedef adjacency_list<vecS, vecS, bidirectionalS,int,int> graph_type;
@@ -167,85 +175,7 @@ class SimpleBacktrackingTest : public ::testing::Test {
         }
     }
     virtual void TearDown() { }
-    /*
-    void backtrack(vertex_iterator vi, vertex_iterator vi2, vertex_iterator vi_end, vertex_iterator vi2_end, list<graph_type>& results, int target_degree){
-        while(true){
-            if(vi==vi_end){
-                return;
-            }
-            FILE_LOG(logDEBUG1) << *vi << " != " << *vi_end;
-            if(vi2==vi2_end){
-                boost::tie(vi2, vi2_end) = boost::vertices(handle.getGraph());
-                ++vi;
-                FILE_LOG(logDEBUG1) << "jump to " << *vi << " -> " << *vi2;
-      //          backtrack(vi,vi2,vi_end,vi2_end,results,target_degree);
-      //          FILE_LOG(logDEBUG1) << "jumped back to " << *vi << " -> " << *vi2;
-                continue;
-            }
-            FILE_LOG(logDEBUG1) << "processing edge: " << *vi << " -> " << *vi2;
-            auto rev = handle.get_revision();
-            if((*vi==*vi2) || boost::edge(*vi,*vi2,handle.getGraph()).second){
-                FILE_LOG(logDEBUG1) << "same vertices or edge already exist, jump to " << *vi << " -> " << *vi2;
-                ++vi2;
-      //          backtrack(vi,vi2,vi_end,vi2_end,results,target_degree);
-                continue;
-            }
-            BOOST_ASSERT_MSG(size==num_vertices(handle.getGraph()),("Graph has " + to_string( num_vertices(handle.getGraph()) ) + " vertices " + " not " + to_string(size)).c_str());
-            ASSERT_EQ(size,num_vertices(handle.getGraph()));
-            commit(handle);// savepoint
-            FILE_LOG(logDEBUG1) << "try add edge: " << *vi << " -> " << *vi2;
-            auto e = add_edge(*vi,*vi2,handle.getGraph());
-            ASSERT_TRUE(e.second);
-            auto desc = e.first;
-            FILE_LOG(logDEBUG1) << "add edge: " << *vi << " -> " << *vi2;
-            handle.getGraph()[desc] = rev.get_rev(); // alter attribute
-            int min_degree=10000, max_degree = 0;
-            typename boost::graph_traits<graph_type>::vertex_iterator vs,ve;
-            for (boost::tie(vs, ve) = boost::vertices(handle.getGraph()); vs != ve; ++vs){
-                int tmp = out_degree(*vs,handle.getGraph());
-                if(tmp<min_degree){
-                    min_degree=tmp;
-                }
-                if(tmp>max_degree){
-                    max_degree=tmp;
-                }
-            }
-            FILE_LOG(logDEBUG1) << "max_degree: " << max_degree << " min_degree: " << min_degree << " num_edges: "<< num_edges(handle.getGraph());
-            if((max_degree==target_degree) && (min_degree ==target_degree)){
-                bool already_exist = false;
-                for(graph_type g : results){
-                    if(check_isomorphism(g,handle.getGraph())){
-                        already_exist = true;
-                        break;
-                    }
-                }
-                if(!already_exist){
-                    graph_type g(handle.getGraph());
-                    results.push_front(g);
-                    FILE_LOG(logDEBUG1) << "success, rollback to rev: " << rev;
-                } else {
-                    FILE_LOG(logDEBUG1) << "already found similar graph, rollback to rev: " << rev;
-                }
-                handle = handle.truncate_to(rev);
-                return;
-            }
-            BOOST_ASSERT_MSG(size==num_vertices(handle.getGraph()),("Graph has " + to_string( num_vertices(handle.getGraph()) ) + " vertices " + " not " + to_string(size)).c_str());
-            ASSERT_EQ(size,num_vertices(handle.getGraph()));
-            if(max_degree>target_degree){
-                FILE_LOG(logDEBUG1) << "failed, rollback to rev: " << rev;
-                handle = handle.truncate_to(rev); // rollback
-                ASSERT_EQ(size,num_vertices(handle.getGraph()));
-                return;
-            }
-            if(min_degree<target_degree){
-                FILE_LOG(logDEBUG1) << "small min_degree: " << min_degree;
-                ++vi2;
-                backtrack(vi,vi2,vi_end,vi2_end,results,target_degree);
-            }
-            ++vi2;
-        }
-    }
-*/
+
     void backtrack(list<graph_type>& results, int target_degree, int level){
         vertex_iterator vi, vi_end;
         for(boost::tie(vi, vi_end) = boost::vertices(handle.getGraph()); vi!=vi_end; ++vi){
@@ -256,7 +186,6 @@ class SimpleBacktrackingTest : public ::testing::Test {
                 auto rev = handle.get_revision();
                 if((*vi==*vi2) || boost::edge(*vi,*vi2,handle.getGraph()).second){
                     FILE_LOG(logDEBUG1) << "same vertices or edge already exist, jump to " << *vi << " -> " << *vi2;
-          //          backtrack(vi,vi2,vi_end,vi2_end,results,target_degree);
                     continue;
                 }
                 BOOST_ASSERT_MSG(size==num_vertices(handle.getGraph()),("Graph has " + to_string( num_vertices(handle.getGraph()) ) + " vertices " + " not " + to_string(size)).c_str());
@@ -323,6 +252,10 @@ class SimpleBacktrackingTest : public ::testing::Test {
         list<graph_type> results;
         backtrack(results,2,1);
         FILE_LOG(logDEBUG1) << "found " << results.size() << " results" << endl;
+        for(graph_type g : results){
+            print_dependencies(cout,g);
+            cout << endl;
+        }
         return results.size();
     }
     unsigned int size;
@@ -336,6 +269,7 @@ TEST_F(SimpleBacktrackingTest, checkFullBacktracking) {
 }
 
 TEST(Backtracking, checkSimpleBackTracking) {
+    FILELog::ReportingLevel() = logDEBUG3;
     typedef adjacency_list<vecS, vecS, undirectedS,external_data,external_data> graph_type;
 
     graph_archive<graph_type> repo;
