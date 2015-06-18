@@ -57,11 +57,11 @@ class graph_archive
 
     typedef typename boost::graph_traits<Graph>::edge_iterator edge_iterator;
     typedef typename boost::graph_traits<Graph>::vertex_iterator vertex_iterator;
-    typedef vertex_id<typename Graph::vertex_descriptor> vertex_key;
-    typedef edge_id<std::pair<typename Graph::vertex_descriptor,typename Graph::vertex_descriptor> > edge_key;
     typedef typename boost::graph_traits<Graph>::vertex_descriptor vertex_descriptor;
-    typedef mapping<internal_vertex,typename Graph::vertex_descriptor> vertex_mapping_type;
-    typedef mapping<std::pair<internal_vertex,internal_vertex>,typename Graph::edge_descriptor> edge_mapping_type;
+    typedef vertex_id<typename Graph::vertex_descriptor> vertex_key;
+    typedef edge_id<std::pair<vertex_descriptor,vertex_descriptor> > edge_key;
+    typedef mapping<internal_vertex,vertex_descriptor> vertex_mapping_type;
+    typedef mapping<std::pair<internal_vertex,internal_vertex>,std::pair<vertex_descriptor,vertex_descriptor>> edge_mapping_type;
     typedef typename boost::graph_traits<Graph>::edge_descriptor edge_descriptor;
 
     vertex_descriptor
@@ -72,23 +72,26 @@ class graph_archive
         assert(vertex_p.second);
         return vertex_p.first->second;
     }
-    edge_descriptor
-    get_edge_descriptor(const edge_mapping_type& em,
-                        const std::pair<internal_vertex,internal_vertex>& identifiers_pair
-                                                )const{
-        auto edge_p = em.find(identifiers_pair);
-        assert(edge_p.second);
-        return edge_p.first->second;
-    }
+
     std::pair<vertex_descriptor,vertex_descriptor>
     get_edges(const edge_mapping_type& em,
-              const std::pair<internal_vertex,internal_vertex>& identifiers_pair,
-              const Graph& g
+              const std::pair<internal_vertex,internal_vertex>& identifiers_pair
             )const{
-        edge_descriptor edge = get_edge_descriptor(em,identifiers_pair);
-        vertex_descriptor source = boost::source(edge,g);
-        vertex_descriptor target = boost::target(edge,g);
-        return std::make_pair(source,target);
+        auto edge_p = em.find(identifiers_pair);
+        BOOST_ASSERT_MSG(edge_p.second,("Cannot find mapping for edge " + to_string(identifiers_pair)).c_str());
+        return edge_p.first->second;
+    }
+
+    edge_descriptor
+    get_edge_descriptor(const edge_mapping_type& em,
+                        const std::pair<internal_vertex,internal_vertex>& identifiers_pair,
+                        const Graph& g )const{
+        auto edge_p = em.find(identifiers_pair);
+        BOOST_ASSERT_MSG(edge_p.second,("Cannot find mapping for edge " + to_string(identifiers_pair)).c_str());
+        auto edge_desc_p = get_edges(em,identifiers_pair);
+        auto p  = boost::edge(edge_desc_p.first,edge_desc_p.second,g);
+        BOOST_ASSERT_MSG(p.second,"Cannot find edge in graph");
+        return p.first;
     }
 
     std::pair<internal_vertex,internal_vertex>
@@ -121,7 +124,7 @@ class graph_archive
         std::pair<internal_vertex,internal_vertex> identifiers_pair = edges.get_key(it);
         revision rev = edges.get_revision(it,max_rev);
 
-        edge_descriptor edge = get_edge_descriptor(em,identifiers_pair);
+        edge_descriptor edge = get_edge_descriptor(em,identifiers_pair,g);
         vertex_descriptor source = boost::source(edge,g);
         vertex_descriptor target = boost::target(edge,g);
         return create_edge_id(std::make_pair(source,target),rev,identifiers_pair);
@@ -139,7 +142,7 @@ public:
         ++_head_rev;
 #ifdef DEBUG
         FILE_LOG(logDEBUG1) << "before COMMIT " << head_rev() << std::endl;
-        print_edges(edge_mapping);
+        print_edges(edge_mapping,g);
         print_vertices(mapping);
 #endif
 
@@ -192,40 +195,56 @@ public:
         {
             std::set<std::pair<vertex_descriptor,vertex_descriptor> > ah_edges; // edges that are already here
             for(edge_iterator edge_iter = ei.first; edge_iter != ei.second; ++edge_iter) {
-                auto s_vertex_p = mapping.find(boost::source(*edge_iter,g));
-                auto t_vertex_p = mapping.find(boost::target(*edge_iter,g));
-                if(t_vertex_p.second && t_vertex_p.second){
+                edge_descriptor edge_desc = *edge_iter;
+                vertex_descriptor s_desc = boost::source(edge_desc,g);
+                auto s_vertex_p = mapping.find(s_desc);
+                vertex_descriptor t_desc = boost::target(edge_desc,g);
+                auto t_vertex_p = mapping.find(t_desc);
+                auto edge_desc_p = std::make_pair(s_desc,t_desc);
+                auto edge_p = edge_mapping.find(edge_desc_p);
+                if(s_vertex_p.second && t_vertex_p.second && edge_p.second){
                     internal_vertex source_vertex = s_vertex_p.first->second;
                     internal_vertex target_vertex = t_vertex_p.first->second;
-                    typename edges_container::outer_const_iterator e_it = this->edges.find(std::make_pair(source_vertex,target_vertex));
-                    if(e_it!=edges.end_full()){
+                    auto p = std::make_pair(source_vertex,target_vertex);
+                    typename edges_container::outer_const_iterator e_it = this->edges.find(p);
+                    BOOST_ASSERT_MSG(e_it!=edges.end_full(),("Record for " + std::to_string(p) + "do not exist ").c_str());
+                    if(true){
                         // edge already exist, check for changes
-                        std::pair<internal_vertex,internal_vertex> identifier = e_it->first;
+                        std::pair<internal_vertex,internal_vertex> edge = e_it->first;
                         auto p = edges.get_head_entry(e_it);
-                        if(p.second){
+                        BOOST_ASSERT_MSG(p.second,("invalid record for " + std::to_string(edge)).c_str());
+                    //    if(p.second){
                             typename edges_container::inner_const_iterator ie_it = p.first;
                             if(e_it == edges.end_full() || helper<Graph,edge_properties>::changed(*edge_iter,ie_it,g)){
-                                commit_edge(g,identifier,*edge_iter,head_rev());
+                                FILE_LOG(logDEBUG2) << "COMMIT changed edge " << edge << " for desc: " << *edge_iter;
+                                commit_edge(g,edge,edge_desc,head_rev());
                             } else {
                                 ah_edges.insert(std::make_pair(source(*edge_iter,g),target(*edge_iter,g)));
                             }
-                        }
+                     //d   }
                     } else {
                         // vertices exist, but edge not
                         auto edge = std::make_pair(source_vertex,target_vertex);
-                        commit_edge(g,edge,*edge_iter,head_rev());
-                        edge_mapping.insert(edge,*edge_iter);
+                        FILE_LOG(logDEBUG2) << "COMMIT new edge " << edge << " for desc: " << *edge_iter;
+                        commit_edge(g,edge,edge_desc,head_rev());
+                        edge_mapping.insert(edge,edge_desc_p);
                     }
                 } else {
                     // edge do not exist in archive yet
-                    edge_descriptor desc = *edge_iter;
-                    internal_vertex source = get_internal_vertex(mapping,boost::source(*edge_iter,g));
-                    internal_vertex target = get_internal_vertex(mapping,boost::target(*edge_iter,g));
+                    BOOST_ASSERT_MSG(s_vertex_p.second,"Missing mapping for source vertex");
+                    BOOST_ASSERT_MSG(t_vertex_p.second,"Missing mapping for target vertex");
+                    BOOST_ASSERT_MSG(!edge_p.second,"Mapping for edge already exist");
+                    internal_vertex source = get_internal_vertex(mapping,s_desc);
+                    internal_vertex target = get_internal_vertex(mapping,t_desc);
                     auto edge = std::make_pair(source,target);
-                    commit_edge(g,edge,*edge_iter,head_rev());
-                    edge_mapping.insert(edge,desc);
+                    FILE_LOG(logDEBUG2) << "COMMIT new edge " << edge << " for desc: " << edge_desc;
+                    commit_edge(g,edge,edge_desc,head_rev());
+                    edge_mapping.insert(edge,edge_desc_p);
+                    BOOST_ASSERT_MSG(edge_mapping.find(edge).second,"Missing edge mapping");
                 }
+                BOOST_ASSERT_MSG(edge_mapping.find(edge_desc_p).second,"Missing edge mapping");
             }
+            FILE_LOG(logDEBUG1) << "mark currently missing edges as removed";
             // mark currently missing edges as removed (negative revision)
             typename edges_container::const_iterator e_it = edges.cbegin(head_rev());
             while(e_it !=edges.cend()){
@@ -243,7 +262,7 @@ public:
         }
 #ifdef DEBUG
         FILE_LOG(logDEBUG1) << "after COMMIT " << head_rev();
-        print_edges(edge_mapping);
+        print_edges(edge_mapping,g);
         print_vertices(mapping);
 #endif
         return _head_rev;
@@ -285,11 +304,11 @@ public:
             return false;
         return e_it->first.revision >=0;
     }
-    void print_edges(const edge_mapping_type& edge_mapping)const{
+    void print_edges(const edge_mapping_type& edge_mapping, const Graph& g)const{
         FILE_LOG(logDEBUG3) << "print all edges:";
         for(auto it=edges.begin_full();it!=edges.end_full();++it){
             std::pair<internal_vertex,internal_vertex> p = it->first;
-            edge_descriptor desc = get_edge_descriptor(edge_mapping,p);
+            edge_descriptor desc = get_edge_descriptor(edge_mapping,p,g);
             FILE_LOG(logDEBUG3) << p << " desc: " << desc;
         }
         FILE_LOG(logDEBUG3) << "all edges printed";
@@ -381,12 +400,13 @@ public:
                 auto e = boost::add_edge(source,target,n);
                 assert(e.second);
                 edge_descriptor desc = e.first;
+                auto edge_desc_p = std::make_pair(source,target);
 #ifdef DEBUG
                 FILE_LOG(logDEBUG2) << "checked out: " << source << " " << target << " rev: "<< edge_rev << " wanted: " << rev;
 #endif
  //               edges.set_edge_property(e_it,n,curr_edge);
                 n[desc] = edges.get_property(e_it,edge_rev);
-                edge_mapping.insert(identifiers_pair,desc);
+                edge_mapping.insert(identifiers_pair,edge_desc_p);
             }else{
 #ifdef DEBUG
                 FILE_LOG(logDEBUG2)  << "NOT checked out: " << identifiers_pair.first << " " << identifiers_pair.second << " rev: "<< edge_rev << " wanted: " << rev;

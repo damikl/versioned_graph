@@ -163,9 +163,23 @@ print_dependencies(std::ostream & out, const Graph & g) {
       << boost::target(*ei, g) << " (" << g[boost::target(*ei, g)] << ") property: " << g[*ei] << std::endl;
 }
 
+namespace std{
+    template<>
+    struct hash<external_data>
+    {
+        typedef external_data argument_type;
+        typedef size_t result_type;
+
+        result_type operator()(argument_type const& s) const
+        {
+            return hash<int>()(s.value);
+        }
+    };
+}
+
 class SimpleBacktrackingTest : public ::testing::Test {
  protected:
-  typedef adjacency_list<vecS, vecS, bidirectionalS,int,int> graph_type;
+  typedef adjacency_list<vecS, vecS, bidirectionalS,external_data,external_data> graph_type;
   typedef typename boost::graph_traits<graph_type>::vertex_iterator vertex_iterator;
     SimpleBacktrackingTest() : handle(repo),repo() {
         FILE* log_fd = fopen( "mylogfile_backtracking.txt", "w" );
@@ -199,7 +213,7 @@ class SimpleBacktrackingTest : public ::testing::Test {
                 ASSERT_TRUE(e.second);
                 auto desc = e.first;
                 FILE_LOG(logDEBUG1) << "add edge: " << *vi << " -> " << *vi2;
-                handle.getGraph()[desc] = rev.get_rev(); // alter attribute
+                handle.getGraph()[desc].value = rev.get_rev(); // alter attribute
                 int min_degree=10000, max_degree = 0;
                 typename boost::graph_traits<graph_type>::vertex_iterator vs,ve;
                 for (boost::tie(vs, ve) = boost::vertices(handle.getGraph()); vs != ve; ++vs){
@@ -228,14 +242,14 @@ class SimpleBacktrackingTest : public ::testing::Test {
                     } else {
                         FILE_LOG(logDEBUG1) << "already found similar graph, rollback to rev: " << rev;
                     }
-                    handle = handle.truncate_to(rev);
+                    handle = truncate_to(handle,rev);
                     return;
                 }
                 BOOST_ASSERT_MSG(size==num_vertices(handle.getGraph()),("Graph has " + to_string( num_vertices(handle.getGraph()) ) + " vertices " + " not " + to_string(size)).c_str());
                 ASSERT_EQ(size,num_vertices(handle.getGraph()));
                 if(max_degree>target_degree){
                     FILE_LOG(logDEBUG1) << "failed, rollback to rev: " << rev;
-                    handle = handle.truncate_to(rev); // rollback
+                    handle = truncate_to(handle,rev); // rollback
                     ASSERT_EQ(size,num_vertices(handle.getGraph()));
                     continue;
                 }
@@ -267,12 +281,12 @@ class SimpleBacktrackingTest : public ::testing::Test {
 };
 
 TEST_F(SimpleBacktrackingTest, checkFullBacktracking) {
-     FILELog::ReportingLevel() = logDEBUG3;
+     FILELog::ReportingLevel() = logDEBUG4;
      ASSERT_GE(this->backtrack(),1);
 }
 
 TEST(Backtracking, checkSimpleBackTracking) {
-    FILE* log_fd = fopen( "mylogfile_backtracking1.txt", "w" );
+    FILE* log_fd = fopen( "mylogfile_simple_backtracking.txt", "w" );
     Output2FILE::Stream() = log_fd;
     FILELog::ReportingLevel() = logDEBUG3;
     typedef adjacency_list<vecS, vecS, undirectedS,external_data,external_data> graph_type;

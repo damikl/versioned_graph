@@ -5,9 +5,9 @@
 
 template<typename Graph>
 class archive_handle {
-
-    typedef mapping<internal_vertex,typename Graph::vertex_descriptor> vertex_mapping_type;
-    typedef mapping<std::pair<internal_vertex,internal_vertex>,typename Graph::edge_descriptor> edge_mapping_type;
+    typedef typename Graph::vertex_descriptor vertex_descriptor;
+    typedef mapping<internal_vertex,vertex_descriptor> vertex_mapping_type;
+    typedef mapping<std::pair<internal_vertex,internal_vertex>,std::pair<vertex_descriptor,vertex_descriptor> > edge_mapping_type;
 
 public:
     archive_handle( graph_archive<Graph>& archive,const Graph& g) : archive(archive),graph(g),rev(0){
@@ -105,9 +105,9 @@ archive_handle<Graph> checkout(const archive_handle<Graph>& handle, const revisi
     return handle.checkout(rev);
 }
 template<typename Graph>
-archive_handle<Graph> revert_to(archive_handle<Graph>& handle, const revision& rev){
+archive_handle<Graph> truncate_to(archive_handle<Graph>& handle, const revision& rev){
 
-    return handle.checkout(rev);
+    return handle.truncate_to(rev);
 }
 
 #endif // HANDLER_H
