@@ -335,7 +335,7 @@ public:
     }
     void print_vertices(const vertex_mapping_type& vertex_mapping)const{
         FILE_LOG(logDEBUG3) << "print all vertices:";
-        assert(std::distance(vertices.begin_full(),vertices.end_full())==vertices.size());
+        assert(unsigned(abs(std::distance(vertices.begin_full(),vertices.end_full())))==vertices.size());
         for(auto it=vertices.begin_full();it!=vertices.end_full();++it){
             internal_vertex v = it->first;
             vertex_descriptor desc = get_vertex_descriptor(vertex_mapping,v);
@@ -346,7 +346,7 @@ public:
     }
     void print_vertices()const{
         FILE_LOG(logDEBUG3) << "print all vertices:";
-        assert(std::distance(vertices.begin_full(),vertices.end_full())==vertices.size());
+        assert(unsigned(abs(std::distance(vertices.begin_full(),vertices.end_full())))==vertices.size());
         for(auto it=vertices.begin_full();it!=vertices.end_full();++it){
             internal_vertex v = it->first;
             FILE_LOG(logDEBUG3) << v;

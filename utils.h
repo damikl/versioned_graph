@@ -114,6 +114,9 @@ struct revision{
         FILE_LOG(logDEBUG4) << "revision " << rev << " <= " << r.rev << " == " << (abs(rev) <= abs(r.rev));
         return abs(rev) <= abs(r.rev);
     }
+    bool operator>=(const revision& r) const{
+        return abs(rev) >= abs(r.rev);
+    }
     bool operator==(const revision& r) const{
         FILE_LOG(logDEBUG4) << "revision " << rev << " == " << r.rev << " == " << (abs(rev) == abs(r.rev));
         return abs(rev) == abs(r.rev);
@@ -126,6 +129,13 @@ struct revision{
         assert(rev >=0);
         ++rev;
         FILE_LOG(logDEBUG2) << "incremented";
+        return *this;
+    }
+    revision& operator--(){
+        FILE_LOG(logDEBUG2) << "decrement revision";
+        assert(rev >0);
+        --rev;
+        FILE_LOG(logDEBUG2) << "decremented";
         return *this;
     }
     revision(int r) : rev(r){ }
