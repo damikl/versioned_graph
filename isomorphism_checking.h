@@ -1,6 +1,8 @@
 #ifndef ISOMORPHISM_CHECKING_H
 #define ISOMORPHISM_CHECKING_H
-#include "archive.h"
+#include "mapping.h"
+#include <boost/graph/isomorphism.hpp>
+#include <functional>
 
 template <typename Graph>
 unsigned attribute_vertex_invariant(const typename boost::graph_traits<Graph>::vertex_descriptor &v, const Graph &g){

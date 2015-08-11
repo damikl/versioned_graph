@@ -100,6 +100,8 @@ std::ostream& operator<<(std::ostream& os, const internal_vertex& obj) {
     return os << obj.identifier << " ";
 }
 
+
+
 struct revision{
     int rev;
     bool operator<(const revision& r) const{

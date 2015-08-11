@@ -61,7 +61,7 @@ struct external_data{
         return this->value==other.value;
     }
     bool operator !=(const external_data& other)const{
-        return this->value==other.value;
+        return this->value!=other.value;
     }
 };
 
