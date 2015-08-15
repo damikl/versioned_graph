@@ -4,29 +4,16 @@
 //#include <boost/graph/subgraph.hpp>
 #include <boost/graph/adjacency_list.hpp>
 #include <boost/graph/graph_utility.hpp>
-#include "utils.h"
+//#include "utils.h"
 #include <boost/iterator/filter_iterator.hpp>
 #include <boost/graph/topological_sort.hpp>
 #include "versioned_graph.h"
-#include "subgraph_test.h"
-#include "isomorphism_checking.h"
+//#include "subgraph_test.h"
+//#include "isomorphism_checking.h"
 #include "gtest/gtest.h"
 
 using namespace std;
 
-namespace std{
-    template<>
-    struct hash<external_data>
-    {
-        typedef external_data argument_type;
-        typedef size_t result_type;
-
-        result_type operator()(argument_type const& s) const
-        {
-            return hash<int>()(s.value);
-        }
-    };
-}
 
 TEST(VersionedGraphTest, conceptCheck){
     FILE* log_fd = fopen( "inner_check_concepts.txt", "w" );
@@ -34,7 +21,7 @@ TEST(VersionedGraphTest, conceptCheck){
     using namespace boost;
     using namespace std;
 
-    typedef versioned_graph<boost::vecS, boost::vecS, boost::directedS,int,int> simple_graph;
+    typedef versioned_graph<boost::vecS, boost::vecS, boost::undirectedS,int,int> simple_graph;
     simple_graph sg;
     typedef typename graph_traits<simple_graph>::vertex_descriptor vertex_descriptor;
     typedef typename graph_traits<simple_graph>::edge_descriptor edge_descriptor;
@@ -44,7 +31,11 @@ TEST(VersionedGraphTest, conceptCheck){
     typedef typename graph_traits<simple_graph>::adjacency_iterator adjacency_iterator;
     typedef typename simple_graph::inv_adjacency_iterator inv_adjacency_iterator;
     typedef typename graph_traits<simple_graph>::directed_category directed_category;
+    bool directed_category_res = std::is_same<boost::undirected_tag,directed_category>::value;
+    ASSERT_TRUE(directed_category_res);
     typedef typename graph_traits<simple_graph>::edge_parallel_category edge_parallel_category;
+    bool edge_parallel_category_res = std::is_same<boost::allow_parallel_edge_tag,edge_parallel_category>::value;
+    ASSERT_TRUE(edge_parallel_category_res);
     typedef typename graph_traits<simple_graph>::vertices_size_type vertices_size_type;
     typedef typename graph_traits<simple_graph>::edges_size_type edges_size_type;
     typedef typename graph_traits<simple_graph>::degree_size_type degree_size_type;
@@ -56,18 +47,150 @@ TEST(VersionedGraphTest, conceptCheck){
 
     typedef typename boost::vertex_bundle_type<simple_graph>::type vertex_properties;
     typedef typename boost::edge_bundle_type<simple_graph>::type edge_properties;
-    auto v1 = add_vertex(1,sg);
-    auto v2 = add_vertex(2,sg);
-    auto v3 = add_vertex(3,sg);
-    auto v4 = add_vertex(4,sg);
-    add_edge(9,v1,v2,sg);
-    add_edge(8,v1,v3,sg);
-    add_edge(7,v2,v4,sg);
-    add_edge(11,v1,v4,sg);
-    add_edge(12,v2,v3,sg);
+    vertex_descriptor v1 = add_vertex(1,sg);
+    vertex_descriptor v2 = add_vertex(2,sg);
+    vertex_descriptor v3 = add_vertex(3,sg);
+    vertex_descriptor v4 = add_vertex(4,sg);
+    edge_descriptor e;
+    bool result = false;
+    boost::tie(e,result) = add_edge(v1,v2,9,sg);
+    assert(result);
+    boost::tie(e,result) = add_edge(v1,v3,8,sg);
+    assert(result);
+    boost::tie(e,result) = add_edge(v2,v4,7,sg);
+    assert(result);
+    boost::tie(e,result) = add_edge(v1,v4,11,sg);
+    assert(result);
+    boost::tie(e,result) = add_edge(v2,v3,12,sg);
+    assert(result);
+    commit(sg);
+    boost::remove_edge(e,sg);
+    {
+        std::pair<vertex_iterator, vertex_iterator> vi = vertices(sg);
+        ASSERT_EQ(4,std::distance(vi.first,vi.second));
+        ASSERT_EQ(4,boost::num_vertices(sg));
+    }
+    {
+        std::pair<edge_iterator, edge_iterator> ei = boost::edges(sg);
+        ASSERT_EQ(4,boost::num_edges(sg));
+        ASSERT_EQ(4,std::distance(ei.first,ei.second));
+
+        // count edges marked as removed
+        ASSERT_EQ(5,boost::num_edges(sg.get_self()));
+        auto priv_ei = edges(sg.get_self());
+        ASSERT_EQ(5,std::distance(priv_ei.first,priv_ei.second));
+    }
+    {
+        std::pair<out_edge_iterator, out_edge_iterator> ei = out_edges(v1,sg);
+        unsigned int count = 0;
+        for(out_edge_iterator edge_iter = ei.first; edge_iter != ei.second; ++edge_iter) {
+            ++count;
+            ASSERT_EQ(v1,boost::source(*edge_iter,sg));
+        }
+        ASSERT_EQ(3,count);
+        count = 0;
+        ei = out_edges(v2,sg);
+        for(out_edge_iterator edge_iter = ei.first; edge_iter != ei.second; ++edge_iter) {
+            ++count;
+            ASSERT_EQ(v2,boost::source(*edge_iter,sg));
+        }
+        ASSERT_EQ(2,count);
+        count = 0;
+        ei = out_edges(v3,sg);
+        for(out_edge_iterator edge_iter = ei.first; edge_iter != ei.second; ++edge_iter) {
+            ++count;
+            ASSERT_EQ(v3,boost::source(*edge_iter,sg));
+        }
+        ASSERT_EQ(1,count);
+        count = 0;
+//        ASSERT_TRUE(ei.first==ei.second);
+        ei = out_edges(v4,sg);
+        for(out_edge_iterator edge_iter = ei.first; edge_iter != ei.second; ++edge_iter) {
+            ++count;
+            ASSERT_EQ(v4,boost::source(*edge_iter,sg));
+        }
+        ASSERT_EQ(2,count);
+//        ASSERT_TRUE(ei.first==ei.second);
+    }
+    {
+        std::pair<adjacency_iterator, adjacency_iterator> ei = adjacent_vertices(v1,sg);
+        unsigned int count = 0;
+        for(adjacency_iterator iter = ei.first; iter != ei.second; ++iter) {
+            ++count;
+            vertex_descriptor v = *iter;
+            FILE_LOG(logDEBUG1) << "adjacent vertex to "<< v1 << ": " << v;
+            ASSERT_TRUE(v==v2 || v==v3 || v==v4);
+        }
+        ASSERT_EQ(3,count);
+        count = 0;
+        ei = adjacent_vertices(v2,sg);
+        for(adjacency_iterator iter = ei.first; iter != ei.second; ++iter) {
+            ++count;
+            vertex_descriptor v = *iter;
+            FILE_LOG(logDEBUG1) << "adjacent vertex to "<< v2 << ": " << v;
+            ASSERT_TRUE(v==v4 || v==v1);
+        }
+        ASSERT_EQ(2,count);
+        count = 0;
+        ei = adjacent_vertices(v3,sg);
+        for(adjacency_iterator iter = ei.first; iter != ei.second; ++iter) {
+            ++count;
+            vertex_descriptor v = *iter;
+            FILE_LOG(logDEBUG1) << "adjacent vertex to "<< v3 << ": " << v;
+            ASSERT_TRUE(v==v1);
+        }
+        ASSERT_EQ(1,count);
+        count = 0;
+        ei = adjacent_vertices(v4,sg);
+        for(adjacency_iterator iter = ei.first; iter != ei.second; ++iter) {
+            ++count;
+            vertex_descriptor v = *iter;
+            FILE_LOG(logDEBUG1) << "adjacent vertex to "<< v4 << ": " << v;
+            ASSERT_TRUE(v==v1 || v==v2);
+        }
+        ASSERT_EQ(2,count);
+    }
+    {
+        std::pair<inv_adjacency_iterator, inv_adjacency_iterator> ei = inv_adjacent_vertices(v1,sg);
+        unsigned int count = 0;
+        for(inv_adjacency_iterator iter = ei.first; iter != ei.second; ++iter) {
+            ++count;
+            vertex_descriptor v = *iter;
+            FILE_LOG(logDEBUG1) << "adjacent vertex to "<< v1 << ": " << v;
+            ASSERT_TRUE(v==v2 || v==v3 || v==v4);
+        }
+        ASSERT_EQ(3,count);
+        count = 0;
+        ei = inv_adjacent_vertices(v2,sg);
+        for(inv_adjacency_iterator iter = ei.first; iter != ei.second; ++iter) {
+            ++count;
+            vertex_descriptor v = *iter;
+            FILE_LOG(logDEBUG1) << "adjacent vertex to "<< v2 << ": " << v;
+            ASSERT_TRUE(v==v4 || v==v1);
+        }
+        ASSERT_EQ(2,count);
+        count = 0;
+        ei = inv_adjacent_vertices(v3,sg);
+        for(inv_adjacency_iterator iter = ei.first; iter != ei.second; ++iter) {
+            ++count;
+            vertex_descriptor v = *iter;
+            FILE_LOG(logDEBUG1) << "adjacent vertex to "<< v3 << ": " << v;
+            ASSERT_TRUE(v==v1);
+        }
+        ASSERT_EQ(1,count);
+        count = 0;
+        ei = inv_adjacent_vertices(v4,sg);
+        for(inv_adjacency_iterator iter = ei.first; iter != ei.second; ++iter) {
+            ++count;
+            vertex_descriptor v = *iter;
+            FILE_LOG(logDEBUG1) << "adjacent vertex to "<< v4 << ": " << v;
+            ASSERT_TRUE(v==v1 || v==v2);
+        }
+        ASSERT_EQ(2,count);
+    }
 }
 
-TEST(VersionedGraphTest, HandlesZeroInput) {
+TEST(VersionedGraphTest, SimpleExample) {
     FILE* log_fd = fopen( "inner_basic_tests.txt", "w" );
     Output2FILE::Stream() = log_fd;
     using namespace boost;
@@ -111,32 +234,145 @@ TEST(VersionedGraphTest, HandlesZeroInput) {
     ASSERT_EQ(5,num_vertices(sg));
     ASSERT_EQ(7,num_edges(sg));
     ASSERT_EQ(5,sg[v5]);
+}
+
+TEST(VersionedGraphTest, withoutTypes) {
+    FILE* log_fd = fopen( "checkWithoutTypes.txt", "w" );
+    Output2FILE::Stream() = log_fd;
+    using namespace boost;
+    using namespace std;
+    typedef versioned_graph<boost::vecS, boost::vecS, boost::directedS> simple_graph;
+    simple_graph sg;
+//    typedef typename graph_traits<simple_graph>::vertices_size_type size_type;
+//    typedef typename boost::vertex_bundle_type<simple_graph>::type vertex_properties;
+//    typedef typename boost::edge_bundle_type<simple_graph>::type edge_properties;
+    typedef typename boost::graph_traits<simple_graph>::vertex_descriptor vertex_descriptor;
+    vertex_descriptor v1 = add_vertex(sg);
+    vertex_descriptor v2 = add_vertex(sg);
+    vertex_descriptor v3 = add_vertex(sg);
+    vertex_descriptor v4 = add_vertex(sg);
+    add_edge(v1,v2,sg);
+    add_edge(v1,v3,sg);
+    add_edge(v2,v4,sg);
+    add_edge(v1,v4,sg);
+    add_edge(v2,v3,sg);
+    FILE_LOG(logDEBUG1) << "start commit";
+    commit(sg);
+    FILE_LOG(logDEBUG1) << "commit end";
+    remove_edge(v1,v4,sg);
+    ASSERT_EQ(4,num_edges(sg));
+    EXPECT_FALSE(edge(v1,v4,sg).second);
+    undo_commit(sg);
+    FILE_LOG(logDEBUG1) << "made undo";
+    ASSERT_TRUE(edge(v1,v4,sg).second);
+    FILE_LOG(logDEBUG1) << "edge recreated";
+    ASSERT_EQ(5,num_edges(sg));
+    FILE_LOG(logDEBUG1) << "count match";
+    vertex_descriptor v5 = add_vertex(sg);
+    add_edge(v5,v4,sg);
+    add_edge(v3,v5,sg);
+    ASSERT_EQ(5,num_vertices(sg));
+    ASSERT_EQ(7,num_edges(sg));
+}
+
+TEST(VersionedGraphTest, normalTopologicalSort) {
+    FILE* log_fd = fopen( "normalTopologicalSort.txt", "w" );
+    Output2FILE::Stream() = log_fd;
+    using namespace boost;
+    using namespace std;
+    typedef property<vertex_color_t, int> ColorProperty;
+    typedef adjacency_list<boost::vecS, boost::vecS, boost::directedS,ColorProperty> simple_graph;
+    simple_graph sg;
+//    typedef typename graph_traits<simple_graph>::vertices_size_type size_type;
+//    typedef typename boost::vertex_bundle_type<simple_graph>::type vertex_properties;
+//    typedef typename boost::edge_bundle_type<simple_graph>::type edge_properties;
+    typedef typename boost::graph_traits<simple_graph>::vertex_descriptor vertex_descriptor;
+    vertex_descriptor v1 = add_vertex(sg);
+    vertex_descriptor v2 = add_vertex(sg);
+    vertex_descriptor v3 = add_vertex(sg);
+    vertex_descriptor v4 = add_vertex(sg);
+    add_edge(v1,v2,sg);
+    add_edge(v1,v3,sg);
+    add_edge(v2,v4,sg);
+    add_edge(v1,v4,sg);
+    add_edge(v2,v3,sg);
+    FILE_LOG(logDEBUG1) << "start commit";
+//    commit(sg);
+//    FILE_LOG(logDEBUG1) << "commit end";
+//    remove_edge(v1,v4,sg);
+//    ASSERT_EQ(4,num_edges(sg));
+//    EXPECT_FALSE(edge(v1,v4,sg).second);
+//    undo_commit(sg);
+//    FILE_LOG(logDEBUG1) << "made undo";
+    ASSERT_TRUE(edge(v1,v4,sg).second);
+    FILE_LOG(logDEBUG1) << "edge recreated";
+    ASSERT_EQ(5,num_edges(sg));
+    FILE_LOG(logDEBUG1) << "count match";
+    vertex_descriptor v5 = add_vertex(sg);
+    add_edge(v5,v4,sg);
+    add_edge(v3,v5,sg);
+    ASSERT_EQ(5,num_vertices(sg));
+    ASSERT_EQ(7,num_edges(sg));
 
 
-    typedef boost::graph_traits<simple_graph>::vertex_iterator vertex_iterator;
-
-    //Tried to make this section more clear, instead of using tie, keeping all
-    //the original types so it's more clear what is going on
-    std::pair<vertex_iterator, vertex_iterator> vi = vertices(sg);
-    for(vertex_iterator vertex_iter = vi.first; vertex_iter != vi.second; ++vertex_iter) {
-        std::cout << "(" << *vertex_iter << ")\n";
+    FILE_LOG(logDEBUG1) << "make tolological sort";
+    // Perform a topological sort.
+    std::vector<vertex_descriptor> topo_order;
+    boost::topological_sort(sg, std::back_inserter(topo_order));
+    // Print the results.
+    FILE_LOG(logDEBUG1) << "Print the results";
+    for(std::vector<vertex_descriptor>::const_iterator i = topo_order.begin();i != topo_order.end();++i)
+    {
+        std::cout << *i << std::endl;
+        FILE_LOG(logDEBUG1) << *i;
     }
 
-    typedef boost::graph_traits<simple_graph>::edge_iterator edge_iterator;
+}
 
-    //Tried to make this section more clear, instead of using tie, keeping all
-    //the original types so it's more clear what is going on
-    std::pair<edge_iterator, edge_iterator> ei = edges(sg);
-    for(edge_iterator edge_iter = ei.first; edge_iter != ei.second; ++edge_iter) {
-        std::cout << "(" << source(*edge_iter, sg) << ", " << target(*edge_iter, sg) << ")\n";
-        FILE_LOG(logDEBUG1) << "("  << source(*edge_iter, sg) << ", " << target(*edge_iter, sg) << ")";
-    }
+TEST(VersionedGraphTest, checkTopologicalSort) {
+    FILE* log_fd = fopen( "checkTopologicalSort.txt", "w" );
+    Output2FILE::Stream() = log_fd;
+    using namespace boost;
+    using namespace std;
+    typedef property<vertex_color_t, int> ColorProperty;
+    typedef versioned_graph<boost::vecS, boost::vecS, boost::directedS,ColorProperty> simple_graph;
+    simple_graph sg;
+//    typedef typename graph_traits<simple_graph>::vertices_size_type size_type;
+//    typedef typename boost::vertex_bundle_type<simple_graph>::type vertex_properties;
+//    typedef typename boost::edge_bundle_type<simple_graph>::type edge_properties;
+    typedef typename boost::graph_traits<simple_graph>::vertex_descriptor vertex_descriptor;
+    vertex_descriptor v1 = add_vertex(sg);
+    vertex_descriptor v2 = add_vertex(sg);
+    vertex_descriptor v3 = add_vertex(sg);
+    vertex_descriptor v4 = add_vertex(sg);
+    add_edge(v1,v2,sg);
+    add_edge(v1,v3,sg);
+    add_edge(v2,v4,sg);
+    add_edge(v1,v4,sg);
+    add_edge(v2,v3,sg);
+    FILE_LOG(logDEBUG1) << "start commit";
+    commit(sg);
+    FILE_LOG(logDEBUG1) << "commit end";
+    remove_edge(v1,v4,sg);
+    ASSERT_EQ(4,num_edges(sg));
+    EXPECT_FALSE(edge(v1,v4,sg).second);
+    undo_commit(sg);
+    FILE_LOG(logDEBUG1) << "made undo";
+    ASSERT_TRUE(edge(v1,v4,sg).second);
+    FILE_LOG(logDEBUG1) << "edge recreated";
+    ASSERT_EQ(5,num_edges(sg));
+    FILE_LOG(logDEBUG1) << "count match";
+    vertex_descriptor v5 = add_vertex(sg);
+    add_edge(v5,v4,sg);
+    add_edge(v3,v5,sg);
+    ASSERT_EQ(5,num_vertices(sg));
+    ASSERT_EQ(7,num_edges(sg));
 
-    /*
+
     FILE_LOG(logDEBUG1) << "make tolological sort";
     // Perform a topological sort.
     std::deque<int> topo_order;
-    boost::topological_sort(sg, std::front_inserter(topo_order));
+    boost::topological_sort(sg.get_self(), std::front_inserter(topo_order));
     // Print the results.
     FILE_LOG(logDEBUG1) << "Print the results";
     for(std::deque<int>::const_iterator i = topo_order.begin();i != topo_order.end();++i)
@@ -144,125 +380,5 @@ TEST(VersionedGraphTest, HandlesZeroInput) {
         std::cout << *i << std::endl;
         FILE_LOG(logDEBUG1) << *i;
     }
-    */
+
 }
-
-template < typename Graph> void
-print_dependencies(std::ostream & out, const Graph & g) {
-  typename boost::graph_traits < Graph >::edge_iterator ei, ei_end;
-  for (boost::tie(ei, ei_end) = edges(g); ei != ei_end; ++ei)
-    out << boost::source(*ei, g) << " (" << g[boost::source(*ei, g)] << ") -$>$ "
-      << boost::target(*ei, g) << " (" << g[boost::target(*ei, g)] << ") property: " << g[*ei] << std::endl;
-}
-
-class InnerBacktrackingTest : public ::testing::Test {
- protected:
-  typedef boost::versioned_graph<boost::listS, boost::listS, boost::bidirectionalS,external_data,external_data> graph_type;
-  typedef typename boost::graph_traits<graph_type>::vertex_iterator vertex_iterator;
-    InnerBacktrackingTest() :graph() {
-        FILE* log_fd = fopen( "mylogfile_inner_backtracking.txt", "w" );
-        Output2FILE::Stream() = log_fd;
-    }
-    virtual void SetUp() {
-        size = 4;
-        for(unsigned int i=0; i<size;++i){
-            boost::add_vertex(graph);
-        }
-    }
-    virtual void TearDown() { }
-
-    void backtrack(list<graph_type>& results, int target_degree, int level){
-        vertex_iterator vi, vi_end;
-        for(boost::tie(vi, vi_end) = boost::vertices(graph); vi!=vi_end; ++vi){
-            vertex_iterator vi2, vi2_end;
-            FILE_LOG(logDEBUG1) << "backtrack: jump to " << *vi << " -> ";
-            for(boost::tie(vi2, vi2_end) = boost::vertices(graph); vi2!=vi2_end; ++vi2){
-                FILE_LOG(logDEBUG1) << "backtrack: processing edge: " << *vi << " -> " << *vi2 << " on level " << level;
-                if((*vi==*vi2) || boost::edge(*vi,*vi2,graph).second){
-                    FILE_LOG(logDEBUG1) << "backtrack: same vertices or edge already exist, jump to " << *vi << " -> " << *vi2;
-                    continue;
-                }
-                BOOST_ASSERT_MSG(size==num_vertices(graph),("Graph has " + to_string( num_vertices(graph) ) + " vertices " + " not " + to_string(size)).c_str());
-                ASSERT_EQ(size,num_vertices(graph));
-                commit(graph);// savepoint
-                FILE_LOG(logDEBUG1) << "backtrack: try add edge: " << *vi << " -> " << *vi2;
-                auto e = add_edge(*vi,*vi2,graph);
-                ASSERT_TRUE(e.second);
-                auto desc = e.first;
-                FILE_LOG(logDEBUG1) << "backtrack: add edge: " << *vi << " -> " << *vi2;
-                int& i = graph[desc].value;
-                i = graph[desc].value+1; // alter attribute
-                int min_degree=10000, max_degree = 0;
-                typename boost::graph_traits<graph_type>::vertex_iterator vs,ve;
-                for (boost::tie(vs, ve) = boost::vertices(graph); vs != ve; ++vs){
-                    int tmp = out_degree(*vs,graph);
-                    FILE_LOG(logDEBUG1) << "backtrack: out_degree for: " << *vs << " is " << tmp;
-                    if(tmp<min_degree){
-                        min_degree=tmp;
-                    }
-                    if(tmp>max_degree){
-                        max_degree=tmp;
-                    }
-                }
-                FILE_LOG(logDEBUG1) << "backtrack: max_degree: " << max_degree << " min_degree: " << min_degree << " num_edges: "<< num_edges(graph);
-                if((max_degree==target_degree) && (min_degree ==target_degree)){
-                    bool already_exist = false;
-                    for(graph_type g : results){
-                        FILE_LOG(logDEBUG1) << "check isomorphism";
-                        if(check_isomorphism(g,graph)){
-                            already_exist = true;
-                            break;
-                        }
-                        FILE_LOG(logDEBUG1) << "isomorphism not found";
-                    }
-                    if(!already_exist){
-                        graph_type g(graph);
-                        results.push_front(g);
-                        FILE_LOG(logDEBUG1) << "backtrack: success, rollback to rev: " << g.get_current_rev();
-                    } else {
-                        FILE_LOG(logDEBUG1) << "backtrack: already found similar graph, rollback to rev: " << graph.get_current_rev().get_rev()-1;
-                    }
-                    boost::undo_commit(graph);
-                    return;
-                }
-                BOOST_ASSERT_MSG(size==num_vertices(graph),("backtrack: Graph has " + to_string( num_vertices(graph) ) + " vertices " + " not " + to_string(size)).c_str());
-                ASSERT_EQ(size,num_vertices(graph));
-                if(max_degree>target_degree){
-                    FILE_LOG(logDEBUG1) << "backtrack: failed, rollback to rev: " << graph.get_current_rev();
-                    boost::undo_commit(graph);
-                    ASSERT_EQ(size,num_vertices(graph));
-                    continue;
-                }
-                if(min_degree<target_degree){
-                    FILE_LOG(logDEBUG1) << "backtrack: small min_degree: " << min_degree;
-                    if(level<4){
-                        backtrack(results,target_degree,level+1);
-                    } else {
-                        FILE_LOG(logDEBUG1) << "backtrack: level too high: " << level;
-                    }
-                }
-            }
-        }
-    }
-
-    int backtrack(){
-        list<graph_type> results;
-        backtrack(results,2,1);
-        FILE_LOG(logDEBUG1) << "found " << results.size() << " results" << endl;
-        for(graph_type g : results){
-            print_dependencies(cout,g);
-            cout << endl;
-        }
-        return results.size();
-    }
-    unsigned int size;
-    graph_type graph;
-};
-
-TEST_F(InnerBacktrackingTest, checkFullBacktracking) {
-    FILE* log_fd = fopen( "checkFullBacktracking.txt", "w" );
-    Output2FILE::Stream() = log_fd;
-     FILELog::ReportingLevel() = logDEBUG4;
-     ASSERT_GE(this->backtrack(),1);
-}
-

@@ -68,33 +68,6 @@ struct index_map : boost::associative_property_map< UniquePairAssociativeContain
     UniquePairAssociativeContainer m;
 };
 
-namespace boost {
-
-template<typename Graph>
-struct property_map<Graph, vertex_index_t > {
-    typedef std::map<typename graph_traits<Graph>::vertex_descriptor, int> my_vertex_mapping;
-    typedef index_map< my_vertex_mapping > const_type;
-    //typedef type const_type ; //-- we do not define type as "vertex_index_t" map is read-only
-};
-
-template<typename Graph>
-typename property_map<Graph, vertex_index_t >::const_type get(vertex_index_t, const Graph & g )
-{
-    typedef std::map<typename graph_traits<Graph>::vertex_descriptor, int> vertex_mapping;
-    vertex_mapping v_indexes;
-    index_map< vertex_mapping > v1_index_map(v_indexes);
-    int id = 0;
-    typename graph_traits<Graph>::vertex_iterator i, end;
-    for (boost::tie(i, end) = vertices(g); i != end; ++i, ++id) {
-        FILE_LOG(logDEBUG4) << "put property: " << *i << " -> " << id;
-        put(v1_index_map, *i, id);
-    }
-    return v1_index_map;
-}
-
-
-} //namespace boost
-
 template<typename Graph>
 bool check_isomorphism(const Graph& g1,const Graph& g2) {
     using namespace boost;
