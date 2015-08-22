@@ -65,7 +65,7 @@ print_dependencies(std::ostream & out, const Graph & g) {
 
 class InnerBacktrackingTest : public ::testing::Test {
  protected:
-  typedef boost::versioned_graph<boost::listS, boost::listS, boost::bidirectionalS,external_data,external_data> graph_type;
+  typedef boost::versioned_graph<boost::vecS, boost::listS, boost::bidirectionalS,external_data,external_data> graph_type;
   typedef typename boost::graph_traits<graph_type>::vertex_iterator vertex_iterator;
     InnerBacktrackingTest() :graph() {
         FILE* log_fd = fopen( "mylogfile_inner_backtracking.txt", "w" );
@@ -145,7 +145,7 @@ class InnerBacktrackingTest : public ::testing::Test {
                 }
                 if(min_degree<target_degree){
                     FILE_LOG(logDEBUG1) << "backtrack: small min_degree: " << min_degree;
-                    if(level<4){
+                    if(level<5){
                         backtrack(results,target_degree,level+1);
                     } else {
                         FILE_LOG(logDEBUG1) << "backtrack: level too high: " << level;

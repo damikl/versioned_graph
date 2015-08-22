@@ -11,7 +11,7 @@ add_executable(EdgesTestList edges_list_test.cpp archive.h  handler.h  history_h
 add_executable(SimpleTestList simple_list_test.cpp archive.h  handler.h  history_holder.h  log.h  tests.h simple_test.h simple_key.h unordered_history_holder.h)
 add_executable(SubGraphTest subgraph.h subgraph_test.h subgraph_test.cpp)
 add_executable(BackTrackingTest backtracking.cpp)
-add_executable(InnerTest versioned_graph.h inner.cpp)
+add_executable(InnerTest versioned_graph.h versioned_graph_impl.h versioned_graph_non_members.h inner.cpp)
 add_executable(TopologicalSortTest topological_sort.cpp)
 add_executable(VersionedGraphBacktrackingTest versioned_graph_backtracking.cpp)
 

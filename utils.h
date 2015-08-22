@@ -105,15 +105,15 @@ std::ostream& operator<<(std::ostream& os, const internal_vertex& obj) {
 struct revision{
     int rev;
     bool operator<(const revision& r) const{
-        FILE_LOG(logDEBUG4) << "revision " << rev << " < " << r.rev << " == " << (abs(rev) < abs(r.rev));
+ //       FILE_LOG(logDEBUG4) << "revision " << rev << " < " << r.rev << " == " << (abs(rev) < abs(r.rev));
         return abs(rev) < abs(r.rev);
     }
     bool operator>(const revision& r) const{
-        FILE_LOG(logDEBUG4) << "revision " << rev << " < " << r.rev << " == " << (abs(rev) < abs(r.rev));
+//        FILE_LOG(logDEBUG4) << "revision " << rev << " < " << r.rev << " == " << (abs(rev) < abs(r.rev));
         return abs(rev) > abs(r.rev);
     }
     bool operator<=(const revision& r) const{
-        FILE_LOG(logDEBUG4) << "revision " << rev << " <= " << r.rev << " == " << (abs(rev) <= abs(r.rev));
+//        FILE_LOG(logDEBUG4) << "revision " << rev << " <= " << r.rev << " == " << (abs(rev) <= abs(r.rev));
         return abs(rev) <= abs(r.rev);
     }
     bool operator>=(const revision& r) const{

@@ -68,6 +68,7 @@ public:
         auto list = g->get_history(v);
         for(auto iter = list.begin(); iter!=list.end();++iter){
             revision r = get_revision(*iter);
+            assert(r<=g->get_current_rev());
             if(r<=rev){
                 if(is_deleted(r)){
                     FILE_LOG(logDEBUG4) << "filter_predicate: (" << boost::source(v,*g) << ", " << boost::target(v,*g)<< ") found deleted rev: " << r;
@@ -100,9 +101,11 @@ public:
         }
         assert(rev>0);
         FILE_LOG(logDEBUG4) << "filter_predicate: check vertex: " << v;
+
         auto list = g->get_history(v);
         for(auto iter = list.begin(); iter!=list.end();++iter){
             revision r = get_revision(*iter);
+            assert(r<=g->get_current_rev());
             if(r<=rev){
                 if(is_deleted(r)){
                     if(std::is_same<value_type,typename graph_type::vertex_descriptor>::value){
@@ -219,6 +222,67 @@ public:
 };
 */
 
+template<typename vertices_history_type,typename degree_size_type,typename dir_tag>
+struct vertex_data{
+    vertices_history_type hist;
+private:
+    degree_size_type out_deg;
+public:
+    vertex_data():hist(),out_deg(0) {}
+    inline degree_size_type incr_out_degree() {
+        FILE_LOG(logDEBUG4) << "incr_out_degree " << out_deg;
+        return ++out_deg;
+    }
+    inline degree_size_type incr_in_degree() {
+        return 0;
+    }
+    inline degree_size_type decr_out_degree() {
+        FILE_LOG(logDEBUG4) << "decr_out_degree " << out_deg;
+        return --out_deg;
+    }
+    inline degree_size_type decr_in_degree() {
+        return 0;
+    }
+    inline degree_size_type get_out_degree() const{
+        return out_deg;
+    }
+    inline degree_size_type get_in_degree() const{
+        return 0;
+    }
+
+};
+template<typename vertices_history_type,typename degree_size_type>
+struct vertex_data<vertices_history_type,degree_size_type,bidirectionalS>{
+    vertices_history_type hist;
+private:
+    degree_size_type out_deg;
+    degree_size_type in_deg;
+public:
+    vertex_data():hist(),out_deg(0),in_deg(0) {}
+    inline degree_size_type incr_out_degree() {
+        FILE_LOG(logDEBUG4) << "incr_out_degree " << out_deg;
+        return ++out_deg;
+    }
+    inline degree_size_type incr_in_degree() {
+        FILE_LOG(logDEBUG4) << "incr_in_degree " << in_deg;
+        return ++in_deg;
+    }
+    inline degree_size_type decr_out_degree() {
+        FILE_LOG(logDEBUG4) << "decr_out_degree " << out_deg;
+        return --out_deg;
+    }
+    inline degree_size_type decr_in_degree() {
+        FILE_LOG(logDEBUG4) << "decr_in_degree " << in_deg;
+        return --in_deg;
+    }
+    inline degree_size_type get_out_degree() const{
+        return out_deg;
+    }
+    inline degree_size_type get_in_degree() const{
+        return in_deg;
+    }
+};
+
 template<typename OutEdgeList = boost::vecS,
          typename VertexList = boost::vecS,
          typename Directed = boost::directedS,
@@ -227,6 +291,8 @@ template<typename OutEdgeList = boost::vecS,
          typename GraphProperties = boost::no_property,
          typename EdgeList = boost::listS>
 class versioned_graph  : public boost::adjacency_list<OutEdgeList,VertexList,Directed,VertexProperties,EdgeProperties,typename property_optional_records<GraphProperties>::type,EdgeList>{
+
+/*
     template<typename bundled_type,typename descriptor>
     class graph_reference{
         graph_reference(versioned_graph& graph,const descriptor& desc) : g(graph),desc(desc) {}
@@ -247,6 +313,8 @@ class versioned_graph  : public boost::adjacency_list<OutEdgeList,VertexList,Dir
         descriptor desc;
         friend class versioned_graph;
     };
+
+ */
     typedef typename property_records<VertexProperties>::require_comparison vertices_require_comparison;
     typedef typename property_records<EdgeProperties>::require_comparison edges_require_comparison;
 public:
@@ -288,6 +356,11 @@ public:
                                                                                         out_edge_iterator;
 
     typedef typename boost::filter_iterator<
+                                    filter_predicate<self_type,edge_descriptor>,
+                                                     typename boost::graph_traits<graph_type>::in_edge_iterator>
+                                                                                        in_edge_iterator;
+
+    typedef typename boost::filter_iterator<
                                     adjacency_filter_predicate<self_type,vertex_descriptor>,
                                                      typename boost::graph_traits<graph_type>::adjacency_iterator>
                                                                                         adjacency_iterator;
@@ -297,160 +370,34 @@ public:
                                                      typename graph_type::inv_adjacency_iterator>
                                                                                         inv_adjacency_iterator;
 
-
-    auto vertices_begin() const {
-        typename graph_type::vertex_iterator iter = boost::vertices(*dynamic_cast<const graph_type*>(this)).first;
-        FILE_LOG(logDEBUG4) << "fetched first vertex iterator";
-        return iter;
-        //return typename graph_type::vertex_iterator(this->vertex_set().begin());
-    }
-
-    auto vertices_end() const {
-        typename graph_type::vertex_iterator iter = boost::vertices(*dynamic_cast<const graph_type*>(this)).second;
-        FILE_LOG(logDEBUG4) << "fetched last vertex iterator";
-        return iter;
-        //    return typename graph_type::vertex_iterator(this->vertex_set().end());
-    }
-
-
-    auto edges_begin() const {
-        typename graph_type::edge_iterator iter = boost::edges(*dynamic_cast<const graph_type*>(this)).first;
-        FILE_LOG(logDEBUG4) << "fetched first edge iterator";
-        return iter;
-        //    return typename graph_type::edge_iterator(this->m_edges.begin());
-    }
-    auto edges_end() const {
-        typename graph_type::edge_iterator iter = boost::edges(*dynamic_cast<const graph_type*>(this)).second;
-        FILE_LOG(logDEBUG4) << "fetched last edge iterator";
-        return iter;
-        //    return typename graph_type::edge_iterator(this->m_edges.end());
-    }
+    typedef vertex_data<vertices_history_type,degree_size_type,directed_category> vertex_stored_data;
+    auto vertices_begin() const;
+    auto vertices_end() const;
+    auto edges_begin() const;
+    auto edges_end() const;
 
     versioned_graph() : /*g(),*/v_num(0),e_num(0),current_rev(1) {}
 
-    versioned_graph(const versioned_graph& g ) : graph_type(),v_num(g.v_num),
-                                                 e_num(g.e_num),
-                                                 current_rev(g.current_rev) {
-        // Would be better to have a constant time way to get from
-        // vertices in x to the corresponding vertices in *this.
-        std::map<vertex_descriptor,vertex_descriptor> vertex_map;
+    versioned_graph(const versioned_graph& g );
 
-        // Copy the stored vertex objects by adding each vertex
-        // and copying its property object.
-        vertex_iterator vi, vi_end;
-        vertices_size_type v_count = 0;
-        for (boost::tie(vi, vi_end) = vertices(g); vi != vi_end; ++vi) {
-          vertex_descriptor v = add_vertex(get_self());
-          (*this)[v] = g[*vi];
-          auto iter = g.vertices_history.find(*vi);
-          assert(iter!=g.vertices_history.end());
-          vertices_history.insert(std::make_pair(v,iter->second));
-          if(!is_deleted(get_revision(iter->second.front()))){
-              ++v_count;
-          }
-          vertex_map[*vi] = v;
-        }
-        assert(v_count==v_num);
-        // Copy the edges by adding each edge and copying its
-        // property object.
-        edge_iterator ei, ei_end;
-        edges_size_type e_count = 0;
-        for (boost::tie(ei, ei_end) = edges(g); ei != ei_end; ++ei) {
-          edge_descriptor e;
-          bool inserted;
-          vertex_descriptor s = source(*ei,g), t = target(*ei,g);
-          boost::tie(e, inserted) = add_edge(vertex_map[s],
-                                             vertex_map[t], get_self());
-          assert(inserted);
-          auto iter = g.edges_history.find(*ei);
-          assert(iter!=g.edges_history.end());
-          edges_history.insert(std::make_pair(e,iter->second));
-          (*this)[e] = g[*ei];
-          revision r = get_revision(iter->second.front());
+    vertex_descriptor generate_vertex(vertex_bundled prop);
 
-          if(!is_deleted(r)){
-              ++e_count;
-              FILE_LOG(logDEBUG4) << "copy graph: edge marked as existing";
-          } else {
-              FILE_LOG(logDEBUG4) << "copy graph: edge marked as deleted";
-          }
-          const edges_history_type& hist = g.get_history(*ei);
-          FILE_LOG(logDEBUG4) << "copy graph: copy edge: ("
-                              << boost::source(*ei,g)
-                              << ", "
-                              << boost::target(*ei,g)<< ") "
-                              << hist.size() << " records in history, last rev: " << r;
-          const edges_history_type& new_hist = get_history(e);
-          r = get_revision(new_hist.front());
-          FILE_LOG(logDEBUG4) << "copy graph: new edge: ("
-                              << boost::source(e,get_self())
-                              << ", "
-                              << boost::target(e,get_self())<< ") "
-                              << new_hist.size() << " records in history, last rev: " << r;
-        }
-        BOOST_ASSERT_MSG(e_count==e_num,("counted " + std::to_string(e_count) + "  edges while expected " + std::to_string(e_num)).c_str());
-        assert(boost::num_vertices(get_self())==vertices_history.size());
-        assert(boost::num_edges(get_self())==edges_history.size());
-        FILE_LOG(logDEBUG4) << "copied graph: " << v_num << "("<< vertices_history.size() << ") vertices, "
-                                                << e_num << "("<< edges_history.size() << ") edges";
+    vertex_stored_data& get_stored_data(vertex_descriptor u){
+        auto iter = vertices_history.find(u);
+        assert(iter!=vertices_history.end());
+        return iter->second;
     }
-
-    vertex_descriptor generate_vertex(vertex_bundled prop){
-        vertex_descriptor v = boost::add_vertex(get_self());
-        FILE_LOG(logDEBUG4) << "created vertex: " << v;
-        (*this)[v] = prop;
-        vertices_history.insert(std::make_pair(v,vertices_history_type()));
-        vertices_history_type& list = get_history(v);
-        assert(list.empty());
-    //    auto p = std::make_pair(current_rev,prop);
-        list.push_front(make_entry(current_rev,prop));
-        ++v_num;
-        return v;
+    const vertex_stored_data& get_stored_data(vertex_descriptor u) const {
+        auto iter = vertices_history.find(u);
+        assert(iter!=vertices_history.end());
+        return iter->second;
     }
 
     std::pair<edge_descriptor,bool>
-    generate_edge(edge_bundled prop,vertex_descriptor u, vertex_descriptor v){
-        auto p = boost::add_edge(u,v,prop,get_self());
-        if(p.second){
-            if(edges_history.find(p.first)==edges_history.end()){
-                edges_history.insert(std::make_pair(p.first,edges_history_type()));
-            }
-            edges_history_type& list = get_history(p.first);
-            assert(list.empty());
-            list.push_front(make_entry(current_rev,prop));
-            ++e_num;
-            FILE_LOG(logDEBUG4) << "add edge (" << boost::source(p.first,get_self()) << ", "
-                                                << boost::target(p.first,get_self())
-                                                << ") with rev " << current_rev << " num of edges: " << e_num;
-        } else {
-            FILE_LOG(logDEBUG4) << "edge (" << boost::source(p.first,get_self()) << ", "
-                                            << boost::target(p.first,get_self()) << ") already exist";
-        }
-        return p;
-    }
-    /*
-    std::pair<edge_descriptor,bool>
-    generate_edge(vertex_descriptor u, vertex_descriptor v){
-        std::pair<edge_descriptor,bool> p = boost::add_edge(u,v,get_self());
-        if(p.second){
-            if(edges_history.find(p.first)==edges_history.end()){
-                edges_history.insert(std::make_pair(p.first,edges_history_type()));
-            }
-            edges_history_type list = get_history(p.first);
-            assert(list.empty());
-            list.push_front(make_entry(current_rev,edge_bundled()));
-            FILE_LOG(logDEBUG4) << "add edge (" << boost::source(p.first,get_self()) << ", "
-                                                << boost::target(p.first,get_self())
-                                                << ") with rev " << current_rev;
-            ++e_num;
-        } else {
-            FILE_LOG(logDEBUG4) << "edge (" << boost::source(p.first,get_self()) << ", "
-                                            << boost::target(p.first,get_self()) << ") already exist";
-        }
-        return p;
-    }
-    */
+    generate_edge(edge_bundled prop,vertex_descriptor u, vertex_descriptor v);
+
 private:
+
     template<typename descriptor,typename bundled_type>
     void set_deleted(descriptor& e,bundled_type dummy_value){
         auto& list = get_history(e);
@@ -460,6 +407,7 @@ private:
         FILE_LOG(logDEBUG4) << "negated to " << r;
         list.push_front(make_entry(r,dummy_value));
     }
+
     template<typename descriptor,typename bundled_type>
     void set_latest(descriptor& e,bundled_type value){
         auto& list = get_history(e);
@@ -502,32 +450,18 @@ private:
         }
     };
 
+    void decr_degree(edge_descriptor e);
 
+    void incr_degree(edge_descriptor e);
 public:
-    void set_deleted(edge_descriptor e){
-        if(get_history(e).size()>1 || get_latest_revision(e) < current_rev){
-            set_deleted(e,edge_bundled());
-            assert(check_if_currently_deleted(e));
-        } else {
-            boost::remove_edge(e,*dynamic_cast<graph_type*>(this));
-        }
-        --e_num;
-        FILE_LOG(logDEBUG4) << "set deleted: finnished";
-    }
+    void set_deleted(edge_descriptor e);
+
     template<typename descriptor>
     bool check_if_currently_deleted(descriptor d) const {
         return is_deleted(get_revision(get_history(d).front()));
     }
-    void set_deleted(vertex_descriptor v){
-        if(get_history(v).size()>1 || get_latest_revision(v) < current_rev){
-            set_deleted(v,vertex_bundled());
-            assert(check_if_currently_deleted(v));
-        } else {
-            boost::remove_vertex(v,*dynamic_cast<graph_type*>(this));
-        }
-        --v_num;
-        FILE_LOG(logDEBUG4) << "set deleted: finnished";
-    }
+    void set_deleted(vertex_descriptor v);
+
     vertices_size_type num_vertices() const {
         FILE_LOG(logDEBUG4) << "get num vertices " << v_num;
         return v_num;
@@ -536,118 +470,30 @@ public:
         FILE_LOG(logDEBUG4) << "get num edges " << e_num;
         return e_num;
     }
-    void commit(){
-        auto ei = edges(*this);
-        for(auto edge_iter = ei.first; edge_iter != ei.second; ++edge_iter) {
-            edges_history_type& hist = get_history(*edge_iter);
-                edge_bundled prop = (*this)[*edge_iter];
-                if(hist.empty() ||
-                        property_handler<self_type,edge_descriptor,edge_bundled>::is_update_needed(*edge_iter,*this,prop)){
-                    hist.push_front(make_entry(current_rev,prop));
-                }
-        }
-        auto vi = boost::vertices(*this);
-        for(auto vertex_iter = vi.first; vertex_iter != vi.second; ++vertex_iter) {
-            vertices_history_type& hist = get_history(*vertex_iter);
-            vertex_bundled prop = (*this)[*vertex_iter];
-            if(hist.empty() ||
-                    property_handler<self_type,vertex_descriptor,vertex_bundled>::is_update_needed(*vertex_iter,*this,prop)){
-                hist.push_front(make_entry(current_rev,prop));
-            }
-        }
-        ++current_rev;
-    }
+    void commit();
 private:
-    void clean_history( edges_history_type& hist, edge_descriptor desc){
-        revision r = get_revision(hist.front());
-        if (is_deleted(r)) {
-           ++e_num;
-        }
-        FILE_LOG(logDEBUG4) << "remove edges history ( containing " << hist.size() << " records ) entry: ( "
-                            << boost::source(desc,*this) << ", "
-                            << boost::target(desc,*this) << ") for rev: " << r;
-        hist.pop_front();
-        if(hist.empty()){
-            FILE_LOG(logDEBUG4) << "after edge history removal: ( "
-                                << boost::source(desc,*this) << ", "
-                                << boost::target(desc,*this) << ") without any history records";
-        } else {
-            r = get_revision(hist.front());
-            FILE_LOG(logDEBUG4) << "after edge history removal: ( "
-                                << boost::source(desc,*this) << ", "
-                                << boost::target(desc,*this) << ") for rev: " << r;
-        }
 
-    }
-    void clean_history( vertices_history_type& hist, vertex_descriptor desc){
-        revision r = get_revision(hist.front());
-        if (is_deleted(r)) {
-           ++v_num;
-        }
-        FILE_LOG(logDEBUG4) << "remove vertices history containing (" << hist.size() << " records ) entry: ("<< desc << ") for rev: " << r;
-        hist.pop_front();
-        r = get_revision(hist.front());
-        FILE_LOG(logDEBUG4) << "after vertices history removal: ("<< desc << ") for rev: " << r;
-    }
-    std::map<vertex_descriptor,vertices_history_type> vertices_history;
+    void clean_history( edges_history_type& hist, edge_descriptor desc);
+
+    void clean_history( vertices_history_type& hist, vertex_descriptor desc);
+
+    std::map<vertex_descriptor,vertex_stored_data > vertices_history;
     std::map<edge_descriptor,edges_history_type> edges_history;
+
+    void clean_edges_to_current_rev();
+
+    void clean_vertices_to_current_rev();
 public:
-    void undo_commit(){
-        FILE_LOG(logDEBUG4) << "Undo commit";
-        auto ei = boost::edges(get_self());
-        std::list<edge_descriptor> edges_to_be_removed;
-        for(auto edge_iter = ei.first; edge_iter != ei.second; ++edge_iter) {
-            FILE_LOG(logDEBUG4) << "check edge:( "
-                                << boost::source(*edge_iter,*this) << ", "
-                                << boost::target(*edge_iter,*this) << ")";
-            edges_history_type& hist = get_history(*edge_iter);
-            while(!hist.empty() && get_latest_revision(*edge_iter)>=current_rev){
-                clean_history(hist,*edge_iter);
-            }
-            if(hist.empty()){
-                edges_to_be_removed.push_front(*edge_iter);
-            } else {
-                (*this)[*edge_iter] = property_handler<self_type,edge_descriptor,edge_bundled>::get_latest_bundled_value(*edge_iter,*this);
-                FILE_LOG(logDEBUG4) << "copied edge propety";
-            }
-        }
-        for(edge_descriptor e : edges_to_be_removed){
-            auto it = edges_history.find(e);
-            assert(it!=edges_history.end());
-            edges_history.erase(it);
-            --e_num;
-            FILE_LOG(logDEBUG4) << "completly removed history record";
-            boost::remove_edge(e,get_self());
-            FILE_LOG(logDEBUG4) << "removed edge from graph";
-        }
-        auto vi = boost::vertices(*this);
-        std::list<vertex_descriptor> vertices_to_be_removed;
-        for(auto vertex_iter = vi.first; vertex_iter != vi.second; ++vertex_iter) {
-            vertices_history_type& hist = get_history(*vertex_iter);
-            while(!hist.empty() && get_latest_revision(*vertex_iter)>=current_rev){
-                clean_history(hist,*vertex_iter);
-            }
-            if(hist.empty()){
-                vertices_to_be_removed.push_front(*vertex_iter);
-            } else {
-                (*this)[*vertex_iter] = property_handler<self_type,vertex_descriptor,vertex_bundled>::get_latest_bundled_value(*vertex_iter,*this);
-                FILE_LOG(logDEBUG4) << "copied vertex propety";
-            }
-        }
-        for(vertex_descriptor v : vertices_to_be_removed){
-            auto it = vertices_history.find(v);
-            assert(it!=vertices_history.end());
-            vertices_history.erase(it);
-            --v_num;
-            FILE_LOG(logDEBUG4) << "completly removed vertex history record";
-            boost::remove_vertex(v,get_self());
-            FILE_LOG(logDEBUG4) << "removed vertex from graph";
-        }
-        --current_rev;
+    void undo_commit();
+
+    void revert_uncommited(){
+        FILE_LOG(logDEBUG4) << "revert not commited changes";
+        clean_edges_to_current_rev();
+        clean_vertices_to_current_rev();
     }
     template<typename descriptor>
     revision get_latest_revision(const descriptor& v) const {
-        const vertices_history_type& list = get_history(v);
+        const auto& list = get_history(v);
         return get_revision(list.front());
     }
 
@@ -661,13 +507,13 @@ public:
     vertices_history_type& get_history(vertex_descriptor idx){
         auto iter = vertices_history.find(idx);
         assert(iter!=vertices_history.end());
-        return iter->second;
+        return iter->second.hist;
     }
 
     const vertices_history_type& get_history(vertex_descriptor idx)const {
         auto iter = vertices_history.find(idx);
         assert(iter!=vertices_history.end());
-        return iter->second;
+        return iter->second.hist;
     }
 
     edges_history_type& get_history(edge_descriptor idx){
@@ -681,385 +527,30 @@ public:
         assert(iter!=edges_history.end());
         return iter->second;
     }
-/*
-    vertex_bundled& operator[](const vertex_descriptor& v) {
-    //    graph_reference<vertex_bundled,vertex_descriptor> ref(*this,v);
-        return get_latest_bundled_value(v);
-    }
-    const vertex_bundled& operator[](const vertex_descriptor& v) const {
-        return get_latest_bundled_value(v);
+
+    degree_size_type get_out_degree(vertex_descriptor v) const{
+        auto iter = vertices_history.find(v);
+        assert(iter!=vertices_history.end());
+        return iter->second.get_out_degree();
     }
 
-    edge_bundled& operator[](const edge_descriptor& e) {
-    //    graph_reference<edge_bundled,edge_descriptor> ref(*this,e);
-        return get_latest_bundled_value(e);
+    degree_size_type get_in_degree(vertex_descriptor v) const{
+        auto iter = vertices_history.find(v);
+        assert(iter!=vertices_history.end());
+        return iter->second.get_in_degree();
     }
-    const edge_bundled& operator[](const edge_descriptor& e) const {
-        return get_latest_bundled_value(e);
-    }
-*/
+
     revision get_current_rev()const{
         return current_rev;
     }
 
 private:
-//    graph_type g;
     vertices_size_type v_num;
     edges_size_type e_num;
     revision current_rev;
 };
 
-template<typename OutEdgeList,
-         typename VertexList,
-         typename Directed,
-         typename VertexProperties,
-         typename EdgeProperties,
-         typename GraphProperties,
-         typename EdgeList>
-auto add_vertex(versioned_graph<OutEdgeList,VertexList,Directed,
-                           VertexProperties,EdgeProperties,GraphProperties,EdgeList>& g){
-    typedef typename versioned_graph<OutEdgeList,VertexList,Directed,
-            VertexProperties,EdgeProperties,GraphProperties,EdgeList>::vertex_bundled bundled_type;
-    return g.generate_vertex(bundled_type());
 }
-
-template<typename OutEdgeList,
-         typename VertexList,
-         typename Directed,
-         typename VertexProperties,
-         typename EdgeProperties,
-         typename GraphProperties,
-         typename EdgeList>
-auto add_vertex(VertexProperties p, versioned_graph<OutEdgeList,VertexList,Directed,
-                           VertexProperties,EdgeProperties,GraphProperties,EdgeList>& g){
-    return g.generate_vertex(p);
-}
-
-template<typename OutEdgeList,
-         typename VertexList,
-         typename Directed,
-         typename VertexProperties,
-         typename EdgeProperties,
-         typename GraphProperties,
-         typename EdgeList>
-auto num_vertices(versioned_graph<OutEdgeList,VertexList,Directed,
-                           VertexProperties,EdgeProperties,GraphProperties,EdgeList>& g){
-    return g.num_vertices();
-}
-
-template<typename OutEdgeList,
-         typename VertexList,
-         typename Directed,
-         typename VertexProperties,
-         typename EdgeProperties,
-         typename GraphProperties,
-         typename EdgeList,
-         typename vertex_descriptor>
-void remove_vertex(vertex_descriptor v, versioned_graph<OutEdgeList,VertexList,Directed,
-                 VertexProperties,EdgeProperties,GraphProperties,EdgeList>& g){
-    g.set_deleted(v);
-}
-
-template<typename OutEdgeList,
-         typename VertexList,
-         typename Directed,
-         typename VertexProperties,
-         typename EdgeProperties,
-         typename GraphProperties,
-         typename EdgeList,
-         typename vertex_descriptor>
-void clear_out_edges(vertex_descriptor u, versioned_graph<OutEdgeList,VertexList,Directed,
-                     VertexProperties,EdgeProperties,GraphProperties,EdgeList>& g){
-    typedef versioned_graph<OutEdgeList,VertexList,Directed,
-                        VertexProperties,EdgeProperties,GraphProperties,EdgeList> graph;
-    auto ei = out_edges(u,g);
-    for(typename graph::edge_iterator edge_iter = ei.first; edge_iter != ei.second; ++edge_iter) {
-        remove_edge(*edge_iter,g);
-    }
-}
-
-template<typename OutEdgeList,
-         typename VertexList,
-         typename Directed,
-         typename VertexProperties,
-         typename EdgeProperties,
-         typename GraphProperties,
-         typename EdgeList,
-         typename vertex_descriptor>
-void clear_in_edges(vertex_descriptor u, versioned_graph<OutEdgeList,VertexList,Directed,
-                    VertexProperties,EdgeProperties,GraphProperties,EdgeList>& g){
-    typedef versioned_graph<OutEdgeList,VertexList,Directed,
-                        VertexProperties,EdgeProperties,GraphProperties,EdgeList> graph;
-    auto ei = in_edges(u,g);
-    for(typename graph::edge_iterator edge_iter = ei.first; edge_iter != ei.second; ++edge_iter) {
-        remove_edge(*edge_iter,g);
-    }
-}
-template<typename OutEdgeList,
-         typename VertexList,
-         typename Directed,
-         typename VertexProperties,
-         typename EdgeProperties,
-         typename GraphProperties,
-         typename EdgeList,
-         typename vertex_descriptor>
-void clear_vertex(vertex_descriptor u, versioned_graph<OutEdgeList,VertexList,Directed,
-                  VertexProperties,EdgeProperties,GraphProperties,EdgeList>& g){
-    clear_in_edges(u,g);
-    clear_out_edges(u,g);
-}
-
-
-template<typename OutEdgeList,
-         typename VertexList,
-         typename Directed,
-         typename VertexProperties,
-         typename EdgeProperties,
-         typename GraphProperties,
-         typename EdgeList>
-auto num_edges(const versioned_graph<OutEdgeList,VertexList,Directed,
-                           VertexProperties,EdgeProperties,GraphProperties,EdgeList>& g){
-    return g.num_edges();
-}
-
-template<typename OutEdgeList,
-         typename VertexList,
-         typename Directed,
-         typename VertexProperties,
-         typename EdgeProperties,
-         typename GraphProperties,
-         typename EdgeList>
-auto vertices(const versioned_graph<OutEdgeList,VertexList,Directed,
-                           VertexProperties,EdgeProperties,GraphProperties,EdgeList>& g){
-    typedef versioned_graph<OutEdgeList,VertexList,Directed,
-            VertexProperties,EdgeProperties,GraphProperties,EdgeList> graph_type;
-
-    filter_predicate<graph_type,typename graph_type::vertex_descriptor> predicate(&g);
-    FILE_LOG(logDEBUG4) << "will create begin and end iterators for vertices";
-    auto end = g.vertices_end();
-    typename graph_type::vertex_iterator iter_begin(predicate, g.vertices_begin(), end);
-    typename graph_type::vertex_iterator iter_end(predicate, end, end);
-    FILE_LOG(logDEBUG4) << "created begin and end iterators for vertices";
-    if(iter_begin!=iter_end){
-        FILE_LOG(logDEBUG4) << "first vertex is: " << *iter_begin;
-    } else {
-        FILE_LOG(logDEBUG4) << "iterators are equal";
-    }
-    return std::make_pair(iter_begin,iter_end);
-}
-template<typename T,typename U>
-struct assert_same_types{
-    typedef T A1;
-    typedef U A2;
-    static_assert(std::is_same<A1,A2>::value,"Types are not same");
-    static void check() {}
-};
-template<typename From,typename To>
-struct assert_convert_types{
-    typedef From A1;
-    typedef To A2;
-    static_assert(std::is_convertible<A1,A2>::value,"Types are not convertible");
-    static void check() {}
-};
-
-template<typename OutEdgeList,
-         typename VertexList,
-         typename Directed,
-         typename VertexProperties,
-         typename EdgeProperties,
-         typename GraphProperties,
-         typename EdgeList,
-         typename vertex_descriptor>
-auto out_edges(vertex_descriptor u, const versioned_graph<OutEdgeList,VertexList,Directed,
-                           VertexProperties,EdgeProperties,GraphProperties,EdgeList>& g){
-    typedef versioned_graph<OutEdgeList,VertexList,Directed,
-            VertexProperties,EdgeProperties,GraphProperties,EdgeList> graph_type;
-
-    filter_predicate<graph_type,typename graph_type::edge_descriptor> predicate(&g);
-    auto base_iter_p = out_edges(u,g.get_self());
-    typename graph_type::out_edge_iterator iter_begin(predicate, base_iter_p.first, base_iter_p.second);
-    typename graph_type::out_edge_iterator iter_end(predicate, base_iter_p.second, base_iter_p.second);
-    return std::make_pair(iter_begin,iter_end);
-}
-
-template<typename OutEdgeList,
-         typename VertexList,
-         typename Directed,
-         typename VertexProperties,
-         typename EdgeProperties,
-         typename GraphProperties,
-         typename EdgeList>
-auto edges(const versioned_graph<OutEdgeList,VertexList,Directed,
-                           VertexProperties,EdgeProperties,GraphProperties,EdgeList>& g){
-    typedef versioned_graph<OutEdgeList,VertexList,Directed,
-            VertexProperties,EdgeProperties,GraphProperties,EdgeList> graph_type;
-    FILE_LOG(logDEBUG1) << "get edges";
-    filter_predicate<graph_type,typename graph_type::edge_descriptor> predicate(&g);
-    typename graph_type::edge_iterator iter_begin(predicate, g.edges_begin(), g.edges_end());
-    typename graph_type::edge_iterator iter_end(predicate, g.edges_end(), g.edges_end());
-    unsigned int dist = std::distance(iter_begin,iter_end);
-    if(dist!=num_edges(g)){
-        FILE_LOG(logERROR) << "distance " << dist << " while num_edges: " << num_edges(g);
-//        exit(1);
-    }
-    return std::make_pair(iter_begin,iter_end);
-}
-
-template<typename OutEdgeList,
-         typename VertexList,
-         typename Directed,
-         typename VertexProperties,
-         typename EdgeProperties,
-         typename GraphProperties,
-         typename EdgeList,
-         typename vertex_descriptor>
-auto adjacent_vertices(vertex_descriptor u,
-                  const versioned_graph<OutEdgeList,VertexList,Directed,
-                  VertexProperties,EdgeProperties,GraphProperties,EdgeList>& g){
-    typedef versioned_graph<OutEdgeList,VertexList,Directed,
-            VertexProperties,EdgeProperties,GraphProperties,EdgeList> graph_type;
-
-    auto adj = boost::adjacent_vertices(u,g.get_self());
-    adjacency_filter_predicate<graph_type,typename graph_type::vertex_descriptor> predicate(&g,u);
-    typename graph_type::adjacency_iterator iter_begin(predicate, adj.first, adj.second);
-    typename graph_type::adjacency_iterator iter_end(predicate, adj.second, adj.second);
-    return std::make_pair(iter_begin,iter_end);
-}
-
-template<typename OutEdgeList,
-         typename VertexList,
-         typename Directed,
-         typename VertexProperties,
-         typename EdgeProperties,
-         typename GraphProperties,
-         typename EdgeList,
-         typename vertex_descriptor>
-auto inv_adjacent_vertices(vertex_descriptor u, const versioned_graph<OutEdgeList,VertexList,Directed,
-                           VertexProperties,EdgeProperties,GraphProperties,EdgeList>& g){
-    typedef versioned_graph<OutEdgeList,VertexList,Directed,
-            VertexProperties,EdgeProperties,GraphProperties,EdgeList> graph_type;
-
-    auto adj = boost::inv_adjacent_vertices(u,g.get_self());
-    adjacency_filter_predicate<graph_type,typename graph_type::vertex_descriptor> predicate(&g,u,true);
-    typename graph_type::inv_adjacency_iterator iter_begin(predicate, adj.first, adj.second);
-    typename graph_type::inv_adjacency_iterator iter_end(predicate, adj.second, adj.second);
-    return std::make_pair(iter_begin,iter_end);
-}
-
-template<typename OutEdgeList,
-         typename VertexList,
-         typename Directed,
-         typename VertexProperties,
-         typename EdgeProperties,
-         typename GraphProperties,
-         typename EdgeList,
-         typename vertex_descriptor>
-auto add_edge(vertex_descriptor u,vertex_descriptor v, versioned_graph<OutEdgeList,VertexList,Directed,
-                           VertexProperties,EdgeProperties,GraphProperties,EdgeList>& g){
-    return g.generate_edge(EdgeProperties(),u,v);
-}
-
-template<typename OutEdgeList,
-         typename VertexList,
-         typename Directed,
-         typename VertexProperties,
-         typename EdgeProperties,
-         typename GraphProperties,
-         typename EdgeList>
-auto commit(versioned_graph<OutEdgeList,VertexList,Directed,
-                           VertexProperties,EdgeProperties,GraphProperties,EdgeList>& g){
-    return g.commit();
-}
-
-template<typename OutEdgeList,
-         typename VertexList,
-         typename Directed,
-         typename VertexProperties,
-         typename EdgeProperties,
-         typename GraphProperties,
-         typename EdgeList>
-auto undo_commit(versioned_graph<OutEdgeList,VertexList,Directed,
-                           VertexProperties,EdgeProperties,GraphProperties,EdgeList>& g){
-    return g.undo_commit();
-}
-
-
-template<typename OutEdgeList,
-         typename VertexList,
-         typename Directed,
-         typename VertexProperties,
-         typename EdgeProperties,
-         typename GraphProperties,
-         typename EdgeList,
-         typename vertex_descriptor>
-auto add_edge(vertex_descriptor u,vertex_descriptor v,EdgeProperties p, versioned_graph<OutEdgeList,VertexList,Directed,
-                           VertexProperties,EdgeProperties,GraphProperties,EdgeList>& g){
-    return g.generate_edge(p,u,v);
-}
-
-template<typename OutEdgeList,
-         typename VertexList,
-         typename Directed,
-         typename VertexProperties,
-         typename EdgeProperties,
-         typename GraphProperties,
-         typename EdgeList,
-         typename vertex_descriptor>
-void remove_edge(vertex_descriptor u,vertex_descriptor v, versioned_graph<OutEdgeList,VertexList,Directed,
-                 VertexProperties,EdgeProperties,GraphProperties,EdgeList>& g){
-    auto p = edge(u,v,g);
-    if(p.second){
-        FILE_LOG(logDEBUG4) << "remove_edge: found existing";
-        auto edge_desc = p.first;
-        FILE_LOG(logDEBUG4) << "remove_edge: got desc: (" << boost::source(edge_desc,g) << ", " << boost::target(edge_desc,g) << ")";
-        g.set_deleted(edge_desc);
-    }
-}
-
-template<typename OutEdgeList,
-         typename VertexList,
-         typename Directed,
-         typename VertexProperties,
-         typename EdgeProperties,
-         typename GraphProperties,
-         typename EdgeList,
-         typename edge_descriptor>
-void remove_edge(edge_descriptor edge_desc, versioned_graph<OutEdgeList,VertexList,Directed,
-                 VertexProperties,EdgeProperties,GraphProperties,EdgeList>& g){
-    FILE_LOG(logDEBUG4) << "remove_edge: (" << boost::source(edge_desc,g) << ", " << boost::target(edge_desc,g) << ")";
-    g.set_deleted(edge_desc);
-}
-
-template<typename OutEdgeList,
-         typename VertexList,
-         typename Directed,
-         typename VertexProperties,
-         typename EdgeProperties,
-         typename GraphProperties,
-         typename EdgeList,
-         typename vertex_descriptor>
-auto edge(vertex_descriptor u,vertex_descriptor v, const versioned_graph<OutEdgeList,VertexList,Directed,
-                 VertexProperties,EdgeProperties,GraphProperties,EdgeList>& g) {
-
-    typedef versioned_graph<OutEdgeList,VertexList,Directed,
-            VertexProperties,EdgeProperties,GraphProperties,EdgeList> graph_type;
-    auto p = boost::edge(u,v,dynamic_cast<const typename graph_type::graph_type&>(g));
-    if(p.second){
-        FILE_LOG(logDEBUG4) << "edge (" << u << ", " << v  <<  "): found existing intenally";
-        auto edge_desc = p.first;
-        const typename graph_type::edges_history_type& list = g.get_history(edge_desc);
-        FILE_LOG(logDEBUG4) << /*list.size()  <<*/ "records in history of edge";
-        if(is_deleted(get_revision(list.front()))){
-            FILE_LOG(logDEBUG4) << "edge: is deleted";
-            return std::make_pair(typename graph_type::edge_descriptor(),false);
-        }
-        FILE_LOG(logDEBUG4) << "edge: not deleted";
-    } else {
-        FILE_LOG(logDEBUG4) << "edge: not found";
-    }
-    return p;
-}
-
-}
-
+#include "versioned_graph_impl.h"
+#include "versioned_graph_non_members.h"
 #endif // VERSIONED_GRAPH_H
