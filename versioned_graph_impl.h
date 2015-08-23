@@ -14,7 +14,6 @@ vertices_begin() const {
     typename graph_type::vertex_iterator iter = boost::vertices(*dynamic_cast<const graph_type*>(this)).first;
     FILE_LOG(logDEBUG4) << "fetched first vertex iterator";
     return iter;
-    //return typename graph_type::vertex_iterator(this->vertex_set().begin());
 }
 
 template<typename OutEdgeList,
@@ -29,7 +28,6 @@ vertices_end() const {
     typename graph_type::vertex_iterator iter = boost::vertices(*dynamic_cast<const graph_type*>(this)).second;
     FILE_LOG(logDEBUG4) << "fetched last vertex iterator";
     return iter;
-    //    return typename graph_type::vertex_iterator(this->vertex_set().end());
 }
 
 template<typename OutEdgeList,
@@ -44,7 +42,6 @@ edges_begin() const {
     typename graph_type::edge_iterator iter = boost::edges(*dynamic_cast<const graph_type*>(this)).first;
     FILE_LOG(logDEBUG4) << "fetched first edge iterator";
     return iter;
-    //    return typename graph_type::edge_iterator(this->m_edges.begin());
 }
 
 template<typename OutEdgeList,
@@ -59,7 +56,6 @@ edges_end() const {
     typename graph_type::edge_iterator iter = boost::edges(*dynamic_cast<const graph_type*>(this)).second;
     FILE_LOG(logDEBUG4) << "fetched last edge iterator";
     return iter;
-    //    return typename graph_type::edge_iterator(this->m_edges.end());
 }
 
 
@@ -168,7 +164,7 @@ template<typename OutEdgeList,
          typename EdgeList>
 void versioned_graph<OutEdgeList,VertexList,Directed,VertexProperties,EdgeProperties,GraphProperties,EdgeList>::
 clean_history( edges_history_type& hist, edge_descriptor desc){
-    revision r = get_revision(hist.front());
+    revision r = detail::get_revision(hist.front());
     FILE_LOG(logDEBUG4) << "remove edges history ( containing " << hist.size() << " records ) entry: ( "
                         << boost::source(desc,*this) << ", "
                         << boost::target(desc,*this) << ") for rev: " << r;
@@ -182,7 +178,7 @@ clean_history( edges_history_type& hist, edge_descriptor desc){
                             << boost::source(desc,*this) << ", "
                             << boost::target(desc,*this) << ") without any history records";
     } else {
-        r = get_revision(hist.front());
+        r = detail::get_revision(hist.front());
         FILE_LOG(logDEBUG4) << "after edge history removal: ( "
                             << boost::source(desc,*this) << ", "
                             << boost::target(desc,*this) << ") for rev: " << r;
@@ -199,13 +195,13 @@ template<typename OutEdgeList,
          typename EdgeList>
 void versioned_graph<OutEdgeList,VertexList,Directed,VertexProperties,EdgeProperties,GraphProperties,EdgeList>::
 clean_history( vertices_history_type& hist, vertex_descriptor desc){
-    revision r = get_revision(hist.front());
+    revision r = detail::get_revision(hist.front());
     if (is_deleted(r)) {
        ++v_num;
     }
     FILE_LOG(logDEBUG4) << "remove vertices history containing (" << hist.size() << " records ) entry: ("<< desc << ") for rev: " << r;
     hist.pop_front();
-    r = get_revision(hist.front());
+    r = detail::get_revision(hist.front());
     FILE_LOG(logDEBUG4) << "after vertices history removal: ("<< desc << ") for rev: " << r;
 }
 
@@ -311,7 +307,7 @@ versioned_graph(const versioned_graph& g ) : graph_type(),v_num(g.v_num),
       auto iter = g.vertices_history.find(*vi);
       assert(iter!=g.vertices_history.end());
       vertices_history.insert(std::make_pair(v,iter->second));
-      if(!is_deleted(get_revision(iter->second.hist.front()))){
+      if(!is_deleted(detail::get_revision(iter->second.hist.front()))){
           ++v_count;
       }
       vertex_map[*vi] = v;
@@ -332,7 +328,7 @@ versioned_graph(const versioned_graph& g ) : graph_type(),v_num(g.v_num),
       assert(iter!=g.edges_history.end());
       edges_history.insert(std::make_pair(e,iter->second));
       (*this)[e] = g[*ei];
-      revision r = get_revision(iter->second.front());
+      revision r = detail::get_revision(iter->second.front());
 
       if(!is_deleted(r)){
           ++e_count;
@@ -347,7 +343,7 @@ versioned_graph(const versioned_graph& g ) : graph_type(),v_num(g.v_num),
                           << boost::target(*ei,g)<< ") "
                           << hist.size() << " records in history, last rev: " << r;
       const edges_history_type& new_hist = get_history(e);
-      r = get_revision(new_hist.front());
+      r = detail::get_revision(new_hist.front());
       FILE_LOG(logDEBUG4) << "copy graph: new edge: ("
                           << boost::source(e,get_self())
                           << ", "
@@ -372,6 +368,7 @@ template<typename OutEdgeList,
 typename versioned_graph<OutEdgeList,VertexList,Directed,VertexProperties,EdgeProperties,GraphProperties,EdgeList>::vertex_descriptor
 versioned_graph<OutEdgeList,VertexList,Directed,VertexProperties,EdgeProperties,GraphProperties,EdgeList>::
 generate_vertex(vertex_bundled prop){
+    using namespace detail;
     vertex_descriptor v = boost::add_vertex(get_self());
     FILE_LOG(logDEBUG4) << "created vertex: " << v;
     (*this)[v] = prop;
@@ -395,6 +392,7 @@ template<typename OutEdgeList,
 std::pair<typename versioned_graph<OutEdgeList,VertexList,Directed,VertexProperties,EdgeProperties,GraphProperties,EdgeList>::edge_descriptor,bool>
 versioned_graph<OutEdgeList,VertexList,Directed,VertexProperties,EdgeProperties,GraphProperties,EdgeList>::
 generate_edge(edge_bundled prop,vertex_descriptor u, vertex_descriptor v){
+    using namespace detail;
     auto p = boost::add_edge(u,v,prop,get_self());
     if(p.second){
         if(edges_history.find(p.first)==edges_history.end()){
@@ -424,6 +422,7 @@ template<typename OutEdgeList,
          typename EdgeList>
 void versioned_graph<OutEdgeList,VertexList,Directed,VertexProperties,EdgeProperties,GraphProperties,EdgeList>::
 commit(){
+    using namespace detail;
     auto ei = edges(*this);
     for(auto edge_iter = ei.first; edge_iter != ei.second; ++edge_iter) {
         edges_history_type& hist = get_history(*edge_iter);

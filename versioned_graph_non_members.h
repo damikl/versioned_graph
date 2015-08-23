@@ -67,16 +67,15 @@ template<typename OutEdgeList,
          typename vertex_descriptor>
 auto edge(vertex_descriptor u,vertex_descriptor v, const versioned_graph<OutEdgeList,VertexList,Directed,
                  VertexProperties,EdgeProperties,GraphProperties,EdgeList>& g) {
-
+    using namespace detail;
     typedef versioned_graph<OutEdgeList,VertexList,Directed,
             VertexProperties,EdgeProperties,GraphProperties,EdgeList> graph_type;
     auto p = boost::edge(u,v,dynamic_cast<const typename graph_type::graph_type&>(g));
     if(p.second){
         FILE_LOG(logDEBUG4) << "edge (" << u << ", " << v  <<  "): found existing intenally";
         auto edge_desc = p.first;
-        const typename graph_type::edges_history_type& list = g.get_history(edge_desc);
         FILE_LOG(logDEBUG4) << /*list.size()  <<*/ "records in history of edge";
-        if(is_deleted(get_revision(list.front()))){
+        if(is_deleted(g.get_latest_revision(edge_desc))){
             FILE_LOG(logDEBUG4) << "edge: is deleted";
             return std::make_pair(typename graph_type::edge_descriptor(),false);
         }
@@ -98,15 +97,10 @@ auto edges(const versioned_graph<OutEdgeList,VertexList,Directed,
                            VertexProperties,EdgeProperties,GraphProperties,EdgeList>& g){
     typedef versioned_graph<OutEdgeList,VertexList,Directed,
             VertexProperties,EdgeProperties,GraphProperties,EdgeList> graph_type;
-    FILE_LOG(logDEBUG1) << "get edges";
-    filter_predicate<graph_type,typename graph_type::edge_descriptor> predicate(&g);
+    FILE_LOG(logDEBUG3) << "get edges";
+    typename graph_type::edge_predicate predicate(&g);
     typename graph_type::edge_iterator iter_begin(predicate, g.edges_begin(), g.edges_end());
     typename graph_type::edge_iterator iter_end(predicate, g.edges_end(), g.edges_end());
-    unsigned int dist = std::distance(iter_begin,iter_end);
-    if(dist!=num_edges(g)){
-        FILE_LOG(logERROR) << "distance " << dist << " while num_edges: " << num_edges(g);
-//        exit(1);
-    }
     return std::make_pair(iter_begin,iter_end);
 }
 
@@ -122,7 +116,7 @@ auto vertices(const versioned_graph<OutEdgeList,VertexList,Directed,
     typedef versioned_graph<OutEdgeList,VertexList,Directed,
             VertexProperties,EdgeProperties,GraphProperties,EdgeList> graph_type;
 
-    filter_predicate<graph_type,typename graph_type::vertex_descriptor> predicate(&g);
+    typename graph_type::vertex_predicate predicate(&g);
     FILE_LOG(logDEBUG4) << "will create begin and end iterators for vertices";
     auto end = g.vertices_end();
     typename graph_type::vertex_iterator iter_begin(predicate, g.vertices_begin(), end);
@@ -238,7 +232,7 @@ auto out_edges(vertex_descriptor u, const versioned_graph<OutEdgeList,VertexList
     typedef versioned_graph<OutEdgeList,VertexList,Directed,
             VertexProperties,EdgeProperties,GraphProperties,EdgeList> graph_type;
 
-    filter_predicate<graph_type,typename graph_type::edge_descriptor> predicate(&g);
+    typename graph_type::edge_predicate predicate(&g);
     auto base_iter_p = out_edges(u,g.get_self());
     typename graph_type::out_edge_iterator iter_begin(predicate, base_iter_p.first, base_iter_p.second);
     typename graph_type::out_edge_iterator iter_end(predicate, base_iter_p.second, base_iter_p.second);
@@ -258,7 +252,7 @@ auto in_edges(vertex_descriptor u, const versioned_graph<OutEdgeList,VertexList,
     typedef versioned_graph<OutEdgeList,VertexList,Directed,
             VertexProperties,EdgeProperties,GraphProperties,EdgeList> graph_type;
 
-    filter_predicate<graph_type,typename graph_type::edge_descriptor> predicate(&g);
+    typename graph_type::edge_predicate predicate(&g);
     auto base_iter_p = in_edges(u,g.get_self());
     typename graph_type::in_edge_iterator iter_begin(predicate, base_iter_p.first, base_iter_p.second);
     typename graph_type::in_edge_iterator iter_end(predicate, base_iter_p.second, base_iter_p.second);
@@ -306,7 +300,7 @@ auto adjacent_vertices(vertex_descriptor u,
             VertexProperties,EdgeProperties,GraphProperties,EdgeList> graph_type;
 
     auto adj = boost::adjacent_vertices(u,g.get_self());
-    adjacency_filter_predicate<graph_type,typename graph_type::vertex_descriptor> predicate(&g,u);
+    typename graph_type::adjacency_predicate predicate(&g,u);
     typename graph_type::adjacency_iterator iter_begin(predicate, adj.first, adj.second);
     typename graph_type::adjacency_iterator iter_end(predicate, adj.second, adj.second);
     return std::make_pair(iter_begin,iter_end);
@@ -326,7 +320,7 @@ auto inv_adjacent_vertices(vertex_descriptor u, const versioned_graph<OutEdgeLis
             VertexProperties,EdgeProperties,GraphProperties,EdgeList> graph_type;
 
     auto adj = boost::inv_adjacent_vertices(u,g.get_self());
-    adjacency_filter_predicate<graph_type,typename graph_type::vertex_descriptor> predicate(&g,u,true);
+    typename graph_type::adjacency_predicate predicate(&g,u,true);
     typename graph_type::inv_adjacency_iterator iter_begin(predicate, adj.first, adj.second);
     typename graph_type::inv_adjacency_iterator iter_end(predicate, adj.second, adj.second);
     return std::make_pair(iter_begin,iter_end);

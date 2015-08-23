@@ -218,16 +218,6 @@ public:
         ASSERT_EQ(111,this->g[this->v1]);
         undo_commit(this->g);
         EXPECT_NO_FATAL_FAILURE(test_after_init());
-        /*
-        ASSERT_EQ(revision(2),this->g.get_current_rev());
-        EXPECT_NO_FATAL_FAILURE(this->check_out_edges(this->v2,{this->v4,this->v1,this->v3}));
-        EXPECT_NO_FATAL_FAILURE(this->check_out_edges(this->v1,{this->v4,this->v2,this->v3}));
-        ASSERT_EQ(4,this->g[this->v4]);
-        ASSERT_EQ(1,this->g[this->v1]);
-        ASSERT_NO_FATAL_FAILURE(this->check_vertices_count(4));
-        ASSERT_NO_FATAL_FAILURE(this->check_edges_count(5));
-        ASSERT_NO_FATAL_FAILURE(this->check_all_edges_count(5));
-        */
 
     }
 };
