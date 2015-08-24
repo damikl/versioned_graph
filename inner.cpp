@@ -60,6 +60,7 @@ public:
         assert(result);
         boost::tie(e,result) = add_edge(v2,v3,12,g);
         assert(result);
+        g[boost::graph_bundle] = -1.1;
         commit(g);
         remove_edge(e,g);
         commit(g);
@@ -162,13 +163,14 @@ public:
 
         ASSERT_EQ(4,this->g[this->v4]);
         ASSERT_EQ(1,this->g[this->v1]);
+        ASSERT_EQ(-1.1,this->g[boost::graph_bundle]);
     }
 protected:
     vertex_descriptor v1,v2,v3,v4,v5;
     Graph g;
 };
 
-class UndirectedGraphTest : public GraphTest<versioned_graph<boost::vecS, boost::vecS, boost::undirectedS,int,int>> {
+class UndirectedGraphTest : public GraphTest<versioned_graph<boost::vecS, boost::vecS, boost::undirectedS,int,int,double>> {
 public:
 
     void test(){
@@ -185,6 +187,7 @@ public:
 
         this->g[this->v4] = 44;
         this->g[this->v1] = 11;
+        this->g[boost::graph_bundle] = 5.1;
 
         edge_descriptor e;
         bool result = false;
@@ -200,6 +203,7 @@ public:
         ASSERT_NO_FATAL_FAILURE(this->check_vertices_count(5));
         this->g[this->v4] = 444;
         this->g[this->v1] = 111;
+        this->g[boost::graph_bundle] = 7.2;
         ASSERT_EQ(revision(4),this->g.get_current_rev());
         boost::clear_vertex(this->v3,this->g);
         boost::remove_vertex(this->v3,this->g);
@@ -213,6 +217,7 @@ public:
         EXPECT_NO_FATAL_FAILURE(this->check_adjacency(this->v1,{this->v4,this->v2,this->v5}));
         ASSERT_EQ(444,this->g[this->v4]);
         ASSERT_EQ(111,this->g[this->v1]);
+        ASSERT_EQ(7.2,this->g[boost::graph_bundle]);
         vertex_descriptor v6 = boost::add_vertex(this->g);
         add_edge(v6,this->v2,this->g);
         add_edge(v6,this->v4,this->g);
@@ -243,10 +248,10 @@ TEST_F(UndirectedGraphTest, undirected_graph_test) {
     ASSERT_NO_FATAL_FAILURE(this->test());
 }
 
-class BidirectionalGraphTest : public GraphTest<versioned_graph<boost::vecS, boost::vecS, boost::bidirectionalS,int,int>> {
+class BidirectionalGraphTest : public GraphTest<versioned_graph<boost::vecS, boost::vecS, boost::bidirectionalS,int,int,double>> {
 public:
-    typedef GraphTest<versioned_graph<boost::vecS, boost::vecS, boost::bidirectionalS,int,int>> base_type;
-
+    typedef GraphTest<versioned_graph<boost::vecS, boost::vecS, boost::bidirectionalS,int,int,double>> base_type;
+/*
     virtual void init(){
         v1 = add_vertex(1,g);
         v2 = add_vertex(2,g);
@@ -268,7 +273,7 @@ public:
         remove_edge(e,g);
         commit(g);
     }
-
+*/
     virtual void check_in_edges(vertex_descriptor v,std::set<vertex_descriptor> set) const {
         std::pair<in_edge_iterator, in_edge_iterator> ei = in_edges(v,g);
         unsigned int in_edges_count = 0;

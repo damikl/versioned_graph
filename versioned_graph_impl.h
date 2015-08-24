@@ -439,6 +439,7 @@ commit(){
             hist.push_front(make_entry(current_rev,prop));
         }
     }
+    graph_bundled_history.update_if_needed(current_rev,(*this)[graph_bundle]);
     ++current_rev;
 }
 
@@ -455,6 +456,8 @@ undo_commit(){
     FILE_LOG(logDEBUG) << "Undo commit";
     clean_edges_to_current_rev();
     clean_vertices_to_current_rev();
+    graph_bundled_history.clean_to_max(current_rev);
+    (*this)[graph_bundle] = graph_bundled_history.get_latest();
 }
 
 }

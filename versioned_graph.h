@@ -23,13 +23,42 @@ struct property_records<boost::no_property>{
 };
 
 template<class T>
-struct property_optional_records{
-    typedef std::list<std::pair<revision,T> > type;
+class property_optional_records{
+    typedef std::list<std::pair<revision,T> > history_type;
+    history_type hist;
+public:
+    void update_if_needed(revision rev,const T& value){
+        if(hist.empty()){
+            hist.push_front(std::make_pair(rev,value));
+        } else {
+            auto p = hist.front();
+            assert(p.first<rev);
+            if(p.second!=value)
+            {
+                hist.push_front(std::make_pair(rev,value));
+            }
+        }
+    }
+    void clean_to_max(const revision& rev){
+        while(!hist.empty() && hist.front().first>=rev){
+            hist.pop_front();
+        }
+    }
+    T get_latest() const{
+        return hist.front().second;
+    }
+
 };
 
 template<>
 struct property_optional_records<boost::no_property>{
-    typedef boost::no_property type;
+    void update_if_needed(revision ,const boost::no_property& ){
+    }
+    void clean_to_max(const revision& ){
+    }
+    boost::no_property get_latest() const{
+        return boost::no_property();
+    }
 };
 
 template<typename property_type>
@@ -294,9 +323,9 @@ template<typename OutEdgeList = boost::vecS,
          typename EdgeProperties = boost::no_property,
          typename GraphProperties = boost::no_property,
          typename EdgeList = boost::listS>
-class versioned_graph  : public boost::adjacency_list<OutEdgeList,VertexList,Directed,VertexProperties,EdgeProperties,typename detail::property_optional_records<GraphProperties>::type,EdgeList>{
+class versioned_graph  : public boost::adjacency_list<OutEdgeList,VertexList,Directed,VertexProperties,EdgeProperties,GraphProperties,EdgeList>{
 public:
-    typedef typename detail::property_optional_records<GraphProperties>::type graph_properties_history_type;
+    typedef typename detail::property_optional_records<GraphProperties> graph_properties_history_type;
     typedef versioned_graph<OutEdgeList,VertexList,Directed,VertexProperties,EdgeProperties,GraphProperties,EdgeList> self_type;
     typedef boost::adjacency_list<OutEdgeList,VertexList,Directed,VertexProperties,EdgeProperties,GraphProperties,EdgeList> graph_type;
 
@@ -515,6 +544,7 @@ private:
 
     std::map<vertex_descriptor,vertex_stored_data > vertices_history;
     std::map<edge_descriptor,edges_history_type> edges_history;
+    graph_properties_history_type graph_bundled_history;
     vertices_size_type v_num;
     edges_size_type e_num;
     revision current_rev;
