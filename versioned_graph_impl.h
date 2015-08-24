@@ -74,8 +74,8 @@ set_deleted(edge_descriptor e){
     edges_history_type hist = get_history(e);
     assert(!hist.empty());
     assert(!check_if_currently_deleted(e));
+    decr_degree(e);
     if(hist.size()>1 || get_latest_revision(e) < current_rev){
-        decr_degree(e);
         set_deleted(e,edge_bundled());
         assert(check_if_currently_deleted(e));
     } else {
@@ -120,16 +120,15 @@ void versioned_graph<OutEdgeList,VertexList,Directed,VertexProperties,EdgeProper
 decr_degree(edge_descriptor e){
     vertex_descriptor u = boost::source(e,*this);
     vertex_descriptor v = boost::target(e,*this);
-    degree_size_type out_deg = get_stored_data(u).decr_out_degree();
-    FILE_LOG(logDEBUG4) << "decrement out degree for " << u << " to " << out_deg;
-    if(!std::is_same<directed_category,boost::directedS>::value){
+    get_stored_data(u).decr_out_degree();
+    FILE_LOG(logDEBUG4) << "decrement out degree for " << u;
+
+    get_stored_data(v).decr_in_degree();
+    FILE_LOG(logDEBUG4) << "decrement in degree for " << v;
+    if(std::is_same<directed_category,boost::undirected_tag>::value){
         get_stored_data(v).decr_out_degree();
-        FILE_LOG(logDEBUG4) << "decrement out degree for " << v << " to " << out_deg;
+        FILE_LOG(logDEBUG4) << "decrement out degree for " << v;
     }
-    degree_size_type in_deg = get_stored_data(u).decr_in_degree();
-    FILE_LOG(logDEBUG4) << "decrement in degree for " << u << " to " << in_deg;
-    in_deg = get_stored_data(v).decr_in_degree();
-    FILE_LOG(logDEBUG4) << "decrement in degree for " << v << " to " << in_deg;
 }
 
 template<typename OutEdgeList,
@@ -143,16 +142,15 @@ void versioned_graph<OutEdgeList,VertexList,Directed,VertexProperties,EdgeProper
 incr_degree(edge_descriptor e){
     vertex_descriptor u = boost::source(e,*this);
     vertex_descriptor v = boost::target(e,*this);
-    degree_size_type out_deg = get_stored_data(u).incr_out_degree();
-    FILE_LOG(logDEBUG4) << "increment out degree for " << u << " to " << out_deg;
-    if(!std::is_same<directed_category,boost::directedS>::value){
-        out_deg = get_stored_data(v).incr_out_degree();
-        FILE_LOG(logDEBUG4) << "increment out degree for " << v << " to " << out_deg;
+    get_stored_data(u).incr_out_degree();
+    FILE_LOG(logDEBUG4) << "increment out degree for " << u;
+
+    get_stored_data(v).incr_in_degree();
+    FILE_LOG(logDEBUG4) << "increment in degree for " << v;
+    if(std::is_same<directed_category,boost::undirected_tag>::value){
+        get_stored_data(v).incr_out_degree();
+        FILE_LOG(logDEBUG4) << "increment out degree for " << v;
     }
-    degree_size_type in_deg = get_stored_data(u).incr_in_degree();
-    FILE_LOG(logDEBUG4) << "increment in degree for " << u << " to " << in_deg;
-    in_deg = get_stored_data(v).incr_in_degree();
-    FILE_LOG(logDEBUG4) << "increment in degree for " << v << " to " << in_deg;
 }
 
 template<typename OutEdgeList,

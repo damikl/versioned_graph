@@ -235,26 +235,26 @@ public:
         FILE_LOG(logDEBUG4) << "incr_out_degree " << out_deg;
         return ++out_deg;
     }
-    inline degree_size_type incr_in_degree() {
-        return 0;
+    inline void incr_in_degree() {
     }
     inline degree_size_type decr_out_degree() {
         FILE_LOG(logDEBUG4) << "decr_out_degree " << out_deg;
         return --out_deg;
     }
-    inline degree_size_type decr_in_degree() {
-        return 0;
+    inline void decr_in_degree() {
     }
     inline degree_size_type get_out_degree() const{
         return out_deg;
     }
-    inline degree_size_type get_in_degree() const{
-        return 0;
-    }
+
+//  unavaible
+//  inline degree_size_type get_in_degree() const{
+//       return 0;
+//  }
 
 };
 template<typename vertices_history_type,typename degree_size_type>
-struct vertex_data<vertices_history_type,degree_size_type,bidirectionalS>{
+struct vertex_data<vertices_history_type,degree_size_type,bidirectional_tag>{
     vertices_history_type hist;
 private:
     degree_size_type out_deg;
