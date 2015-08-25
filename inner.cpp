@@ -170,7 +170,7 @@ protected:
     Graph g;
 };
 
-class UndirectedGraphTest : public GraphTest<versioned_graph<boost::vecS, boost::vecS, boost::undirectedS,int,int,double>> {
+class UndirectedGraphTest : public GraphTest<versioned_graph<adjacency_list<boost::vecS, boost::vecS, boost::undirectedS,int,int,double>>> {
 public:
 
     void test(){
@@ -248,9 +248,9 @@ TEST_F(UndirectedGraphTest, undirected_graph_test) {
     ASSERT_NO_FATAL_FAILURE(this->test());
 }
 
-class BidirectionalGraphTest : public GraphTest<versioned_graph<boost::vecS, boost::vecS, boost::bidirectionalS,int,int,double>> {
+class BidirectionalGraphTest : public GraphTest<versioned_graph<adjacency_list<boost::vecS, boost::vecS, boost::bidirectionalS,int,int,double>>> {
 public:
-    typedef GraphTest<versioned_graph<boost::vecS, boost::vecS, boost::bidirectionalS,int,int,double>> base_type;
+    typedef GraphTest<versioned_graph<adjacency_list<boost::vecS, boost::vecS, boost::bidirectionalS,int,int,double>>> base_type;
 /*
     virtual void init(){
         v1 = add_vertex(1,g);
@@ -393,7 +393,7 @@ TEST(VersionedGraphTest, SimpleExample) {
     Output2FILE::Stream() = log_fd;
     using namespace boost;
     using namespace std;
-    typedef versioned_graph<boost::vecS, boost::vecS, boost::directedS,int,string> simple_graph;
+    typedef versioned_graph<adjacency_list<boost::vecS, boost::vecS, boost::directedS,int,string>> simple_graph;
     simple_graph sg;
 //    typedef typename graph_traits<simple_graph>::vertices_size_type size_type;
 //    typedef typename boost::vertex_bundle_type<simple_graph>::type vertex_properties;
@@ -441,7 +441,7 @@ TEST(VersionedGraphTest, withoutTypes) {
     Output2FILE::Stream() = log_fd;
     using namespace boost;
     using namespace std;
-    typedef versioned_graph<boost::vecS, boost::vecS, boost::directedS> simple_graph;
+    typedef versioned_graph<adjacency_list<boost::vecS, boost::vecS, boost::directedS>> simple_graph;
     simple_graph sg;
 //    typedef typename graph_traits<simple_graph>::vertices_size_type size_type;
 //    typedef typename boost::vertex_bundle_type<simple_graph>::type vertex_properties;
@@ -535,7 +535,7 @@ TEST(VersionedGraphTest, checkTopologicalSort) {
     using namespace boost;
     using namespace std;
     typedef property<vertex_color_t, int> ColorProperty;
-    typedef versioned_graph<boost::vecS, boost::vecS, boost::directedS,ColorProperty> simple_graph;
+    typedef versioned_graph<adjacency_list<boost::vecS, boost::vecS, boost::directedS,ColorProperty>> simple_graph;
     simple_graph sg;
 //    typedef typename graph_traits<simple_graph>::vertices_size_type size_type;
 //    typedef typename boost::vertex_bundle_type<simple_graph>::type vertex_properties;

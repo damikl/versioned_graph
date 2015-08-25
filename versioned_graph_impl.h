@@ -2,56 +2,32 @@
 #define VERSIONED_GRAPH_IMPL_H
 namespace boost {
 
-template<typename OutEdgeList,
-         typename VertexList,
-         typename Directed,
-         typename VertexProperties,
-         typename EdgeProperties,
-         typename GraphProperties,
-         typename EdgeList>
-auto versioned_graph<OutEdgeList,VertexList,Directed,VertexProperties,EdgeProperties,GraphProperties,EdgeList>::
+template<typename graph_t>
+auto versioned_graph<graph_t>::
 vertices_begin() const {
     typename graph_type::vertex_iterator iter = boost::vertices(*dynamic_cast<const graph_type*>(this)).first;
     FILE_LOG(logDEBUG4) << "fetched first vertex iterator";
     return iter;
 }
 
-template<typename OutEdgeList,
-         typename VertexList,
-         typename Directed,
-         typename VertexProperties,
-         typename EdgeProperties,
-         typename GraphProperties,
-         typename EdgeList>
-auto versioned_graph<OutEdgeList,VertexList,Directed,VertexProperties,EdgeProperties,GraphProperties,EdgeList>::
+template<typename graph_t>
+auto versioned_graph<graph_t>::
 vertices_end() const {
     typename graph_type::vertex_iterator iter = boost::vertices(*dynamic_cast<const graph_type*>(this)).second;
     FILE_LOG(logDEBUG4) << "fetched last vertex iterator";
     return iter;
 }
 
-template<typename OutEdgeList,
-         typename VertexList,
-         typename Directed,
-         typename VertexProperties,
-         typename EdgeProperties,
-         typename GraphProperties,
-         typename EdgeList>
-auto versioned_graph<OutEdgeList,VertexList,Directed,VertexProperties,EdgeProperties,GraphProperties,EdgeList>::
+template<typename graph_t>
+auto versioned_graph<graph_t>::
 edges_begin() const {
     typename graph_type::edge_iterator iter = boost::edges(*dynamic_cast<const graph_type*>(this)).first;
     FILE_LOG(logDEBUG4) << "fetched first edge iterator";
     return iter;
 }
 
-template<typename OutEdgeList,
-         typename VertexList,
-         typename Directed,
-         typename VertexProperties,
-         typename EdgeProperties,
-         typename GraphProperties,
-         typename EdgeList>
-auto versioned_graph<OutEdgeList,VertexList,Directed,VertexProperties,EdgeProperties,GraphProperties,EdgeList>::
+template<typename graph_t>
+auto versioned_graph<graph_t>::
 edges_end() const {
     typename graph_type::edge_iterator iter = boost::edges(*dynamic_cast<const graph_type*>(this)).second;
     FILE_LOG(logDEBUG4) << "fetched last edge iterator";
@@ -59,14 +35,8 @@ edges_end() const {
 }
 
 
-template<typename OutEdgeList,
-         typename VertexList,
-         typename Directed,
-         typename VertexProperties,
-         typename EdgeProperties,
-         typename GraphProperties,
-         typename EdgeList>
-void versioned_graph<OutEdgeList,VertexList,Directed,VertexProperties,EdgeProperties,GraphProperties,EdgeList>::
+template<typename graph_t>
+void versioned_graph<graph_t>::
 set_deleted(edge_descriptor e){
     FILE_LOG(logDEBUG3)     << "remove edge ( "
                             << boost::source(e,*this) << ", "
@@ -87,14 +57,8 @@ set_deleted(edge_descriptor e){
     --e_num;
     FILE_LOG(logDEBUG3) << "set deleted: finnished";
 }
-template<typename OutEdgeList,
-         typename VertexList,
-         typename Directed,
-         typename VertexProperties,
-         typename EdgeProperties,
-         typename GraphProperties,
-         typename EdgeList>
-void versioned_graph<OutEdgeList,VertexList,Directed,VertexProperties,EdgeProperties,GraphProperties,EdgeList>::
+template<typename graph_t>
+void versioned_graph<graph_t>::
 set_deleted(vertex_descriptor v){
     if(get_history(v).size()>1 || get_latest_revision(v) < current_rev){
         set_deleted(v,vertex_bundled());
@@ -109,14 +73,8 @@ set_deleted(vertex_descriptor v){
     FILE_LOG(logDEBUG3) << "set deleted: finnished";
 }
 
-template<typename OutEdgeList,
-         typename VertexList,
-         typename Directed,
-         typename VertexProperties,
-         typename EdgeProperties,
-         typename GraphProperties,
-         typename EdgeList>
-void versioned_graph<OutEdgeList,VertexList,Directed,VertexProperties,EdgeProperties,GraphProperties,EdgeList>::
+template<typename graph_t>
+void versioned_graph<graph_t>::
 decr_degree(edge_descriptor e){
     vertex_descriptor u = boost::source(e,*this);
     vertex_descriptor v = boost::target(e,*this);
@@ -131,14 +89,8 @@ decr_degree(edge_descriptor e){
     }
 }
 
-template<typename OutEdgeList,
-         typename VertexList,
-         typename Directed,
-         typename VertexProperties,
-         typename EdgeProperties,
-         typename GraphProperties,
-         typename EdgeList>
-void versioned_graph<OutEdgeList,VertexList,Directed,VertexProperties,EdgeProperties,GraphProperties,EdgeList>::
+template<typename graph_t>
+void versioned_graph<graph_t>::
 incr_degree(edge_descriptor e){
     vertex_descriptor u = boost::source(e,*this);
     vertex_descriptor v = boost::target(e,*this);
@@ -153,14 +105,8 @@ incr_degree(edge_descriptor e){
     }
 }
 
-template<typename OutEdgeList,
-         typename VertexList,
-         typename Directed,
-         typename VertexProperties,
-         typename EdgeProperties,
-         typename GraphProperties,
-         typename EdgeList>
-void versioned_graph<OutEdgeList,VertexList,Directed,VertexProperties,EdgeProperties,GraphProperties,EdgeList>::
+template<typename graph_t>
+void versioned_graph<graph_t>::
 clean_history( edges_history_type& hist, edge_descriptor desc){
     revision r = detail::get_revision(hist.front());
     FILE_LOG(logDEBUG4) << "remove edges history ( containing " << hist.size() << " records ) entry: ( "
@@ -184,14 +130,8 @@ clean_history( edges_history_type& hist, edge_descriptor desc){
 
 }
 
-template<typename OutEdgeList,
-         typename VertexList,
-         typename Directed,
-         typename VertexProperties,
-         typename EdgeProperties,
-         typename GraphProperties,
-         typename EdgeList>
-void versioned_graph<OutEdgeList,VertexList,Directed,VertexProperties,EdgeProperties,GraphProperties,EdgeList>::
+template<typename graph_t>
+void versioned_graph<graph_t>::
 clean_history( vertices_history_type& hist, vertex_descriptor desc){
     revision r = detail::get_revision(hist.front());
     if (is_deleted(r)) {
@@ -203,14 +143,8 @@ clean_history( vertices_history_type& hist, vertex_descriptor desc){
     FILE_LOG(logDEBUG4) << "after vertices history removal: ("<< desc << ") for rev: " << r;
 }
 
-template<typename OutEdgeList,
-         typename VertexList,
-         typename Directed,
-         typename VertexProperties,
-         typename EdgeProperties,
-         typename GraphProperties,
-         typename EdgeList>
-void versioned_graph<OutEdgeList,VertexList,Directed,VertexProperties,EdgeProperties,GraphProperties,EdgeList>::
+template<typename graph_t>
+void versioned_graph<graph_t>::
 clean_edges_to_current_rev(){
     FILE_LOG(logDEBUG) << "clean edges to rev " << current_rev;
     auto ei = boost::edges(get_self());
@@ -245,14 +179,8 @@ clean_edges_to_current_rev(){
     }
 }
 
-template<typename OutEdgeList,
-         typename VertexList,
-         typename Directed,
-         typename VertexProperties,
-         typename EdgeProperties,
-         typename GraphProperties,
-         typename EdgeList>
-void versioned_graph<OutEdgeList,VertexList,Directed,VertexProperties,EdgeProperties,GraphProperties,EdgeList>::
+template<typename graph_t>
+void versioned_graph<graph_t>::
 clean_vertices_to_current_rev(){
     auto vi = boost::vertices(get_self());
     std::list<vertex_descriptor> vertices_to_be_removed;
@@ -280,14 +208,8 @@ clean_vertices_to_current_rev(){
     }
 }
 
-template<typename OutEdgeList,
-         typename VertexList,
-         typename Directed,
-         typename VertexProperties,
-         typename EdgeProperties,
-         typename GraphProperties,
-         typename EdgeList>
-versioned_graph<OutEdgeList,VertexList,Directed,VertexProperties,EdgeProperties,GraphProperties,EdgeList>::
+template<typename graph_t>
+versioned_graph<graph_t>::
 versioned_graph(const versioned_graph& g ) : graph_type(),v_num(g.v_num),
                                              e_num(g.e_num),
                                              current_rev(g.current_rev) {
@@ -356,15 +278,9 @@ versioned_graph(const versioned_graph& g ) : graph_type(),v_num(g.v_num),
 }
 
 
-template<typename OutEdgeList,
-         typename VertexList,
-         typename Directed,
-         typename VertexProperties,
-         typename EdgeProperties,
-         typename GraphProperties,
-         typename EdgeList>
-typename versioned_graph<OutEdgeList,VertexList,Directed,VertexProperties,EdgeProperties,GraphProperties,EdgeList>::vertex_descriptor
-versioned_graph<OutEdgeList,VertexList,Directed,VertexProperties,EdgeProperties,GraphProperties,EdgeList>::
+template<typename graph_t>
+typename versioned_graph<graph_t>::vertex_descriptor
+versioned_graph<graph_t>::
 generate_vertex(vertex_bundled prop){
     using namespace detail;
     vertex_descriptor v = boost::add_vertex(get_self());
@@ -380,15 +296,9 @@ generate_vertex(vertex_bundled prop){
     return v;
 }
 
-template<typename OutEdgeList,
-         typename VertexList,
-         typename Directed,
-         typename VertexProperties,
-         typename EdgeProperties,
-         typename GraphProperties,
-         typename EdgeList>
-std::pair<typename versioned_graph<OutEdgeList,VertexList,Directed,VertexProperties,EdgeProperties,GraphProperties,EdgeList>::edge_descriptor,bool>
-versioned_graph<OutEdgeList,VertexList,Directed,VertexProperties,EdgeProperties,GraphProperties,EdgeList>::
+template<typename graph_t>
+std::pair<typename versioned_graph<graph_t>::edge_descriptor,bool>
+versioned_graph<graph_t>::
 generate_edge(edge_bundled prop,vertex_descriptor u, vertex_descriptor v){
     using namespace detail;
     auto p = boost::add_edge(u,v,prop,get_self());
@@ -411,14 +321,8 @@ generate_edge(edge_bundled prop,vertex_descriptor u, vertex_descriptor v){
     return p;
 }
 
-template<typename OutEdgeList,
-         typename VertexList,
-         typename Directed,
-         typename VertexProperties,
-         typename EdgeProperties,
-         typename GraphProperties,
-         typename EdgeList>
-void versioned_graph<OutEdgeList,VertexList,Directed,VertexProperties,EdgeProperties,GraphProperties,EdgeList>::
+template<typename graph_t>
+void versioned_graph<graph_t>::
 commit(){
     using namespace detail;
     auto ei = edges(*this);
@@ -443,14 +347,8 @@ commit(){
     ++current_rev;
 }
 
-template<typename OutEdgeList,
-         typename VertexList,
-         typename Directed,
-         typename VertexProperties,
-         typename EdgeProperties,
-         typename GraphProperties,
-         typename EdgeList>
-void versioned_graph<OutEdgeList,VertexList,Directed,VertexProperties,EdgeProperties,GraphProperties,EdgeList>::
+template<typename graph_t>
+void versioned_graph<graph_t>::
 undo_commit(){
     --current_rev;
     FILE_LOG(logDEBUG) << "Undo commit";

@@ -316,23 +316,18 @@ public:
 
 }
 
-template<typename OutEdgeList = boost::vecS,
-         typename VertexList = boost::vecS,
-         typename Directed = boost::directedS,
-         typename VertexProperties = boost::no_property,
-         typename EdgeProperties = boost::no_property,
-         typename GraphProperties = boost::no_property,
-         typename EdgeList = boost::listS>
-class versioned_graph  : public boost::adjacency_list<OutEdgeList,VertexList,Directed,VertexProperties,EdgeProperties,GraphProperties,EdgeList>{
+template<typename graph_t>
+class versioned_graph  : public graph_t{
 public:
-    typedef typename detail::property_optional_records<GraphProperties> graph_properties_history_type;
-    typedef versioned_graph<OutEdgeList,VertexList,Directed,VertexProperties,EdgeProperties,GraphProperties,EdgeList> self_type;
-    typedef boost::adjacency_list<OutEdgeList,VertexList,Directed,VertexProperties,EdgeProperties,GraphProperties,EdgeList> graph_type;
+    typedef versioned_graph<graph_t> self_type;
+    typedef graph_t graph_type;
 
     typedef typename boost::vertex_bundle_type<graph_type>::type vertex_bundled;
     typedef typename boost::edge_bundle_type<graph_type>::type edge_bundled;
+    typedef typename boost::graph_bundle_type<graph_type>::type graph_bundled;
     typedef typename detail::property_records<vertex_bundled>::type vertices_history_type;
     typedef typename detail::property_records<edge_bundled>::type edges_history_type;
+    typedef typename detail::property_optional_records<graph_bundled> graph_properties_history_type;
 
     typedef typename boost::graph_traits<graph_type>::vertex_descriptor vertex_descriptor;
     typedef typename boost::graph_traits<graph_type>::edge_descriptor edge_descriptor;
