@@ -160,9 +160,7 @@ auto in_degree(vertex_descriptor u, const versioned_graph<graph_t>& g){
 }
 
 template<typename graph_t, typename vertex_descriptor>
-auto adjacent_vertices(vertex_descriptor u,
- const versioned_graph<graph_t
- >& g){
+auto adjacent_vertices(vertex_descriptor u, const versioned_graph<graph_t>& g){
     typedef versioned_graph<graph_t> graph_type;
 
     auto adj = boost::adjacent_vertices(u,g.get_self());

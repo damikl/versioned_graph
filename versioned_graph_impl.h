@@ -277,6 +277,15 @@ versioned_graph(const versioned_graph& g ) : graph_type(),v_num(g.v_num),
                                             << e_num << "("<< edges_history.size() << ") edges";
 }
 
+template<typename graph_t>
+void versioned_graph<graph_t>::init(vertex_descriptor v,const vertex_bundled& prop){
+    vertices_history.insert(std::make_pair(v,vertex_stored_data()));
+    vertices_history_type& list = get_history(v);
+    assert(list.empty());
+    //    auto p = std::make_pair(current_rev,prop);
+    list.push_front(detail::make_entry(current_rev,prop));
+    FILE_LOG(logDEBUG4) << "created vertex: " << v << " in rev " << current_rev;
+}
 
 template<typename graph_t>
 typename versioned_graph<graph_t>::vertex_descriptor
@@ -286,12 +295,7 @@ generate_vertex(vertex_bundled prop){
     vertex_descriptor v = boost::add_vertex(get_self());
     FILE_LOG(logDEBUG4) << "created vertex: " << v;
     (*this)[v] = prop;
-    vertices_history.insert(std::make_pair(v,vertex_stored_data()));
-    vertices_history_type& list = get_history(v);
-    assert(list.empty());
-//    auto p = std::make_pair(current_rev,prop);
-    list.push_front(make_entry(current_rev,prop));
-    FILE_LOG(logDEBUG4) << "created vertex: " << v << " in rev " << current_rev;
+    init(v);
     ++v_num;
     return v;
 }

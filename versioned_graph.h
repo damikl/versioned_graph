@@ -202,6 +202,9 @@ public:
     }
 };
 
+template<typename unknown_graph_type>
+struct graph_tr{
+};
 
 template<typename versioned_graph,typename bundled_type,typename history_container>
 class property_history_reference{
@@ -317,7 +320,8 @@ public:
 }
 
 template<typename graph_t>
-class versioned_graph  : public graph_t{
+class versioned_graph  : public detail::graph_tr<versioned_graph<graph_t>> {
+    typedef detail::graph_tr<versioned_graph<graph_t>> direct_base;
 public:
     typedef versioned_graph<graph_t> self_type;
     typedef graph_t graph_type;
@@ -371,11 +375,13 @@ public:
                                     typename boost::graph_traits<graph_type>::adjacency_iterator>
                              adjacency_iterator;
 
+    /*
+    typedef typename detail::graph_tr<graph_t>::inv_adjacency_iterator inv;
     typedef typename boost::filter_iterator<
                                     detail::adjacency_filter_predicate<self_type,vertex_descriptor>,
                                     typename graph_type::inv_adjacency_iterator>
                              inv_adjacency_iterator;
-
+*/
     typedef detail::vertex_data<vertices_history_type,degree_size_type,directed_category> vertex_stored_data;
 
     auto vertices_begin() const;
@@ -383,7 +389,13 @@ public:
     auto edges_begin() const;
     auto edges_end() const;
 
-    versioned_graph() : /*g(),*/v_num(0),e_num(0),current_rev(1) {}
+    versioned_graph() : direct_base(0,graph_bundled()),v_num(0),e_num(0),current_rev(1) {}
+    versioned_graph(vertices_size_type n, const graph_bundled& p = graph_bundled()) : direct_base(n,p),v_num(n),e_num(0),current_rev(1) {
+        std::pair<vertex_iterator, vertex_iterator> vi = vertices(get_self());
+        for(vertex_iterator it = vi.first; it!=vi.second;++it){
+            init(*it);
+        }
+    }
 
     versioned_graph(const versioned_graph& g );
 
@@ -441,6 +453,7 @@ public:
     }
 
 private:
+    void init(vertex_descriptor v, const vertex_bundled& prop = vertex_bundled());
     vertex_stored_data& get_stored_data(vertex_descriptor u){
         auto iter = vertices_history.find(u);
         assert(iter!=vertices_history.end());
@@ -544,6 +557,37 @@ private:
     edges_size_type e_num;
     revision current_rev;
 };
+
+namespace detail {
+
+template<typename OutEdgeList, typename VertexList,typename  Directed,
+         typename VertexProperties, typename EdgeProperties,
+         typename GraphProperties, typename EdgeList>
+struct graph_tr<boost::versioned_graph<boost::adjacency_list<OutEdgeList,VertexList,Directed,VertexProperties,EdgeProperties,GraphProperties,EdgeList>>> : public boost::adjacency_list<OutEdgeList,VertexList,Directed,VertexProperties,EdgeProperties,GraphProperties,EdgeList>{
+    typedef typename boost::adjacency_list<OutEdgeList,VertexList,Directed,VertexProperties,EdgeProperties,GraphProperties,EdgeList> graph_type;
+    typedef typename boost::graph_bundle_type<graph_type>::type graph_bundled;
+    typedef typename boost::graph_traits<graph_type>::vertex_descriptor vertex_descriptor;
+    typedef typename boost::filter_iterator<
+                                    detail::adjacency_filter_predicate<versioned_graph<graph_type>,typename graph_type::vertex_descriptor>,
+                                    typename graph_type::inv_adjacency_iterator>
+                             inv_adjacency_iterator;
+    graph_tr(typename graph_type::vertices_size_type n, const graph_bundled& p = graph_bundled()) : graph_type(n,p){
+    }
+};
+
+template<typename Directed, typename VertexProperty,
+         typename EdgeProperty, typename GraphProperty,
+         typename Allocator>
+struct graph_tr<boost::versioned_graph<boost::adjacency_matrix<Directed,VertexProperty,EdgeProperty,GraphProperty,Allocator>>> : public boost::adjacency_matrix<Directed,VertexProperty,EdgeProperty,GraphProperty,Allocator> {
+    typedef typename boost::adjacency_matrix<Directed,VertexProperty,EdgeProperty,GraphProperty,Allocator> graph_type;
+    typedef typename boost::graph_traits<graph_type>::vertex_descriptor vertex_descriptor;
+    typedef typename boost::graph_bundle_type<graph_type>::type graph_bundled;
+
+    graph_tr(typename graph_type::vertices_size_type n,const graph_bundled& p = graph_bundled()) : graph_type(n,p){
+    }
+};
+
+}
 
 }
 #include "versioned_graph_impl.h"
