@@ -1,10 +1,12 @@
 #ifndef VERSIONED_GRAPH_H
 #define VERSIONED_GRAPH_H
 #include <boost/graph/adjacency_list.hpp>
+#include <boost/graph/adjacency_matrix.hpp>
 #include <boost/graph/graph_utility.hpp>
+#include <boost/iterator/filter_iterator.hpp>
 #include "utils.h"
 #include <type_traits>
-#include <boost/iterator/filter_iterator.hpp>
+
 
 namespace boost {
 
