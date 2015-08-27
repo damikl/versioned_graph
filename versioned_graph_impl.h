@@ -46,9 +46,11 @@ set_deleted(edge_descriptor e){
     assert(!check_if_currently_deleted(e));
     decr_degree(e);
     if(hist.size()>1 || get_latest_revision(e) < current_rev){
+        FILE_LOG(logDEBUG3) << "remove edge: set as deleted";
         set_deleted(e,edge_bundled());
         assert(check_if_currently_deleted(e));
     } else {
+        FILE_LOG(logDEBUG3) << "remove edge completely";
         auto it = edges_history.find(e);
         assert(it!=edges_history.end());
         edges_history.erase(it);
@@ -61,16 +63,18 @@ template<typename graph_t>
 void versioned_graph<graph_t>::
 set_deleted(vertex_descriptor v){
     if(get_history(v).size()>1 || get_latest_revision(v) < current_rev){
+        FILE_LOG(logDEBUG3) << "remove vertex: set as deleted";
         set_deleted(v,vertex_bundled());
         assert(check_if_currently_deleted(v));
     } else {
+        FILE_LOG(logDEBUG3) << "remove vertex completely";
         auto it = vertices_history.find(v);
         assert(it!=vertices_history.end());
         vertices_history.erase(it);
         boost::remove_vertex(v,*dynamic_cast<graph_type*>(this));
     }
     --v_num;
-    FILE_LOG(logDEBUG3) << "set deleted: finnished";
+    FILE_LOG(logDEBUG3) << "set vertex deleted: finnished";
 }
 
 template<typename graph_t>

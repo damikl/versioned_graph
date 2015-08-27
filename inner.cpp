@@ -50,6 +50,10 @@ TEST(VersionedGraphTest, SimpleExample) {
     ASSERT_EQ(5,num_vertices(sg));
     ASSERT_EQ(7,num_edges(sg));
     ASSERT_EQ(5,sg[v5]);
+    revert_changes(sg);
+    ASSERT_EQ(4,num_vertices(sg));
+    ASSERT_EQ(5,num_edges(sg));
+
 }
 
 TEST(VersionedGraphTest, withoutTypes) {
@@ -79,7 +83,7 @@ TEST(VersionedGraphTest, withoutTypes) {
     ASSERT_EQ(4,num_edges(sg));
     EXPECT_FALSE(edge(v1,v4,sg).second);
     revert_changes(sg);
-    FILE_LOG(logDEBUG1) << "made undo";
+    FILE_LOG(logDEBUG1) << "made revert";
     ASSERT_TRUE(edge(v1,v4,sg).second);
     FILE_LOG(logDEBUG1) << "edge recreated";
     ASSERT_EQ(5,num_edges(sg));
@@ -89,6 +93,9 @@ TEST(VersionedGraphTest, withoutTypes) {
     add_edge(v3,v5,sg);
     ASSERT_EQ(5,num_vertices(sg));
     ASSERT_EQ(7,num_edges(sg));
+    revert_changes(sg);
+    ASSERT_EQ(4,num_vertices(sg));
+    ASSERT_EQ(5,num_edges(sg));
 }
 
 TEST(VersionedGraphTest, normalTopologicalSort) {

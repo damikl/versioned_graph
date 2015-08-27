@@ -59,13 +59,13 @@ public:
         commit(g);
     }
     void check_vertices_count(unsigned int count) const {
+        ASSERT_EQ(count,boost::num_vertices(g));
         std::pair<vertex_iterator, vertex_iterator> vi = vertices(g);
         ASSERT_EQ(count,std::distance(vi.first,vi.second));
-        ASSERT_EQ(count,boost::num_vertices(g));
     }
 
     void check_all_vertices_count(unsigned int count) const {
-        std::pair<vertex_iterator, vertex_iterator> vi = vertices(g.get_self());
+        auto vi = vertices(g.get_self());
         ASSERT_EQ(count,std::distance(vi.first,vi.second));
         ASSERT_EQ(count,boost::num_vertices(g.get_self()));
     }
@@ -77,7 +77,7 @@ public:
     }
 
     void check_all_edges_count(unsigned int count) const{
-        std::pair<edge_iterator, edge_iterator> ei = boost::edges(g.get_self());
+        auto ei = boost::edges(g.get_self());
         ASSERT_EQ(count,boost::num_edges(g.get_self()));
         ASSERT_EQ(count,std::distance(ei.first,ei.second));
     }

@@ -74,31 +74,51 @@ auto vertices(const versioned_graph<graph_t>& g){
 }
 
 template<typename graph_t,typename vertex_descriptor>
-void clear_out_edges(vertex_descriptor u, versioned_graph<graph_t
-    >& g){
-    typedef versioned_graph<graph_t
-       > graph;
+void clear_out_edges(vertex_descriptor u, versioned_graph<graph_t>& g){
+    typedef versioned_graph<graph_t> graph;
+    std::list<typename graph::edge_descriptor> l;
     auto ei = out_edges(u,g);
     for(typename graph::out_edge_iterator edge_iter = ei.first; edge_iter != ei.second; ++edge_iter) {
-        remove_edge(*edge_iter,g);
+        l.push_front(*edge_iter);
+    }
+    for(typename graph::edge_descriptor e : l){
+        remove_edge(e,g);
     }
 }
 
 template<typename graph_t,typename vertex_descriptor>
-void clear_in_edges(vertex_descriptor u, versioned_graph<graph_t
-   >& g){
-    typedef versioned_graph<graph_t
-       > graph;
+void clear_in_edges(vertex_descriptor u, versioned_graph<graph_t>& g){
+    typedef versioned_graph<graph_t> graph;
     auto ei = in_edges(u,g);
     for(typename graph::in_edge_iterator edge_iter = ei.first; edge_iter != ei.second; ++edge_iter) {
         remove_edge(*edge_iter,g);
     }
 }
+
+namespace detail {
+
+template<typename category>
+struct vertex_cleaner{
+    template<typename graph_t, typename vertex_descriptor>
+    static void clr_vertex(vertex_descriptor u, versioned_graph<graph_t>& g){
+        boost::clear_in_edges(u,g);
+        boost::clear_out_edges(u,g);
+    }
+};
+
+template<>
+struct vertex_cleaner<typename boost::directed_tag>{
+    template<typename graph_t, typename vertex_descriptor>
+    static void clr_vertex(vertex_descriptor u, versioned_graph<graph_t>& g){
+        boost::clear_out_edges(u,g);
+    }
+};
+
+}
+
 template<typename graph_t, typename vertex_descriptor>
-void clear_vertex(vertex_descriptor u, versioned_graph<graph_t
- >& g){
-    clear_in_edges(u,g);
-    clear_out_edges(u,g);
+void clear_vertex(vertex_descriptor u, versioned_graph<graph_t>& g){
+    detail::vertex_cleaner<typename versioned_graph<graph_t>::directed_category>::clr_vertex(u,g);
 }
 
 template<typename graph_t>

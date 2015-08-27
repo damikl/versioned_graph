@@ -15,6 +15,7 @@ public:
     typedef typename graph_type::vertex_list_selector vertex_list_selector;
     typedef typename graph_type::directed_selector directed_selector;
     typedef typename graph_type::edge_list_selector edge_list_selector;
+
     void check_inv_adjacency(vertex_descriptor u,std::set<vertex_descriptor> set){
         std::pair<inv_adjacency_iterator, inv_adjacency_iterator> ei = inv_adjacent_vertices(u,this->g);
         unsigned int count = 0;
@@ -26,6 +27,10 @@ public:
         }
         ASSERT_EQ(set.size(),count);
     }
+};
+
+class UndirectedGraphTest : public ListGraphTest<versioned_graph<adjacency_list<boost::vecS, boost::vecS, boost::undirectedS,int,int,double>>> {
+public:
 
     virtual void test_after_init(){
         ASSERT_NO_FATAL_FAILURE(this->check_vertices_count(4));
@@ -50,10 +55,6 @@ public:
         ASSERT_EQ(1,this->g[this->v1]);
         ASSERT_EQ(-1.1,this->g[boost::graph_bundle]);
     }
-};
-
-class UndirectedGraphTest : public ListGraphTest<versioned_graph<adjacency_list<boost::vecS, boost::vecS, boost::undirectedS,int,int,double>>> {
-public:
 
     void test(){
         FILELog::ReportingLevel() = logDEBUG4;
@@ -253,6 +254,100 @@ public:
 
 TEST_F(BidirectionalGraphTest, bidirectional_graph_test) {
     FILE* log_fd = fopen( "bidirectional_graph_test.txt", "w" );
+    Output2FILE::Stream() = log_fd;
+    ASSERT_NO_FATAL_FAILURE(this->init());
+    ASSERT_NO_FATAL_FAILURE(this->test());
+}
+
+class DirectedGraphTest : public ListGraphTest<versioned_graph<adjacency_list<boost::vecS, boost::vecS, boost::directedS,int,int,double>>> {
+public:
+    typedef GraphTest<versioned_graph<adjacency_list<boost::vecS, boost::vecS, boost::directedS,int,int,double>>> base_type;
+
+    virtual void test_after_init(){
+        ASSERT_NO_FATAL_FAILURE(this->check_vertices_count(4));
+        ASSERT_NO_FATAL_FAILURE(this->check_edges_count(4));
+        ASSERT_NO_FATAL_FAILURE(this->check_all_edges_count(5));
+        ASSERT_NO_FATAL_FAILURE(this->check_out_edges(this->v1,{this->v4,this->v2,this->v3}));
+        ASSERT_NO_FATAL_FAILURE(this->check_out_edges(this->v2,{this->v4}));
+        ASSERT_NO_FATAL_FAILURE(this->check_out_edges(this->v3,{}));
+        ASSERT_NO_FATAL_FAILURE(this->check_out_edges(this->v4,{}));
+
+        ASSERT_NO_FATAL_FAILURE(this->check_adjacency(this->v1,{this->v4,this->v2,this->v3}));
+        ASSERT_NO_FATAL_FAILURE(this->check_adjacency(this->v2,{this->v4}));
+        ASSERT_NO_FATAL_FAILURE(this->check_adjacency(this->v3,{}));
+        ASSERT_NO_FATAL_FAILURE(this->check_adjacency(this->v4,{}));
+
+        ASSERT_EQ(4,this->g[this->v4]);
+        ASSERT_EQ(1,this->g[this->v1]);
+        ASSERT_EQ(-1.1,this->g[boost::graph_bundle]);
+    }
+
+    void test(){
+        FILELog::ReportingLevel() = logDEBUG4;
+        typedef typename graph_traits<graph_type>::directed_category directed_category;
+        assert_type_eq<boost::directed_tag,directed_category>();
+        typedef typename graph_traits<graph_type>::edge_parallel_category edge_parallel_category;
+        ::testing::StaticAssertTypeEq<boost::allow_parallel_edge_tag, edge_parallel_category>();
+
+        ASSERT_NO_FATAL_FAILURE(this->test_after_init());
+
+        this->g[this->v4] = 44;
+        this->g[this->v1] = 11;
+
+        edge_descriptor e;
+        bool result = false;
+        this->v5 = add_vertex(5,this->g);
+        boost::tie(e,result) = add_edge(this->v2,this->v5,13,this->g);
+        assert(result);
+        boost::tie(e,result) = add_edge(this->v1,this->v5,14,this->g);
+        assert(result);
+        boost::tie(e,result) = add_edge(this->v5,this->v4,15,this->g);
+        assert(result);
+        ASSERT_EQ(revision(3),this->g.get_current_rev());
+        commit(g);
+        ASSERT_NO_FATAL_FAILURE(this->check_vertices_count(5));
+        ASSERT_NO_FATAL_FAILURE(this->check_edges_count(7));
+        ASSERT_NO_FATAL_FAILURE(this->check_all_edges_count(8));
+        this->g[this->v4] = 444;
+        this->g[this->v1] = 111;
+        ASSERT_EQ(revision(4),this->g.get_current_rev());
+        FILE_LOG(logDEBUG2) << "Clear vertex: " << this->v3;
+        boost::clear_vertex(this->v3,this->g);
+        boost::remove_vertex(this->v3,this->g);
+        ASSERT_NO_FATAL_FAILURE(this->check_vertices_count(4));
+        ASSERT_NO_FATAL_FAILURE(this->check_all_vertices_count(5));
+        ASSERT_NO_FATAL_FAILURE(this->check_edges_count(7));
+        ASSERT_NO_FATAL_FAILURE(this->check_all_edges_count(8));
+        EXPECT_NO_FATAL_FAILURE(this->check_out_edges(this->v1,{this->v4,this->v2,this->v3,this->v5}));
+        EXPECT_NO_FATAL_FAILURE(this->check_out_edges(this->v5,{this->v4}));
+
+        EXPECT_NO_FATAL_FAILURE(this->check_adjacency(this->v1,{this->v4,this->v2,this->v3,this->v5}));
+        ASSERT_EQ(444,this->g[this->v4]);
+        ASSERT_EQ(111,this->g[this->v1]);
+        vertex_descriptor v6 = boost::add_vertex(this->g);
+        add_edge(v6,this->v2,this->g);
+        add_edge(v6,this->v4,this->g);
+        ASSERT_NO_FATAL_FAILURE(this->check_vertices_count(5));
+        ASSERT_NO_FATAL_FAILURE(this->check_all_vertices_count(6));
+        ASSERT_NO_FATAL_FAILURE(this->check_edges_count(9));
+        ASSERT_NO_FATAL_FAILURE(this->check_all_edges_count(10));
+        EXPECT_NO_FATAL_FAILURE(this->check_out_edges(v6,{this->v4,this->v2}));
+        FILE_LOG(logDEBUG2) << "Clear vertex: " << v6;
+        boost::clear_vertex(v6,this->g);
+        FILE_LOG(logDEBUG2) << "Remove vertex: " << v6;
+        boost::remove_vertex(v6,this->g);
+        ASSERT_NO_FATAL_FAILURE(this->check_vertices_count(4));
+        ASSERT_NO_FATAL_FAILURE(this->check_all_vertices_count(5));
+        ASSERT_NO_FATAL_FAILURE(this->check_edges_count(7));
+        ASSERT_NO_FATAL_FAILURE(this->check_all_edges_count(8));
+        undo_commit(this->g);
+        EXPECT_NO_FATAL_FAILURE(this->test_after_init());
+
+    }
+};
+
+TEST_F(DirectedGraphTest, directed_graph_test) {
+    FILE* log_fd = fopen( "directed_graph_test.txt", "w" );
     Output2FILE::Stream() = log_fd;
     ASSERT_NO_FATAL_FAILURE(this->init());
     ASSERT_NO_FATAL_FAILURE(this->test());
