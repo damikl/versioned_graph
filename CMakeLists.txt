@@ -8,16 +8,12 @@ ADD_DEFINITIONS ( -Wall -DDEBUG -pedantic -Wextra -std=c++1y -g -ftemplate-backt
 ADD_DEFINITIONS ( -DTEST_ONLY_LIST )
 add_executable(BasicTest versioned_graph.h versioned_graph_test.h versioned_graph_impl.h versioned_graph_non_members.h basic_tests.cpp)
 add_executable(VersionedAdjacencyMatrixTest versioned_graph.h versioned_graph_test.h versioned_graph_impl.h  versioned_adjacency_matrix_test.cpp)
-add_executable(VersionedAdjacencyListTest utils.h versioned_graph.h versioned_graph_non_members.h versioned_adjacency_list_test.cpp)
-add_executable(TopologicalSortTest topological_sort.cpp)
+add_executable(VersionedAdjacencyListTest log.h versioned_graph.h versioned_graph_non_members.h versioned_adjacency_list_test.cpp)
 
 target_link_libraries(BasicTest gtest gtest_main pthread)
-target_link_libraries(TopologicalSortTest gtest gtest_main pthread)
 target_link_libraries(VersionedAdjacencyMatrixTest gtest gtest_main pthread)
 target_link_libraries(VersionedAdjacencyListTest gtest gtest_main pthread)
-
 
 add_test(NAME BasicTest COMMAND BasicTest)
 add_test(NAME VersionedAdjacencyMatrix COMMAND VersionedAdjacencyMatrixTest)
 add_test(NAME VersionedAdjacencyList COMMAND VersionedAdjacencyListTest)
-add_test(NAME TopologicalSort COMMAND TopologicalSortTest)

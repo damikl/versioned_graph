@@ -57,13 +57,10 @@ public:
     }
 
     void test(){
+        typedef detail::revision revision;
         FILELog::ReportingLevel() = logDEBUG4;
-   //     bool directed_category_res = std::is_same<boost::undirected_tag,directed_category>::value;
         ::testing::StaticAssertTypeEq<boost::undirected_tag, directed_category>();
-  //      ASSERT_TRUE(directed_category_res);
         typedef typename graph_traits<graph_type>::edge_parallel_category edge_parallel_category;
-  //      bool edge_parallel_category_res = std::is_same<boost::allow_parallel_edge_tag,edge_parallel_category>::value;
-//        ASSERT_TRUE(edge_parallel_category_res);
         ::testing::StaticAssertTypeEq<boost::allow_parallel_edge_tag, edge_parallel_category>();
 
         EXPECT_NO_FATAL_FAILURE(this->test_after_init());
@@ -195,6 +192,7 @@ public:
 
     void test(){
         FILELog::ReportingLevel() = logDEBUG4;
+        typedef detail::revision revision;
         typedef typename graph_traits<graph_type>::directed_category directed_category;
         assert_type_eq<boost::bidirectional_tag,directed_category>();
         typedef typename graph_traits<graph_type>::edge_parallel_category edge_parallel_category;
@@ -284,6 +282,7 @@ public:
 
     void test(){
         FILELog::ReportingLevel() = logDEBUG4;
+        typedef detail::revision revision;
         typedef typename graph_traits<graph_type>::directed_category directed_category;
         assert_type_eq<boost::directed_tag,directed_category>();
         typedef typename graph_traits<graph_type>::edge_parallel_category edge_parallel_category;

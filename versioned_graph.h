@@ -4,13 +4,74 @@
 #include <boost/graph/adjacency_matrix.hpp>
 #include <boost/graph/graph_utility.hpp>
 #include <boost/iterator/filter_iterator.hpp>
-#include "utils.h"
+#include "log.h"
 #include <type_traits>
 
 
 namespace boost {
 
 namespace detail {
+
+struct revision{
+    int rev;
+    bool operator<(const revision& r) const{
+ //       FILE_LOG(logDEBUG4) << "revision " << rev << " < " << r.rev << " == " << (abs(rev) < abs(r.rev));
+        return abs(rev) < abs(r.rev);
+    }
+    bool operator>(const revision& r) const{
+//        FILE_LOG(logDEBUG4) << "revision " << rev << " < " << r.rev << " == " << (abs(rev) < abs(r.rev));
+        return abs(rev) > abs(r.rev);
+    }
+    bool operator<=(const revision& r) const{
+//        FILE_LOG(logDEBUG4) << "revision " << rev << " <= " << r.rev << " == " << (abs(rev) <= abs(r.rev));
+        return abs(rev) <= abs(r.rev);
+    }
+    bool operator>=(const revision& r) const{
+        return abs(rev) >= abs(r.rev);
+    }
+    bool operator==(const revision& r) const{
+        FILE_LOG(logDEBUG4) << "revision " << rev << " == " << r.rev << " == " << (abs(rev) == abs(r.rev));
+        return abs(rev) == abs(r.rev);
+    }
+    bool is_older(const revision& r)const{
+        return *this < r;
+    }
+    revision& operator++(){
+        FILE_LOG(logDEBUG2) << "increment revision";
+        assert(rev >=0);
+        ++rev;
+        FILE_LOG(logDEBUG2) << "incremented";
+        return *this;
+    }
+    revision& operator--(){
+        FILE_LOG(logDEBUG2) << "decrement revision";
+        assert(rev >0);
+        --rev;
+        FILE_LOG(logDEBUG2) << "decremented";
+        return *this;
+    }
+    revision(int r) : rev(r){ }
+//    operator int()
+//    {
+//         return rev;
+//    }
+    int get_rev() const {
+        return rev;
+    }
+
+};
+
+revision make_deleted(const revision& r){
+    revision rev = r;
+    rev.rev = -rev.rev;
+    return rev;
+}
+bool is_deleted(const revision& rev){
+    return rev.get_rev()<0;
+}
+std::ostream& operator<<(std::ostream& os, const revision& obj) {
+    return os << obj.get_rev() << " ";
+}
 
 template<class T>
 struct property_records{
@@ -327,6 +388,7 @@ class versioned_graph  : public detail::graph_tr<versioned_graph<graph_t>> {
 public:
     typedef versioned_graph<graph_t> self_type;
     typedef graph_t graph_type;
+    typedef detail::revision revision;
 
     typedef typename boost::vertex_bundle_type<graph_type>::type vertex_bundled;
     typedef typename boost::edge_bundle_type<graph_type>::type edge_bundled;

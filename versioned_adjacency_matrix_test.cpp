@@ -84,6 +84,7 @@ public:
     }
 
     void test(){
+        typedef detail::revision revision;
         enum { A, B, C, D, E, F, N };
         FILELog::ReportingLevel() = logDEBUG4;
         typedef typename graph_traits<graph_type>::directed_category directed_category;
@@ -229,6 +230,7 @@ public:
     }
 
     void test(){
+        typedef detail::revision revision;
         enum { A, B, C, D, E, F, N };
         FILELog::ReportingLevel() = logDEBUG4;
         typedef typename graph_traits<graph_type>::directed_category directed_category;
