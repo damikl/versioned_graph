@@ -358,7 +358,9 @@ commit(){
 template<typename graph_t>
 void versioned_graph<graph_t>::
 undo_commit(){
-    --current_rev;
+    if(current_rev.get_rev()>2){
+        --current_rev;
+    }
     FILE_LOG(logDEBUG) << "Undo commit";
     clean_edges_to_current_rev();
     clean_vertices_to_current_rev();

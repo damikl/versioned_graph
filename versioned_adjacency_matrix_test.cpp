@@ -278,7 +278,15 @@ public:
         ASSERT_NO_FATAL_FAILURE(this->check_all_edges_count(9));
         undo_commit(this->g);
         EXPECT_NO_FATAL_FAILURE(this->test_after_init());
-
+        undo_commit(this->g);
+        ASSERT_NO_FATAL_FAILURE(this->check_vertices_count(5));
+        ASSERT_NO_FATAL_FAILURE(this->check_edges_count(6));
+        ASSERT_NO_FATAL_FAILURE(this->check_all_edges_count(6));
+        ASSERT_NO_FATAL_FAILURE(this->check_out_edges(this->v2,{this->v4,this->v1,this->v3}));
+        undo_commit(this->g);// undo of init commit change nothing
+        ASSERT_NO_FATAL_FAILURE(this->check_vertices_count(5));
+        ASSERT_NO_FATAL_FAILURE(this->check_edges_count(6));
+        ASSERT_NO_FATAL_FAILURE(this->check_all_edges_count(6));
     }
 };
 
