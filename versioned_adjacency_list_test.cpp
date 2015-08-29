@@ -5,6 +5,25 @@
 #include <boost/graph/topological_sort.hpp>
 
 
+template<typename graph>
+struct edge_remove_predicate{
+    typedef typename graph_traits<graph>::edge_descriptor edge_descriptor;
+    typedef typename boost::edge_bundle_type<graph>::type edge_bundled;
+    edge_remove_predicate(const graph& g,int mod=2) : g(g), mod(mod){}
+    bool operator()(edge_descriptor e){
+        edge_bundled prop = g[e];
+        return prop % mod==0;
+    }
+    const graph& g;
+    int mod;
+};
+template<typename graph>
+edge_remove_predicate<graph> make_predicate(const graph& g,int mod=2){
+    edge_remove_predicate<graph> pred(g,mod);
+    return pred;
+}
+
+
 template<typename adjacency_list_graph>
 class ListGraphTest : public GraphTest<adjacency_list_graph>{
 public:
@@ -99,8 +118,8 @@ public:
         ASSERT_EQ(111,this->g[this->v1]);
         ASSERT_EQ(7.2,this->g[boost::graph_bundle]);
         vertex_descriptor v6 = boost::add_vertex(this->g);
-        add_edge(v6,this->v2,this->g);
-        add_edge(v6,this->v4,this->g);
+        add_edge(v6,this->v2,16,this->g);
+        add_edge(v6,this->v4,17,this->g);
         ASSERT_NO_FATAL_FAILURE(this->check_vertices_count(5));
         ASSERT_NO_FATAL_FAILURE(this->check_all_vertices_count(6));
         ASSERT_NO_FATAL_FAILURE(this->check_edges_count(8));
@@ -112,6 +131,25 @@ public:
         ASSERT_NO_FATAL_FAILURE(this->check_all_vertices_count(5));
         ASSERT_NO_FATAL_FAILURE(this->check_edges_count(6));
         ASSERT_NO_FATAL_FAILURE(this->check_all_edges_count(8));
+        ASSERT_TRUE(boost::edge(this->v1,this->v4,this->g).second);
+        ASSERT_TRUE(boost::edge(this->v1,this->v2,this->g).second);
+        ASSERT_TRUE(boost::edge(this->v1,this->v5,this->g).second);
+
+        ASSERT_TRUE(boost::edge(this->v5,this->v1,this->g).second);
+        ASSERT_TRUE(boost::edge(this->v5,this->v2,this->g).second);
+        ASSERT_TRUE(boost::edge(this->v5,this->v4,this->g).second);
+        boost::remove_edge_if(make_predicate(this->g,3),this->g);
+        ASSERT_NO_FATAL_FAILURE(this->check_edges_count(4));
+        ASSERT_NO_FATAL_FAILURE(this->check_all_edges_count(8));
+        ASSERT_TRUE(boost::edge(this->v1,this->v4,this->g).second);
+        ASSERT_FALSE(boost::edge(this->v1,this->v2,this->g).second);
+        ASSERT_TRUE(boost::edge(this->v1,this->v5,this->g).second);
+
+        ASSERT_TRUE(boost::edge(this->v5,this->v1,this->g).second);
+        ASSERT_TRUE(boost::edge(this->v5,this->v2,this->g).second);
+        ASSERT_FALSE(boost::edge(this->v5,this->v4,this->g).second);
+        EXPECT_NO_FATAL_FAILURE(this->check_out_edges(this->v1,{this->v4,this->v5}));
+        EXPECT_NO_FATAL_FAILURE(this->check_out_edges(this->v5,{this->v1,this->v2}));
         undo_commit(this->g);
         EXPECT_NO_FATAL_FAILURE(this->test_after_init());
         undo_commit(this->g);

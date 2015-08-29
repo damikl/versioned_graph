@@ -35,8 +35,8 @@ auto edge(vertex_descriptor u,vertex_descriptor v, const versioned_graph<graph_t
         auto edge_desc = p.first;
         FILE_LOG(logDEBUG4) << /*list.size()  <<*/ "records in history of edge";
         if(is_deleted(g.get_latest_revision(edge_desc))){
-  FILE_LOG(logDEBUG4) << "edge: is deleted";
-  return std::make_pair(typename graph_type::edge_descriptor(),false);
+          FILE_LOG(logDEBUG4) << "edge: is deleted";
+          return std::make_pair(typename graph_type::edge_descriptor(),false);
         }
         FILE_LOG(logDEBUG4) << "edge: not deleted";
     } else {
@@ -236,6 +236,21 @@ template<typename graph_t, typename edge_descriptor>
 void remove_edge(edge_descriptor edge_desc, versioned_graph<graph_t>& g){
     FILE_LOG(logDEBUG4) << "remove_edge: (" << boost::source(edge_desc,g) << ", " << boost::target(edge_desc,g) << ")";
     g.set_deleted(edge_desc);
+}
+
+template <class Predicate, typename graph_t>
+void
+remove_edge_if(Predicate pred, versioned_graph<graph_t>& g)
+{
+  typedef versioned_graph<graph_t> graph_type;
+  typedef typename graph_type::edge_iterator edge_iterator;
+  edge_iterator ei, ei_end, next;
+  boost::tie(ei, ei_end) = edges(g);
+  for (next = ei; ei != ei_end; ei = next) {
+    ++next;
+    if (pred(*ei))
+      remove_edge(*ei, g);
+  }
 }
 
 }
