@@ -238,6 +238,40 @@ void remove_edge(edge_descriptor edge_desc, versioned_graph<graph_t>& g){
     g.set_deleted(edge_desc);
 }
 
+template <class Predicate, typename vertex_descriptor, typename graph_t>
+void remove_out_edge_if(vertex_descriptor u, Predicate pred,
+                        versioned_graph<graph_t>& g){
+    FILE_LOG(logDEBUG4) << "remove_out_edge_if";
+    typedef versioned_graph<graph_t> graph_type;
+    typedef typename graph_type::out_edge_iterator out_edge_iterator;
+    out_edge_iterator ei, ei_end, next;
+    boost::tie(ei, ei_end) = out_edges(u,g);
+    for (next = ei; ei != ei_end; ei = next) {
+      ++next;
+      if (pred(*ei)){
+        remove_edge(*ei, g);
+      }
+    }
+    FILE_LOG(logDEBUG4) << "remove_out_edge_if ended";
+}
+
+template <class Predicate, typename vertex_descriptor, typename graph_t>
+void remove_in_edge_if(vertex_descriptor u, Predicate pred,
+                        versioned_graph<graph_t>& g){
+    FILE_LOG(logDEBUG4) << "remove_in_edge_if";
+    typedef versioned_graph<graph_t> graph_type;
+    typedef typename graph_type::in_edge_iterator in_edge_iterator;
+    in_edge_iterator ei, ei_end, next;
+    boost::tie(ei, ei_end) = in_edges(u,g);
+    for (next = ei; ei != ei_end; ei = next) {
+      ++next;
+      if (pred(*ei)){
+        remove_edge(*ei, g);
+      }
+    }
+    FILE_LOG(logDEBUG4) << "remove_in_edge_if ended";
+}
+
 template <class Predicate, typename graph_t>
 void
 remove_edge_if(Predicate pred, versioned_graph<graph_t>& g)
@@ -253,7 +287,19 @@ remove_edge_if(Predicate pred, versioned_graph<graph_t>& g)
   }
 }
 
+template<typename graph_t,typename vertex_size_type>
+typename versioned_graph<graph_t>::vertex_descriptor
+vertex(vertex_size_type n, const versioned_graph<graph_t>& g){
+    typedef versioned_graph<graph_t> graph_type;
+    typename graph_type::vertex_iterator it,end;
+    tie(it,end) = vertices(g);
+    std::advance(it,n);
+    return *it;
 }
+
+}
+
+
 
 
 #endif // VERSIONED_GRAPH_NON_MEMBERS_H

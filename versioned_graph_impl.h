@@ -186,7 +186,32 @@ clean_edges_to_current_rev(){
 template<typename graph_t>
 void versioned_graph<graph_t>::
 clean_vertices_to_current_rev(){
-    auto vi = boost::vertices(get_self());
+    vertex_iterator vi, vi_end, next;
+
+    boost::tie(vi, vi_end) = vertices(get_self());
+    for (next = vi; vi != vi_end; vi = next) {
+        ++next;
+
+        vertices_history_type& hist = get_history(*vi);
+        FILE_LOG(logDEBUG3) << "clean history of vertex: " << *vi;
+        while(!hist.empty() && get_latest_revision(*vi)>=current_rev){
+            clean_history(hist,*vi);
+        }
+        if(hist.empty()){
+            vertex_descriptor v = *vi;
+            auto it = vertices_history.find(v);
+            assert(it!=vertices_history.end());
+            vertices_history.erase(it);
+            --v_num;
+            FILE_LOG(logDEBUG3) << "completly removed vertex history record";
+            boost::remove_vertex(v,get_self());
+            FILE_LOG(logDEBUG3) << "removed vertex from graph";
+        } else {
+            (*this)[*vi] = property_handler<self_type,vertex_descriptor,vertex_bundled>::get_latest_bundled_value(*vi,*this);
+            FILE_LOG(logDEBUG3) << "copied vertex propety";
+        }
+    }
+    /*
     std::list<vertex_descriptor> vertices_to_be_removed;
     for(auto vertex_iter = vi.first; vertex_iter != vi.second; ++vertex_iter) {
         vertices_history_type& hist = get_history(*vertex_iter);
@@ -210,6 +235,7 @@ clean_vertices_to_current_rev(){
         boost::remove_vertex(v,get_self());
         FILE_LOG(logDEBUG3) << "removed vertex from graph";
     }
+    */
 }
 
 template<typename graph_t>
@@ -286,15 +312,25 @@ void versioned_graph<graph_t>::init(vertex_descriptor v,const vertex_bundled& pr
     vertices_history.insert(std::make_pair(v,vertex_stored_data()));
     vertices_history_type& list = get_history(v);
     assert(list.empty());
-    //    auto p = std::make_pair(current_rev,prop);
     list.push_front(detail::make_entry(current_rev,prop));
-    FILE_LOG(logDEBUG4) << "created vertex: " << v << " in rev " << current_rev;
+    FILE_LOG(logDEBUG4) << "init vertex: " << v << " in rev " << current_rev;
+}
+
+template<typename graph_t>
+void versioned_graph<graph_t>::init(edge_descriptor e,const edge_bundled& prop){
+    if(edges_history.find(e)==edges_history.end()){
+        edges_history.insert(std::make_pair(e,edges_history_type()));
+    }
+    edges_history_type& list = get_history(e);
+    assert(list.empty());
+    list.push_front(detail::make_entry(current_rev,prop));
+    FILE_LOG(logDEBUG4) << "init edge: (" << source(e,*this) << "," << target(e,*this) << ") in rev " << current_rev;
+    incr_degree(e);
 }
 
 template<typename graph_t>
 typename versioned_graph<graph_t>::vertex_descriptor
-versioned_graph<graph_t>::
-generate_vertex(vertex_bundled prop){
+versioned_graph<graph_t>::generate_vertex(vertex_bundled prop){
     using namespace detail;
     vertex_descriptor v = boost::add_vertex(get_self());
     FILE_LOG(logDEBUG4) << "created vertex: " << v;
@@ -311,13 +347,7 @@ generate_edge(edge_bundled prop,vertex_descriptor u, vertex_descriptor v){
     using namespace detail;
     auto p = boost::add_edge(u,v,prop,get_self());
     if(p.second){
-        if(edges_history.find(p.first)==edges_history.end()){
-            edges_history.insert(std::make_pair(p.first,edges_history_type()));
-        }
-        edges_history_type& list = get_history(p.first);
-        assert(list.empty());
-        list.push_front(make_entry(current_rev,prop));
-        incr_degree(p.first);
+        init(p.first,prop);
         ++e_num;
         FILE_LOG(logDEBUG4) << "add edge (" << boost::source(p.first,get_self()) << ", "
                                             << boost::target(p.first,get_self())
@@ -330,8 +360,7 @@ generate_edge(edge_bundled prop,vertex_descriptor u, vertex_descriptor v){
 }
 
 template<typename graph_t>
-void versioned_graph<graph_t>::
-commit(){
+void versioned_graph<graph_t>::commit(){
     using namespace detail;
     auto ei = edges(*this);
     for(auto edge_iter = ei.first; edge_iter != ei.second; ++edge_iter) {

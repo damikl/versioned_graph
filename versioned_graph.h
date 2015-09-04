@@ -151,6 +151,13 @@ struct filter_predicate{
 public:
     filter_predicate() : rev(std::numeric_limits<int>::max()),g(nullptr) {}
     filter_predicate(const filter_predicate &p) : rev(p.rev),g(p.g){}
+    filter_predicate& operator=(const filter_predicate& other) { // copy assignment
+        if (this != &other) { // self-assignment check expected
+            this->rev = other.rev;
+            this->g = other.g;
+        }
+        return *this;
+    }
     filter_predicate(const graph_type* graph,const revision& r = std::numeric_limits<int>::max()) : rev(r),g(graph) {}
     bool operator()(const value_type& v) {
         if(rev.get_rev()==std::numeric_limits<int>::max() && g==nullptr){
@@ -187,6 +194,13 @@ struct filter_predicate<graph_type,typename boost::graph_traits<graph_type>::ver
 public:
     filter_predicate() : rev(std::numeric_limits<int>::max()),g(nullptr) {}
     filter_predicate(const filter_predicate &p) : rev(p.rev),g(p.g){}
+    filter_predicate& operator=(const filter_predicate& other) { // copy assignment
+        if (this != &other) { // self-assignment check expected
+            this->rev = other.rev;
+            this->g = other.g;
+        }
+        return *this;
+    }
     filter_predicate(const graph_type* graph,const revision& r = std::numeric_limits<int>::max()) : rev(r),g(graph) {}
     bool operator()(const value_type& v) {
         if(rev.get_rev()==std::numeric_limits<int>::max() && g==nullptr){
@@ -202,18 +216,10 @@ public:
             assert(r<=g->get_current_rev());
             if(r<=rev){
                 if(is_deleted(r)){
-                    if(std::is_same<value_type,typename graph_type::vertex_descriptor>::value){
-                        FILE_LOG(logDEBUG4) << "filter_predicate: found deleted rev: " << r << " and while wanted: " << rev << " desc: " << v;
-                    } else {
-                        FILE_LOG(logDEBUG4) << "filter_predicate: found deleted rev: " << r << " and while wanted: " << rev;
-                    }
+                    FILE_LOG(logDEBUG4) << "filter_predicate: found deleted rev: " << r << " and while wanted: " << rev << " desc: " << v;
                     return false;
                 }
-                if(std::is_same<value_type,typename graph_type::vertex_descriptor>::value){
-                    FILE_LOG(logDEBUG4) << "filter_predicate: found rev: " << r << " and while wanted: " << rev << " desc: " << v;
-                } else {
-                    FILE_LOG(logDEBUG4) << "filter_predicate: found rev: " << r << " and while wanted: " << rev;
-                }
+                FILE_LOG(logDEBUG4) << "filter_predicate: found rev: " << r << " and while wanted: " << rev << " desc: " << v;
                 return true;
             } else {
                 FILE_LOG(logDEBUG4) << "filter_predicate: skipped rev: " << r << " and while wanted: " << rev;
@@ -268,31 +274,6 @@ public:
 template<typename unknown_graph_type>
 struct graph_tr{
 };
-
-template<typename versioned_graph,typename bundled_type,typename history_container>
-class property_history_reference{
-    property_history_reference(versioned_graph& graph) : g(graph),c() {}
-    property_history_reference(const property_history_reference& ref) : g(ref.g),c() {}
-    property_history_reference& operator=( const property_history_reference& );
-public:
-    ~property_history_reference(){}
-    property_history_reference& operator=( const bundled_type& value ){
-        if(detail::get_revision(c.front())< g.current_rev){
-            auto p = std::make_pair(g.current_rev,value);
-            c.push_front(p);
-        } else {
-            c.front().second = value;
-        }
-        return *this;
-    }
-    operator bundled_type() const{
-        return c.front().second();
-    }
-    versioned_graph& g;
-    history_container c;
-//    friend class versioned_graph;
-};
-
 
 /*
 template<>
@@ -463,6 +444,28 @@ public:
 
     versioned_graph(const versioned_graph& g );
 
+    template <class EdgeIterator>
+    versioned_graph(EdgeIterator first, EdgeIterator last,
+                   vertices_size_type n,
+                   edges_size_type m = 0,
+                   const graph_bundled& p = graph_bundled()) :  direct_base(first,last,n,m,p),
+                                                                v_num(n),e_num(m),current_rev(1) {
+        typedef typename graph_type::vertex_iterator v_iter_type;
+        std::pair<v_iter_type, v_iter_type> vi = vertices(get_self());
+        for(v_iter_type it = vi.first; it!=vi.second;++it){
+            init(*it);
+        }
+        degree_size_type i = 0;
+        typedef typename graph_type::edge_iterator e_iter_type;
+        std::pair<e_iter_type, e_iter_type> ei = edges(get_self());
+        for(e_iter_type it = ei.first; it!=ei.second;++it){
+            init(*it);
+            ++i;
+        }
+        e_num= i;
+
+    }
+
     vertex_descriptor generate_vertex(vertex_bundled prop);
 
     std::pair<edge_descriptor,bool> generate_edge(edge_bundled prop,vertex_descriptor u, vertex_descriptor v);
@@ -518,6 +521,7 @@ public:
 
 private:
     void init(vertex_descriptor v, const vertex_bundled& prop = vertex_bundled());
+    void init(edge_descriptor v, const edge_bundled& prop = edge_bundled());
     vertex_stored_data& get_stored_data(vertex_descriptor u){
         auto iter = vertices_history.find(u);
         assert(iter!=vertices_history.end());
@@ -631,12 +635,19 @@ struct graph_tr<boost::versioned_graph<boost::adjacency_list<OutEdgeList,VertexL
     typedef typename boost::adjacency_list<OutEdgeList,VertexList,Directed,VertexProperties,EdgeProperties,GraphProperties,EdgeList> graph_type;
     typedef typename boost::graph_bundle_type<graph_type>::type graph_bundled;
     typedef typename boost::graph_traits<graph_type>::vertex_descriptor vertex_descriptor;
+    typedef typename boost::graph_traits<graph_type>::vertices_size_type vertices_size_type;
+    typedef typename boost::graph_traits<graph_type>::edges_size_type edges_size_type;
     typedef typename boost::filter_iterator<
                                     detail::adjacency_filter_predicate<versioned_graph<graph_type>,typename graph_type::vertex_descriptor>,
                                     typename graph_type::inv_adjacency_iterator>
                              inv_adjacency_iterator;
     graph_tr(typename graph_type::vertices_size_type n, const graph_bundled& p = graph_bundled()) : graph_type(n,p){
     }
+    template <class EdgeIterator>
+    graph_tr(EdgeIterator first, EdgeIterator last,
+                   vertices_size_type n,
+                   edges_size_type m = 0,
+                   const graph_bundled& p = graph_bundled()) :graph_type(first,last,n,m,p) {}
 };
 
 template<typename Directed, typename VertexProperty,
@@ -646,9 +657,16 @@ struct graph_tr<boost::versioned_graph<boost::adjacency_matrix<Directed,VertexPr
     typedef typename boost::adjacency_matrix<Directed,VertexProperty,EdgeProperty,GraphProperty,Allocator> graph_type;
     typedef typename boost::graph_traits<graph_type>::vertex_descriptor vertex_descriptor;
     typedef typename boost::graph_bundle_type<graph_type>::type graph_bundled;
+    typedef typename boost::graph_traits<graph_type>::vertices_size_type vertices_size_type;
+    typedef typename boost::graph_traits<graph_type>::edges_size_type edges_size_type;
 
     graph_tr(typename graph_type::vertices_size_type n,const graph_bundled& p = graph_bundled()) : graph_type(n,p){
     }
+    template <class EdgeIterator>
+    graph_tr(EdgeIterator first, EdgeIterator last,
+                   vertices_size_type n,
+                   edges_size_type m = 0,
+                   const graph_bundled& p = graph_bundled()) :graph_type(first,last,n,m,p) {}
 };
 
 }

@@ -4,6 +4,9 @@
 #include <boost/graph/graph_utility.hpp>
 #include <boost/graph/topological_sort.hpp>
 
+#include <boost/graph/small_world_generator.hpp>
+#include <boost/random/linear_congruential.hpp>
+
 
 template<typename graph>
 struct edge_remove_predicate{
@@ -12,6 +15,7 @@ struct edge_remove_predicate{
     edge_remove_predicate(const graph& g,int mod=2) : g(g), mod(mod){}
     bool operator()(edge_descriptor e){
         edge_bundled prop = g[e];
+        FILE_LOG(logDEBUG4) << "edge_remove_predicate for property: "<< prop;
         return prop % mod==0;
     }
     const graph& g;
@@ -171,6 +175,132 @@ TEST_F(UndirectedGraphTest, undirected_graph_test) {
     ASSERT_NO_FATAL_FAILURE(this->test());
 }
 
+TEST(UndirectedSmallWorldGraphTest, smallworldtest){
+    typedef boost::versioned_graph<adjacency_list<boost::listS, boost::listS, boost::undirectedS,int,int,double>> Graph;
+    typedef boost::small_world_iterator<boost::minstd_rand, Graph> SWGen;
+    typedef typename graph_traits<Graph>::vertex_descriptor vertex_descriptor;
+    boost::minstd_rand gen;
+    // Create graph with 100 nodes
+    Graph g(SWGen(gen, 100, 6, 0.00), SWGen(), 100);
+
+    graph_traits<Graph>::vertex_iterator vi, vi_end;
+    int i = 0;
+    for (boost::tie(vi, vi_end) = vertices(g); vi != vi_end; ++vi){
+        g[*vi] = i++;
+    }
+    ASSERT_EQ(i,num_vertices(g));
+    ASSERT_EQ(100,num_vertices(g));
+    graph_traits<Graph>::edge_iterator ei, ei_end;
+    i = 0;
+    for (boost::tie(ei, ei_end) = edges(g); ei != ei_end; ++ei){
+        vertex_descriptor v = target(*ei,g);
+        int res = 100*g[v];
+        v = source(*ei,g);
+        res += g[v];
+        g[*ei] = res;
+        ++i;
+    }
+    ASSERT_EQ(i,num_edges(g));
+    ASSERT_EQ(300,num_edges(g));
+
+    ASSERT_NO_FATAL_FAILURE(commit(g));
+    vertex_descriptor v20 = vertex(20,g);
+    vertex_descriptor v21 = vertex(21,g);
+    vertex_descriptor v22 = vertex(22,g);
+    vertex_descriptor v23 = vertex(23,g);
+    vertex_descriptor v24 = vertex(24,g);
+    vertex_descriptor v25 = vertex(25,g);
+    vertex_descriptor v26 = vertex(26,g);
+    ASSERT_TRUE(edge(v23,v20,g).second);
+    ASSERT_TRUE(edge(v23,v21,g).second);
+    ASSERT_TRUE(edge(v23,v22,g).second);
+
+    ASSERT_TRUE(edge(v23,v24,g).second);
+    ASSERT_TRUE(edge(v23,v25,g).second);
+    ASSERT_TRUE(edge(v23,v26,g).second);
+    ASSERT_FALSE(edge(v23,vertex(27,g),g).second);
+
+    ASSERT_NO_FATAL_FAILURE(clear_vertex(v23,g));
+
+    ASSERT_FALSE(edge(v23,v20,g).second);
+    ASSERT_FALSE(edge(v23,v21,g).second);
+    ASSERT_FALSE(edge(v23,v22,g).second);
+
+    ASSERT_FALSE(edge(v23,v24,g).second);
+    ASSERT_FALSE(edge(v23,v25,g).second);
+    ASSERT_FALSE(edge(v23,v26,g).second);
+
+    ASSERT_NO_FATAL_FAILURE(remove_vertex(v23,g));
+    ASSERT_EQ(294,num_edges(g));
+    ASSERT_EQ(99,num_vertices(g));
+    ASSERT_NE(v23,vertex(23,g));//this should be ommited
+    ASSERT_EQ(v24,vertex(23,g));
+    ASSERT_EQ(v26,vertex(25,g));
+    ASSERT_FALSE(edge(v23,vertex(26,g),g).second);
+
+    revert_changes(g);
+    ASSERT_EQ(6,out_degree(vertex(26,g),g));
+    ASSERT_TRUE(edge(vertex(26,g),vertex(23,g),g).second);
+    ASSERT_EQ(2623,g[edge(vertex(26,g),vertex(23,g),g).first]);
+    ASSERT_TRUE(edge(vertex(26,g),vertex(24,g),g).second);
+    ASSERT_EQ(2624,g[edge(vertex(26,g),vertex(24,g),g).first]);
+    ASSERT_TRUE(edge(vertex(26,g),vertex(25,g),g).second);
+    ASSERT_EQ(2625,g[edge(vertex(26,g),vertex(25,g),g).first]);
+    ASSERT_TRUE(edge(vertex(26,g),vertex(27,g),g).second);
+    ASSERT_TRUE(edge(vertex(26,g),vertex(28,g),g).second);
+    ASSERT_TRUE(edge(vertex(26,g),vertex(29,g),g).second);
+    commit(g);
+    boost::remove_edge_if(make_predicate(g,6),g);
+
+    ASSERT_EQ(5,out_degree(v26,g));
+    v26 = vertex(26,g);
+    auto p = out_edges(v26,g);
+    ASSERT_EQ(5,std::distance(p.first,p.second));
+    ASSERT_EQ(5,out_degree(v26,g));
+
+    revert_changes(g);
+    vertex_descriptor v10 = vertex(10,g);
+    boost::remove_out_edge_if(v10, make_predicate(g,3),g);
+
+    ASSERT_EQ(4,out_degree(v10,g));
+    ASSERT_TRUE(edge(v10,vertex(7,g),g).second);
+    ASSERT_TRUE(edge(vertex(7,g),v10,g).second);
+
+    ASSERT_FALSE(edge(v10,vertex(8,g),g).second);
+    ASSERT_FALSE(edge(vertex(8,g),v10,g).second);
+
+    ASSERT_TRUE(edge(v10,vertex(9,g),g).second);
+    ASSERT_TRUE(edge(vertex(9,g),v10,g).second);
+
+    ASSERT_FALSE(edge(v10,vertex(11,g),g).second);
+    ASSERT_FALSE(edge(vertex(11,g),v10,g).second);
+
+    ASSERT_TRUE(edge(vertex(12,g),v10,g).second);
+    ASSERT_TRUE(edge(v10,vertex(12,g),g).second);
+
+    ASSERT_TRUE(edge(vertex(13,g),v10,g).second);
+    ASSERT_TRUE(edge(v10,vertex(13,g),g).second);
+
+    vertex_descriptor v40 = vertex(40,g);
+    boost::remove_in_edge_if(v40, make_predicate(g,3),g);
+
+    ASSERT_TRUE(edge(v40,vertex(37,g),g).second);
+    ASSERT_TRUE(edge(vertex(37,g),v40,g).second);
+
+    ASSERT_FALSE(edge(v40,vertex(38,g),g).second);
+    ASSERT_FALSE(edge(vertex(38,g),v40,g).second);
+
+    ASSERT_TRUE(edge(v40,vertex(39,g),g).second);
+    ASSERT_TRUE(edge(vertex(39,g),v40,g).second);
+
+    ASSERT_FALSE(edge(v40,vertex(41,g),g).second);
+    ASSERT_FALSE(edge(vertex(41,g),v40,g).second);
+
+    ASSERT_TRUE(edge(v40,vertex(42,g),g).second);
+    ASSERT_TRUE(edge(vertex(43,g),v40,g).second);
+
+}
+
 class BidirectionalGraphTest : public ListGraphTest<versioned_graph<adjacency_list<boost::vecS, boost::vecS, boost::bidirectionalS,int,int,double>>> {
 public:
     typedef GraphTest<versioned_graph<adjacency_list<boost::vecS, boost::vecS, boost::bidirectionalS,int,int,double>>> base_type;
@@ -304,6 +434,89 @@ TEST_F(BidirectionalGraphTest, bidirectional_graph_test) {
     ASSERT_NO_FATAL_FAILURE(this->test());
 }
 
+TEST(BidirectionalSmallWorldGraphTest, smallworldtest){
+    FILE* log_fd = fopen( "BidirectionalSmallWorldGraphTest.txt", "w" );
+    Output2FILE::Stream() = log_fd;
+    typedef boost::versioned_graph<adjacency_list<boost::listS, boost::listS, boost::bidirectionalS,int,int,double>> Graph;
+    typedef boost::small_world_iterator<boost::minstd_rand, Graph> SWGen;
+    typedef typename graph_traits<Graph>::vertex_descriptor vertex_descriptor;
+    boost::minstd_rand gen;
+    // Create graph with 100 nodes
+    Graph g(SWGen(gen, 100, 16, 0.00), SWGen(), 100);
+
+    graph_traits<Graph>::vertex_iterator vi, vi_end;
+    int i = 0;
+    for (boost::tie(vi, vi_end) = vertices(g); vi != vi_end; ++vi){
+        g[*vi] = i++;
+    }
+    ASSERT_EQ(i,num_vertices(g));
+    ASSERT_EQ(100,num_vertices(g));
+    graph_traits<Graph>::edge_iterator ei, ei_end;
+    i = 0;
+    for (boost::tie(ei, ei_end) = edges(g); ei != ei_end; ++ei){
+        vertex_descriptor v = target(*ei,g);
+        int res = 100*g[v];
+        v = source(*ei,g);
+        res += g[v];
+        g[*ei] = res;
+        ++i;
+    }
+    ASSERT_EQ(i,num_edges(g));
+    ASSERT_EQ(800,num_edges(g));
+
+    ASSERT_NO_FATAL_FAILURE(commit(g));
+    vertex_descriptor v23 = vertex(23,g);
+    vertex_descriptor v24 = vertex(24,g);
+    vertex_descriptor v26 = vertex(26,g);
+    ASSERT_EQ(8,out_degree(v23,g));
+    ASSERT_EQ(8,in_degree(v23,g));
+
+    ASSERT_NO_FATAL_FAILURE(clear_vertex(v23,g));
+    ASSERT_EQ(0,out_degree(v23,g));
+    ASSERT_EQ(0,in_degree(v23,g));
+    ASSERT_NO_FATAL_FAILURE(remove_vertex(v23,g));
+    ASSERT_EQ(15,in_degree(v24,g)+out_degree(v24,g));
+    ASSERT_EQ(784,num_edges(g));
+    ASSERT_EQ(99,num_vertices(g));
+
+    revert_changes(g);
+    ASSERT_EQ(8,out_degree(v23,g));
+    ASSERT_EQ(8,in_degree(v23,g));
+    ASSERT_EQ(800,num_edges(g));
+    ASSERT_EQ(100,num_vertices(g));
+
+    commit(g);
+    boost::remove_edge_if(make_predicate(g,6),g);
+
+    ASSERT_EQ(5,out_degree(v26,g));
+    v26 = vertex(26,g);
+    auto p = out_edges(v26,g);
+    ASSERT_EQ(5,std::distance(p.first,p.second));
+    ASSERT_EQ(5,out_degree(v26,g));
+
+    revert_changes(g);
+    vertex_descriptor v10 = vertex(10,g);
+    boost::remove_out_edge_if(v10, make_predicate(g,3),g);
+    auto out_e = out_edges(v10,g);
+    ASSERT_EQ(5,std::distance(out_e.first,out_e.second));
+    ASSERT_EQ(5,out_degree(v10,g));
+    auto in_e = in_edges(v10,g);
+    ASSERT_EQ(8,std::distance(in_e.first,in_e.second));
+    ASSERT_EQ(8,in_degree(v10,g));
+
+    vertex_descriptor v40 = vertex(40,g);
+    boost::remove_in_edge_if(v40, make_predicate(g,4),g);
+    ASSERT_EQ(6,in_degree(v40,g));
+    in_e = in_edges(v40,g);
+    ASSERT_EQ(6,std::distance(in_e.first,in_e.second));
+
+    ASSERT_EQ(8,out_degree(v40,g));
+    out_e = out_edges(v40,g);
+    ASSERT_EQ(8,std::distance(out_e.first,out_e.second));
+
+}
+
+
 class DirectedGraphTest : public ListGraphTest<versioned_graph<adjacency_list<boost::vecS, boost::vecS, boost::directedS,int,int,double>>> {
 public:
     typedef GraphTest<versioned_graph<adjacency_list<boost::vecS, boost::vecS, boost::directedS,int,int,double>>> base_type;
@@ -398,3 +611,70 @@ TEST_F(DirectedGraphTest, directed_graph_test) {
     ASSERT_NO_FATAL_FAILURE(this->init());
     ASSERT_NO_FATAL_FAILURE(this->test());
 }
+
+TEST(DirectedSmallWorldGraphTest, smallworldtest){
+    FILE* log_fd = fopen( "DirectedSmallWorldGraphTest.txt", "w" );
+    Output2FILE::Stream() = log_fd;
+    typedef boost::versioned_graph<adjacency_list<boost::listS, boost::listS, boost::directedS,int,int,double>> Graph;
+    typedef boost::small_world_iterator<boost::minstd_rand, Graph> SWGen;
+    typedef typename graph_traits<Graph>::vertex_descriptor vertex_descriptor;
+    boost::minstd_rand gen;
+    // Create graph with 100 nodes
+    Graph g(SWGen(gen, 100, 16, 0.00), SWGen(), 100);
+
+    graph_traits<Graph>::vertex_iterator vi, vi_end;
+    int i = 0;
+    for (boost::tie(vi, vi_end) = vertices(g); vi != vi_end; ++vi){
+        g[*vi] = i++;
+    }
+    ASSERT_EQ(i,num_vertices(g));
+    ASSERT_EQ(100,num_vertices(g));
+    graph_traits<Graph>::edge_iterator ei, ei_end;
+    i = 0;
+    for (boost::tie(ei, ei_end) = edges(g); ei != ei_end; ++ei){
+        vertex_descriptor v = target(*ei,g);
+        int res = 100*g[v];
+        v = source(*ei,g);
+        res += g[v];
+        g[*ei] = res;
+        ++i;
+    }
+    ASSERT_EQ(i,num_edges(g));
+    ASSERT_EQ(800,num_edges(g));
+
+    ASSERT_NO_FATAL_FAILURE(commit(g));
+    vertex_descriptor v23 = vertex(23,g);
+    vertex_descriptor v24 = vertex(24,g);
+    vertex_descriptor v26 = vertex(26,g);
+    ASSERT_EQ(8,out_degree(v23,g));
+
+    ASSERT_NO_FATAL_FAILURE(clear_vertex(v23,g));// remove only 8 visible edges
+    ASSERT_EQ(0,out_degree(v23,g));
+    ASSERT_NO_FATAL_FAILURE(remove_vertex(v23,g));
+    ASSERT_EQ(8,out_degree(v24,g));
+    ASSERT_EQ(792,num_edges(g));
+    ASSERT_EQ(99,num_vertices(g));
+
+    revert_changes(g);
+    ASSERT_EQ(8,out_degree(v23,g));
+    ASSERT_EQ(800,num_edges(g));
+    ASSERT_EQ(100,num_vertices(g));
+
+    commit(g);
+    boost::remove_edge_if(make_predicate(g,6),g);
+
+    ASSERT_EQ(5,out_degree(v26,g));
+    v26 = vertex(26,g);
+    auto p = out_edges(v26,g);
+    ASSERT_EQ(5,std::distance(p.first,p.second));
+    ASSERT_EQ(5,out_degree(v26,g));
+
+    revert_changes(g);
+    vertex_descriptor v10 = vertex(10,g);
+    boost::remove_out_edge_if(v10, make_predicate(g,3),g);
+    auto out_e = out_edges(v10,g);
+    ASSERT_EQ(5,std::distance(out_e.first,out_e.second));
+    ASSERT_EQ(5,out_degree(v10,g));
+
+}
+
