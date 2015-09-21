@@ -475,12 +475,15 @@ public:
     std::pair<edge_descriptor,bool> generate_edge(edge_bundled prop,vertex_descriptor u, vertex_descriptor v);
 
     void set_deleted(edge_descriptor e);
+    void set_deleted(vertex_descriptor v);
+    void remove_permanently(edge_descriptor e);
+    void remove_permanently(vertex_descriptor e);
 
     template<typename descriptor>
     bool check_if_currently_deleted(descriptor d) const {
         return is_deleted(detail::get_revision(get_history(d).front()));
     }
-    void set_deleted(vertex_descriptor v);
+
 
     vertices_size_type num_vertices() const {
         FILE_LOG(logDEBUG4) << "get num vertices " << v_num;

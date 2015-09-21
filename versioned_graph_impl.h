@@ -34,6 +34,15 @@ edges_end() const {
     return iter;
 }
 
+template<typename graph_t>
+void versioned_graph<graph_t>::
+remove_permanently(edge_descriptor e){
+    FILE_LOG(logDEBUG3) << "remove edge completely";
+    auto it = edges_history.find(e);
+    assert(it!=edges_history.end());
+    edges_history.erase(it);
+    boost::remove_edge(e,*dynamic_cast<graph_type*>(this));
+}
 
 template<typename graph_t>
 void versioned_graph<graph_t>::
@@ -50,15 +59,22 @@ set_deleted(edge_descriptor e){
         set_deleted(e,edge_bundled());
         assert(check_if_currently_deleted(e));
     } else {
-        FILE_LOG(logDEBUG3) << "remove edge completely";
-        auto it = edges_history.find(e);
-        assert(it!=edges_history.end());
-        edges_history.erase(it);
-        boost::remove_edge(e,*dynamic_cast<graph_type*>(this));
+        remove_permanently(e);
     }
     --e_num;
     FILE_LOG(logDEBUG3) << "set deleted: finnished";
 }
+
+template<typename graph_t>
+void versioned_graph<graph_t>::
+remove_permanently(vertex_descriptor v){
+    FILE_LOG(logDEBUG3) << "remove vertex completely";
+    auto it = vertices_history.find(v);
+    assert(it!=vertices_history.end());
+    vertices_history.erase(it);
+    boost::remove_vertex(v,*dynamic_cast<graph_type*>(this));
+}
+
 template<typename graph_t>
 void versioned_graph<graph_t>::
 set_deleted(vertex_descriptor v){
@@ -67,11 +83,7 @@ set_deleted(vertex_descriptor v){
         set_deleted(v,vertex_bundled());
         assert(check_if_currently_deleted(v));
     } else {
-        FILE_LOG(logDEBUG3) << "remove vertex completely";
-        auto it = vertices_history.find(v);
-        assert(it!=vertices_history.end());
-        vertices_history.erase(it);
-        boost::remove_vertex(v,*dynamic_cast<graph_type*>(this));
+        remove_permanently(v);
     }
     --v_num;
     FILE_LOG(logDEBUG3) << "set vertex deleted: finnished";
@@ -387,25 +399,39 @@ void versioned_graph<graph_t>::commit(){
 template<typename graph_t>
 void versioned_graph<graph_t>::erase_history(){
     using namespace detail;
-    auto ei = edges(get_self());
-    for(auto edge_iter = ei.first; edge_iter != ei.second; ++edge_iter) {
-        edges_history_type& hist = get_history(*edge_iter);
-        auto prop = property_handler<self_type,edge_descriptor,edge_bundled>::get_latest_bundled_value(*edge_iter,*this);
-        revision r = get_latest_revision(*edge_iter);
-        hist.clear();
-        r = is_deleted(r) ? revision(-1) : revision(1);
-        hist.push_front(make_entry(r,prop));
-        assert(get_latest_revision(*edge_iter)==revision(1));
+    {
+        auto ei = edges(get_self());
+        for(auto edge_iter = ei.first; edge_iter != ei.second; ) {
+            edges_history_type& hist = get_history(*edge_iter);
+            auto prop = property_handler<self_type,edge_descriptor,edge_bundled>::get_latest_bundled_value(*edge_iter,*this);
+            const revision r = get_latest_revision(*edge_iter);
+            hist.clear();
+            hist.push_front(make_entry(revision(1),prop));
+            assert(get_latest_revision(*edge_iter)==revision(1));
+            if(is_deleted(r)){
+                auto old = edge_iter;
+                ++edge_iter;
+                remove_permanently(*old);
+            } else {
+                ++edge_iter;
+            }
+        }
     }
     auto vi = boost::vertices(get_self());
     for(auto vertex_iter = vi.first; vertex_iter != vi.second; ++vertex_iter) {
         vertices_history_type& hist = get_history(*vertex_iter);
         auto prop = property_handler<self_type,vertex_descriptor,vertex_bundled>::get_latest_bundled_value(*vertex_iter,*this);
-        revision r = get_latest_revision(*vertex_iter);
+        const revision r = get_latest_revision(*vertex_iter);
         hist.clear();
-        r = is_deleted(r) ? revision(-1) : revision(1);
-        hist.push_front(make_entry(r,prop));
+        hist.push_front(make_entry(revision(1),prop));
         assert(get_latest_revision(*vertex_iter)==revision(1));
+        if(is_deleted(r)){
+            auto old = vertex_iter;
+            ++vertex_iter;
+            remove_permanently(*old);
+        } else {
+            ++vertex_iter;
+        }
     }
     graph_bundled_history.clear();
     current_rev = revision(1);

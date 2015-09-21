@@ -345,19 +345,23 @@ public:
         ASSERT_EQ(set.size(),in_degree(v,g));
     }
 
-    virtual void test_after_init(){
+    virtual void test_after_init(bool validate_deleted = true){
         ASSERT_NO_FATAL_FAILURE(this->check_vertices_count(4));
         ASSERT_NO_FATAL_FAILURE(this->check_edges_count(4));
-        ASSERT_NO_FATAL_FAILURE(this->check_all_edges_count(5));
+        if(validate_deleted){
+            ASSERT_NO_FATAL_FAILURE(this->check_all_edges_count(5));
+        }
         ASSERT_NO_FATAL_FAILURE(this->check_out_edges(this->v1,{this->v4,this->v2,this->v3}));
         ASSERT_NO_FATAL_FAILURE(this->check_out_edges(this->v2,{this->v4}));
         ASSERT_NO_FATAL_FAILURE(this->check_out_edges(this->v3,{}));
         ASSERT_NO_FATAL_FAILURE(this->check_out_edges(this->v4,{}));
 
-        ASSERT_EQ(0,boost::in_degree(this->v1,this->g.get_self()));
-        ASSERT_EQ(1,boost::in_degree(this->v2,this->g.get_self()));
-        ASSERT_EQ(2,boost::in_degree(this->v3,this->g.get_self()));
-        ASSERT_EQ(2,boost::in_degree(this->v4,this->g.get_self()));
+        if(validate_deleted){
+            ASSERT_EQ(0,boost::in_degree(this->v1,this->g.get_self()));
+            ASSERT_EQ(1,boost::in_degree(this->v2,this->g.get_self()));
+            ASSERT_EQ(2,boost::in_degree(this->v3,this->g.get_self()));
+            ASSERT_EQ(2,boost::in_degree(this->v4,this->g.get_self()));
+        }
         ASSERT_NO_FATAL_FAILURE(this->check_in_edges(this->v1,{}));
         ASSERT_NO_FATAL_FAILURE(this->check_in_edges(this->v2,{this->v1}));
         ASSERT_NO_FATAL_FAILURE(this->check_in_edges(this->v3,{this->v1}));
@@ -436,7 +440,7 @@ public:
         EXPECT_NO_FATAL_FAILURE(this->test_after_init());
         erase_history(this->g);
         FILE_LOG(logINFO) << "erased ";
-        EXPECT_NO_FATAL_FAILURE(this->test_after_init());
+        EXPECT_NO_FATAL_FAILURE(this->test_after_init(false));
     }
 };
 
@@ -534,10 +538,12 @@ class DirectedGraphTest : public ListGraphTest<versioned_graph<adjacency_list<bo
 public:
     typedef GraphTest<versioned_graph<adjacency_list<boost::vecS, boost::vecS, boost::directedS,int,int,double>>> base_type;
 
-    virtual void test_after_init(){
+    virtual void test_after_init(bool validate_deleted = true){
         ASSERT_NO_FATAL_FAILURE(this->check_vertices_count(4));
         ASSERT_NO_FATAL_FAILURE(this->check_edges_count(4));
-        ASSERT_NO_FATAL_FAILURE(this->check_all_edges_count(5));
+        if(validate_deleted){
+            ASSERT_NO_FATAL_FAILURE(this->check_all_edges_count(5));
+        }
         ASSERT_NO_FATAL_FAILURE(this->check_out_edges(this->v1,{this->v4,this->v2,this->v3}));
         ASSERT_NO_FATAL_FAILURE(this->check_out_edges(this->v2,{this->v4}));
         ASSERT_NO_FATAL_FAILURE(this->check_out_edges(this->v3,{}));
@@ -615,7 +621,7 @@ public:
         undo_commit(this->g);
         EXPECT_NO_FATAL_FAILURE(this->test_after_init());
         erase_history(this->g);
-        EXPECT_NO_FATAL_FAILURE(this->test_after_init());
+        EXPECT_NO_FATAL_FAILURE(this->test_after_init(false));
     }
 };
 
