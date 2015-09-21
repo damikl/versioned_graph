@@ -107,6 +107,11 @@ public:
             hist.pop_front();
         }
     }
+    void clear(){
+        auto prop = hist.front().second;
+        hist.clear();
+        hist.push_front(std::make_pair(revision(1),prop));
+    }
     T get_latest() const{
         return hist.front().second;
     }
@@ -377,7 +382,6 @@ public:
     typedef typename detail::property_records<vertex_bundled>::type vertices_history_type;
     typedef typename detail::property_records<edge_bundled>::type edges_history_type;
     typedef typename detail::property_optional_records<graph_bundled> graph_properties_history_type;
-
     typedef typename boost::graph_traits<graph_type>::vertex_descriptor vertex_descriptor;
     typedef typename boost::graph_traits<graph_type>::edge_descriptor edge_descriptor;
     typedef typename graph_type::degree_size_type degree_size_type;
@@ -488,6 +492,7 @@ public:
     }
     void commit();
     void undo_commit();
+    void erase_history();
 
     void revert_uncommited(){
         FILE_LOG(logDEBUG4) << "revert not commited changes";
@@ -591,6 +596,10 @@ private:
         inline static bool is_update_needed(const descriptor_type& d,const graph& g, const property_type& new_val){
             return get_latest_bundled_value(d,g)!=new_val;
         }
+        template<typename value_type>
+        static void set_revision(const revision& r, value_type& value){
+            value.first = r;
+        }
 
     };
     template<typename graph,typename descriptor_type>
@@ -603,6 +612,9 @@ private:
         }
         inline static bool is_update_needed(const descriptor_type& , const graph&  , no_property& ){
             return false;
+        }
+        template<typename value_type>
+        static void set_revision(const revision& , value_type& ){
         }
     };
 

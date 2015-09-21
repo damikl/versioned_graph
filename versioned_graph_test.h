@@ -84,7 +84,7 @@ public:
     FRIEND_TEST(GraphTest, simple);
 
     template<typename T>
-    ::testing::AssertionResult result_allowed(std::set<T> set,const T& value) const {
+    ::testing::AssertionResult result_allowed(const std::set<T>& set,const T& value) const {
 
         if(set.end()!=set.find(value)){
             return ::testing::AssertionSuccess();
@@ -97,8 +97,9 @@ public:
             return res;
         }
     }
-    virtual void check_out_edges(vertex_descriptor u,std::set<vertex_descriptor> set) const {
-        std::pair<out_edge_iterator, out_edge_iterator> ei = out_edges(u,g);
+    virtual void check_out_edges(vertex_descriptor u,
+                                 const std::set<vertex_descriptor>& set,
+                                 const std::pair<out_edge_iterator, out_edge_iterator>& ei) const {
         unsigned int out_edges_count = 0;
         FILE_LOG(logDEBUG2) << "validate out_edges for: " << u;
         for(out_edge_iterator edge_iter = ei.first; edge_iter != ei.second; ++edge_iter) {
@@ -110,11 +111,21 @@ public:
         }
         FILE_LOG(logDEBUG2) << "validate count of out_edges for: " << u;
         ASSERT_EQ(set.size(),out_edges_count);
+    }
+    virtual void check_out_edges(vertex_descriptor u,const std::set<vertex_descriptor>& set) const {
+        std::pair<out_edge_iterator, out_edge_iterator> ei = out_edges(u,g);
+        check_out_edges(u,set,ei);
         ASSERT_EQ(set.size(),out_degree(u,g));
     }
+    virtual void check_all_out_edges(vertex_descriptor u,const std::set<vertex_descriptor>& set) const {
+        std::pair<out_edge_iterator, out_edge_iterator> ei = out_edges(u,g.get_self());
+        check_out_edges(u,set,ei);
+        ASSERT_EQ(set.size(),out_degree(u,g.get_self()));
+    }
 
-    void check_adjacency(vertex_descriptor u,std::set<vertex_descriptor> set) const {
-        std::pair<adjacency_iterator, adjacency_iterator> ei = adjacent_vertices(u,g);
+    void check_adjacency(vertex_descriptor u,
+                         const std::set<vertex_descriptor>& set,
+                         const std::pair<adjacency_iterator, adjacency_iterator>& ei) const {
         unsigned int count = 0;
         for(adjacency_iterator iter = ei.first; iter != ei.second; ++iter) {
             ++count;
@@ -123,6 +134,10 @@ public:
             ASSERT_TRUE(result_allowed(set,v));
         }
         ASSERT_EQ(set.size(),count);
+    }
+    void check_adjacency(vertex_descriptor u,const std::set<vertex_descriptor>& set) const {
+        std::pair<adjacency_iterator, adjacency_iterator> ei = adjacent_vertices(u,g);
+        check_adjacency(u,set,ei);
     }
 
     virtual void test_after_init(){

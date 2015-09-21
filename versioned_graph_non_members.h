@@ -216,6 +216,11 @@ auto revert_changes(versioned_graph<graph_t>& g){
     return g.revert_uncommited();
 }
 
+template<typename graph_t>
+auto erase_history(versioned_graph<graph_t>& g){
+    return g.erase_history();
+}
+
 template<typename graph_t, typename vertex_descriptor>
 void remove_vertex(vertex_descriptor v, versioned_graph<graph_t>& g){
     g.set_deleted(v);

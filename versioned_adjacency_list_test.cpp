@@ -39,8 +39,8 @@ public:
     typedef typename graph_type::directed_selector directed_selector;
     typedef typename graph_type::edge_list_selector edge_list_selector;
 
-    void check_inv_adjacency(vertex_descriptor u,std::set<vertex_descriptor> set){
-        std::pair<inv_adjacency_iterator, inv_adjacency_iterator> ei = inv_adjacent_vertices(u,this->g);
+    void check_inv_adjacency(const std::set<vertex_descriptor>& set,
+                             const std::pair<inv_adjacency_iterator, inv_adjacency_iterator>& ei){
         unsigned int count = 0;
         for(inv_adjacency_iterator iter = ei.first; iter != ei.second; ++iter) {
             ++count;
@@ -49,6 +49,10 @@ public:
             ASSERT_TRUE(this->result_allowed(set,v));
         }
         ASSERT_EQ(set.size(),count);
+    }
+    void check_inv_adjacency(vertex_descriptor u, const std::set<vertex_descriptor>& set){
+        std::pair<inv_adjacency_iterator, inv_adjacency_iterator> ei = inv_adjacent_vertices(u,this->g);
+        check_inv_adjacency(set,ei);
     }
 };
 
@@ -61,16 +65,19 @@ public:
         ASSERT_NO_FATAL_FAILURE(this->check_all_edges_count(5));
         ASSERT_NO_FATAL_FAILURE(this->check_out_edges(this->v1,{this->v4,this->v2,this->v3}));
         ASSERT_NO_FATAL_FAILURE(this->check_out_edges(this->v2,{this->v4,this->v1}));
+        ASSERT_NO_FATAL_FAILURE(this->check_all_out_edges(this->v2,{this->v4,this->v1,this->v3}));
         ASSERT_NO_FATAL_FAILURE(this->check_out_edges(this->v3,{this->v1}));
         ASSERT_NO_FATAL_FAILURE(this->check_out_edges(this->v4,{this->v1,this->v2}));
 
         ASSERT_NO_FATAL_FAILURE(this->check_adjacency(this->v1,{this->v4,this->v2,this->v3}));
         ASSERT_NO_FATAL_FAILURE(this->check_adjacency(this->v2,{this->v4,this->v1}));
+        ASSERT_NO_FATAL_FAILURE(this->check_adjacency(this->v2,{this->v4,this->v1,this->v3},adjacent_vertices(this->v2,this->g.get_self())));
         ASSERT_NO_FATAL_FAILURE(this->check_adjacency(this->v3,{this->v1}));
         ASSERT_NO_FATAL_FAILURE(this->check_adjacency(this->v4,{this->v1,this->v2}));
 
         ASSERT_NO_FATAL_FAILURE(this->check_inv_adjacency(this->v1,{this->v4,this->v2,this->v3}));
         ASSERT_NO_FATAL_FAILURE(this->check_inv_adjacency(this->v2,{this->v4,this->v1}));
+        ASSERT_NO_FATAL_FAILURE(this->check_inv_adjacency({this->v4,this->v1,this->v3},inv_adjacent_vertices(this->v2,this->g.get_self())));
         ASSERT_NO_FATAL_FAILURE(this->check_inv_adjacency(this->v3,{this->v1}));
         ASSERT_NO_FATAL_FAILURE(this->check_inv_adjacency(this->v4,{this->v1,this->v2}));
 
@@ -162,6 +169,10 @@ public:
         ASSERT_NO_FATAL_FAILURE(this->check_all_edges_count(5));
         ASSERT_NO_FATAL_FAILURE(this->check_out_edges(this->v2,{this->v4,this->v1,this->v3}));
         undo_commit(this->g);// undo of init commit change nothing
+        ASSERT_NO_FATAL_FAILURE(this->check_vertices_count(4));
+        ASSERT_NO_FATAL_FAILURE(this->check_edges_count(5));
+        ASSERT_NO_FATAL_FAILURE(this->check_all_edges_count(5));
+        erase_history(this->g);
         ASSERT_NO_FATAL_FAILURE(this->check_vertices_count(4));
         ASSERT_NO_FATAL_FAILURE(this->check_edges_count(5));
         ASSERT_NO_FATAL_FAILURE(this->check_all_edges_count(5));
@@ -423,7 +434,9 @@ public:
         ASSERT_NO_FATAL_FAILURE(this->check_all_edges_count(8));
         undo_commit(this->g);
         EXPECT_NO_FATAL_FAILURE(this->test_after_init());
-
+        erase_history(this->g);
+        FILE_LOG(logINFO) << "erased ";
+        EXPECT_NO_FATAL_FAILURE(this->test_after_init());
     }
 };
 
@@ -601,7 +614,8 @@ public:
         ASSERT_NO_FATAL_FAILURE(this->check_all_edges_count(8));
         undo_commit(this->g);
         EXPECT_NO_FATAL_FAILURE(this->test_after_init());
-
+        erase_history(this->g);
+        EXPECT_NO_FATAL_FAILURE(this->test_after_init());
     }
 };
 

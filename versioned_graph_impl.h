@@ -385,6 +385,33 @@ void versioned_graph<graph_t>::commit(){
 }
 
 template<typename graph_t>
+void versioned_graph<graph_t>::erase_history(){
+    using namespace detail;
+    auto ei = edges(get_self());
+    for(auto edge_iter = ei.first; edge_iter != ei.second; ++edge_iter) {
+        edges_history_type& hist = get_history(*edge_iter);
+        auto prop = property_handler<self_type,edge_descriptor,edge_bundled>::get_latest_bundled_value(*edge_iter,*this);
+        revision r = get_latest_revision(*edge_iter);
+        hist.clear();
+        r = is_deleted(r) ? revision(-1) : revision(1);
+        hist.push_front(make_entry(r,prop));
+        assert(get_latest_revision(*edge_iter)==revision(1));
+    }
+    auto vi = boost::vertices(get_self());
+    for(auto vertex_iter = vi.first; vertex_iter != vi.second; ++vertex_iter) {
+        vertices_history_type& hist = get_history(*vertex_iter);
+        auto prop = property_handler<self_type,vertex_descriptor,vertex_bundled>::get_latest_bundled_value(*vertex_iter,*this);
+        revision r = get_latest_revision(*vertex_iter);
+        hist.clear();
+        r = is_deleted(r) ? revision(-1) : revision(1);
+        hist.push_front(make_entry(r,prop));
+        assert(get_latest_revision(*vertex_iter)==revision(1));
+    }
+    graph_bundled_history.clear();
+    current_rev = revision(1);
+}
+
+template<typename graph_t>
 void versioned_graph<graph_t>::
 undo_commit(){
     if(current_rev.get_rev()>2){
