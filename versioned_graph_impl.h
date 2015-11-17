@@ -389,7 +389,10 @@ void versioned_graph<graph_t>::commit(){
     graph_bundled_history.update_if_needed(current_rev,(*this)[graph_bundle]);
     ++current_rev;
 }
-
+/**
+ * delete all history records and creates single new record for
+ * latest graph property, each vertex and each edge, cannnot undo this operation
+ */
 template<typename graph_t>
 void versioned_graph<graph_t>::erase_history(){
     using namespace detail;
@@ -398,11 +401,11 @@ void versioned_graph<graph_t>::erase_history(){
         for(auto edge_iter = ei.first; edge_iter != ei.second; ) {
             edges_history_type& hist = get_history(*edge_iter);
             auto prop = property_handler<self_type,edge_descriptor,edge_bundled>::get_latest_bundled_value(*edge_iter,*this);
-            const revision r = get_latest_revision(*edge_iter);
+            const revision old_rev = get_latest_revision(*edge_iter);
             hist.clear();
             hist.push_front(make_entry(revision(1),prop));
             assert(get_latest_revision(*edge_iter)==revision(1));
-            if(is_deleted(r)){
+            if(is_deleted(old_rev)){ // edges marked as deleted,m should not exist after erasing history
                 auto old = edge_iter;
                 ++edge_iter;
                 remove_permanently(*old);
@@ -415,11 +418,11 @@ void versioned_graph<graph_t>::erase_history(){
     for(auto vertex_iter = vi.first; vertex_iter != vi.second; ++vertex_iter) {
         vertices_history_type& hist = get_history(*vertex_iter);
         auto prop = property_handler<self_type,vertex_descriptor,vertex_bundled>::get_latest_bundled_value(*vertex_iter,*this);
-        const revision r = get_latest_revision(*vertex_iter);
+        const revision old_rev = get_latest_revision(*vertex_iter);
         hist.clear();
         hist.push_front(make_entry(revision(1),prop));
         assert(get_latest_revision(*vertex_iter)==revision(1));
-        if(is_deleted(r)){
+        if(is_deleted(old_rev)){ // vertices marked as deleted,m should not exist after erasing history
             auto old = vertex_iter;
             ++vertex_iter;
             remove_permanently(*old);
