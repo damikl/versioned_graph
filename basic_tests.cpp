@@ -64,8 +64,14 @@ TEST(VersionedGraphTest, withoutTypes) {
     typedef versioned_graph<adjacency_list<boost::vecS, boost::vecS, boost::directedS>> simple_graph;
     simple_graph sg;
 //    typedef typename graph_traits<simple_graph>::vertices_size_type size_type;
-//    typedef typename boost::vertex_bundle_type<simple_graph>::type vertex_properties;
-//    typedef typename boost::edge_bundle_type<simple_graph>::type edge_properties;
+    typedef typename boost::vertex_bundle_type<simple_graph>::type vertex_properties;
+    ::testing::StaticAssertTypeEq<boost::no_property, vertex_properties>();
+    typedef typename boost::edge_bundle_type<simple_graph>::type edge_properties;
+    ::testing::StaticAssertTypeEq<boost::no_property, edge_properties>();
+    typedef typename boost::graph_bundle_type<simple_graph>::type graph_properties;
+    ::testing::StaticAssertTypeEq<boost::no_property, graph_properties>();
+
+
     typedef typename boost::graph_traits<simple_graph>::vertex_descriptor vertex_descriptor;
     vertex_descriptor v1 = add_vertex(sg);
     vertex_descriptor v2 = add_vertex(sg);

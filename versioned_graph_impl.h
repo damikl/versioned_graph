@@ -34,6 +34,9 @@ edges_end() const {
     return iter;
 }
 
+/**
+ *  Removes edge with history, operation cannot be undone
+ */
 template<typename graph_t>
 void versioned_graph<graph_t>::
 remove_permanently(edge_descriptor e){
@@ -44,6 +47,9 @@ remove_permanently(edge_descriptor e){
     boost::remove_edge(e,*dynamic_cast<graph_type*>(this));
 }
 
+/**
+ *  implementation of boost::remove_edge()
+ */
 template<typename graph_t>
 void versioned_graph<graph_t>::
 set_deleted(edge_descriptor e){
@@ -55,16 +61,19 @@ set_deleted(edge_descriptor e){
     assert(!check_if_currently_deleted(e));
     decr_degree(e);
     if(hist.size()>1 || get_latest_revision(e) < current_rev){
+        // if there are many history records or was created in older revision then mark as deleted
         FILE_LOG(logDEBUG3) << "remove edge: set as deleted";
-        set_deleted(e,edge_bundled());
+        mark_deleted(e,edge_bundled());
         assert(check_if_currently_deleted(e));
     } else {
         remove_permanently(e);
     }
-    --e_num;
+    --edge_count;
     FILE_LOG(logDEBUG3) << "set deleted: finnished";
 }
-
+/**
+ *  Removes vertex with history, operation cannot be undone
+ */
 template<typename graph_t>
 void versioned_graph<graph_t>::
 remove_permanently(vertex_descriptor v){
@@ -75,20 +84,26 @@ remove_permanently(vertex_descriptor v){
     boost::remove_vertex(v,*dynamic_cast<graph_type*>(this));
 }
 
+/**
+ *  implementation of boost::remove_vertex()
+ */
 template<typename graph_t>
 void versioned_graph<graph_t>::
 set_deleted(vertex_descriptor v){
     if(get_history(v).size()>1 || get_latest_revision(v) < current_rev){
         FILE_LOG(logDEBUG3) << "remove vertex: set as deleted";
-        set_deleted(v,vertex_bundled());
+        mark_deleted(v,vertex_bundled());
         assert(check_if_currently_deleted(v));
     } else {
         remove_permanently(v);
     }
-    --v_num;
+    --vertex_count;
     FILE_LOG(logDEBUG3) << "set vertex deleted: finnished";
 }
 
+/**
+ * decrement out_degree and in_degree of graph
+ */
 template<typename graph_t>
 void versioned_graph<graph_t>::
 decr_degree(edge_descriptor e){
@@ -105,6 +120,9 @@ decr_degree(edge_descriptor e){
     }
 }
 
+/**
+ * increment out_degree and in_degree of graph
+ */
 template<typename graph_t>
 void versioned_graph<graph_t>::
 incr_degree(edge_descriptor e){
@@ -130,7 +148,7 @@ clean_history( edges_history_type& hist, edge_descriptor desc){
                         << boost::target(desc,*this) << ") for rev: " << r;
     hist.pop_front();
     if(is_deleted(r)){
-        ++e_num;
+        ++edge_count;
         incr_degree(desc);
     }
     if(hist.empty()){
@@ -146,17 +164,22 @@ clean_history( edges_history_type& hist, edge_descriptor desc){
 
 }
 
+/**
+ * remove latest record in history for that vertex,
+ * if removed record made vertex marked as deleted adjusts num_vertices() result
+ * do not alter vertex attributes
+ */
 template<typename graph_t>
 void versioned_graph<graph_t>::
 clean_history( vertices_history_type& hist, vertex_descriptor desc){
-    revision r = detail::get_revision(hist.front());
-    if (is_deleted(r)) {
-       ++v_num;
+    revision rev_num = detail::get_revision(hist.front());
+    if (is_deleted(rev_num)) {
+       ++vertex_count;
     }
-    FILE_LOG(logDEBUG4) << "remove vertices history containing (" << hist.size() << " records ) entry: ("<< desc << ") for rev: " << r;
+    FILE_LOG(logDEBUG4) << "remove vertices history containing (" << hist.size() << " records ) entry: ("<< desc << ") for rev: " << rev_num;
     hist.pop_front();
-    r = detail::get_revision(hist.front());
-    FILE_LOG(logDEBUG4) << "after vertices history removal: ("<< desc << ") for rev: " << r;
+    rev_num = detail::get_revision(hist.front());
+    FILE_LOG(logDEBUG4) << "after vertices history removal: ("<< desc << ") for rev: " << rev_num;
 }
 
 template<typename graph_t>
@@ -185,13 +208,9 @@ clean_edges_to_current_rev(){
         }
     }
     for(edge_descriptor e : edges_to_be_removed){
-        auto it = edges_history.find(e);
-        assert(it!=edges_history.end());
-        edges_history.erase(it);
-        --e_num;
+        remove_permanently(e);
+        --edge_count;
         FILE_LOG(logDEBUG3) << "completly removed edge history record";
-        boost::remove_edge(e,get_self());
-        FILE_LOG(logDEBUG3) << "removed edge from graph";
     }
 }
 
@@ -210,53 +229,23 @@ clean_vertices_to_current_rev(){
             clean_history(hist,*vi);
         }
         if(hist.empty()){
+            // vertex was created in this or younger revision, we need tu deleted it
             vertex_descriptor v = *vi;
-            auto it = vertices_history.find(v);
-            assert(it!=vertices_history.end());
-            vertices_history.erase(it);
-            --v_num;
+            remove_permanently(v);
+            --vertex_count;
             FILE_LOG(logDEBUG3) << "completly removed vertex history record";
-            boost::remove_vertex(v,get_self());
-            FILE_LOG(logDEBUG3) << "removed vertex from graph";
         } else {
             (*this)[*vi] = property_handler<self_type,vertex_descriptor,vertex_bundled>::get_latest_bundled_value(*vi,*this);
             FILE_LOG(logDEBUG3) << "copied vertex propety";
         }
     }
-    /*
-    std::list<vertex_descriptor> vertices_to_be_removed;
-    for(auto vertex_iter = vi.first; vertex_iter != vi.second; ++vertex_iter) {
-        vertices_history_type& hist = get_history(*vertex_iter);
-        FILE_LOG(logDEBUG3) << "clean history of vertex: " << *vertex_iter;
-        while(!hist.empty() && get_latest_revision(*vertex_iter)>=current_rev){
-            clean_history(hist,*vertex_iter);
-        }
-        if(hist.empty()){
-            vertices_to_be_removed.push_front(*vertex_iter);
-        } else {
-            (*this)[*vertex_iter] = property_handler<self_type,vertex_descriptor,vertex_bundled>::get_latest_bundled_value(*vertex_iter,*this);
-            FILE_LOG(logDEBUG3) << "copied vertex propety";
-        }
-    }
-    for(vertex_descriptor v : vertices_to_be_removed){
-        auto it = vertices_history.find(v);
-        assert(it!=vertices_history.end());
-        vertices_history.erase(it);
-        --v_num;
-        FILE_LOG(logDEBUG3) << "completly removed vertex history record";
-        boost::remove_vertex(v,get_self());
-        FILE_LOG(logDEBUG3) << "removed vertex from graph";
-    }
-    */
 }
 
 template<typename graph_t>
 versioned_graph<graph_t>::
-versioned_graph(const versioned_graph& g ) : graph_type(),v_num(g.v_num),
-                                             e_num(g.e_num),
+versioned_graph(const versioned_graph& g ) : graph_type(),vertex_count(g.vertex_count),
+                                             edge_count(g.edge_count),
                                              current_rev(g.current_rev) {
-    // Would be better to have a constant time way to get from
-    // vertices in x to the corresponding vertices in *this.
     std::map<vertex_descriptor,vertex_descriptor> vertex_map;
 
     // Copy the stored vertex objects by adding each vertex
@@ -274,7 +263,7 @@ versioned_graph(const versioned_graph& g ) : graph_type(),v_num(g.v_num),
       }
       vertex_map[*vi] = v;
     }
-    assert(v_count==v_num);
+    assert(v_count==vertex_count);
     // Copy the edges by adding each edge and copying its
     // property object.
     edge_iterator ei, ei_end;
@@ -312,13 +301,15 @@ versioned_graph(const versioned_graph& g ) : graph_type(),v_num(g.v_num),
                           << boost::target(e,get_self())<< ") "
                           << new_hist.size() << " records in history, last rev: " << r;
     }
-    BOOST_ASSERT_MSG(e_count==e_num,("counted " + std::to_string(e_count) + "  edges while expected " + std::to_string(e_num)).c_str());
+    BOOST_ASSERT_MSG(e_count==edge_count,("counted " + std::to_string(e_count) + "  edges while expected " + std::to_string(edge_count)).c_str());
     assert(boost::num_vertices(get_self())==vertices_history.size());
     assert(boost::num_edges(get_self())==edges_history.size());
-    FILE_LOG(logDEBUG4) << "copied graph: " << v_num << "("<< vertices_history.size() << ") vertices, "
-                                            << e_num << "("<< edges_history.size() << ") edges";
+    FILE_LOG(logDEBUG4) << "copied graph: " << vertex_count << "("<< vertices_history.size() << ") vertices, "
+                                            << edge_count << "("<< edges_history.size() << ") edges";
 }
-
+/**
+ *  init history structure for new vertex
+ */
 template<typename graph_t>
 void versioned_graph<graph_t>::init(vertex_descriptor v,const vertex_bundled& prop){
     vertices_history.insert(std::make_pair(v,vertex_stored_data()));
@@ -328,6 +319,9 @@ void versioned_graph<graph_t>::init(vertex_descriptor v,const vertex_bundled& pr
     FILE_LOG(logDEBUG4) << "init vertex: " << v << " in rev " << current_rev;
 }
 
+/**
+ *  init history structure for new edge
+ */
 template<typename graph_t>
 void versioned_graph<graph_t>::init(edge_descriptor e,const edge_bundled& prop){
     if(edges_history.find(e)==edges_history.end()){
@@ -348,7 +342,7 @@ versioned_graph<graph_t>::generate_vertex(vertex_bundled prop){
     FILE_LOG(logDEBUG4) << "created vertex: " << v;
     (*this)[v] = prop;
     init(v);
-    ++v_num;
+    ++vertex_count;
     return v;
 }
 
@@ -360,10 +354,10 @@ generate_edge(edge_bundled prop,vertex_descriptor u, vertex_descriptor v){
     auto p = boost::add_edge(u,v,prop,get_self());
     if(p.second){
         init(p.first,prop);
-        ++e_num;
+        ++edge_count;
         FILE_LOG(logDEBUG4) << "add edge (" << boost::source(p.first,get_self()) << ", "
                                             << boost::target(p.first,get_self())
-                                            << ") with rev " << current_rev << " num of edges: " << e_num;
+                                            << ") with rev " << current_rev << " num of edges: " << edge_count;
     } else {
         FILE_LOG(logDEBUG4) << "edge (" << boost::source(p.first,get_self()) << ", "
                                         << boost::target(p.first,get_self()) << ") already exist";

@@ -46,4 +46,8 @@ int main(){
     revert_changes(sg);
     assert(4==num_vertices(sg));
     assert(5==num_edges(sg));
+
+    typedef versioned_graph<adjacency_list<boost::hash_setS, boost::hash_setS, boost::directedS,int,string>> hash_graph;
+    hash_graph g;
+    //typedef typename boost::graph_traits<hash_graph>::vertex_descriptor vertex_descr;
 }
