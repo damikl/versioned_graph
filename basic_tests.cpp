@@ -9,7 +9,7 @@ TEST(VersionedGraphTest, SimpleExample) {
     Output2FILE::Stream() = log_fd;
     using namespace boost;
     using namespace std;
-    typedef versioned_graph<adjacency_list<boost::vecS, boost::vecS, boost::directedS,int,string>> simple_graph;
+    typedef versioned_graph<adjacency_list<boost::vecS, boost::vecS, boost::directedS,int,string,int>> simple_graph;
     simple_graph sg;
 //    typedef typename graph_traits<simple_graph>::vertices_size_type size_type;
 //    typedef typename boost::vertex_bundle_type<simple_graph>::type vertex_properties;
@@ -25,17 +25,20 @@ TEST(VersionedGraphTest, SimpleExample) {
     add_edge(v1,v4,"11",sg);
     add_edge(v2,v3,"12",sg);
     sg[v4] = 4;
+    sg[graph_bundle] = 30;
     ASSERT_EQ(4,num_vertices(sg));
     ASSERT_EQ(5,num_edges(sg));
     FILE_LOG(logDEBUG1) << "start commit";
     commit(sg);
     FILE_LOG(logDEBUG1) << "commit end";
     sg[v4] = 5;
+    sg[graph_bundle] = 31;
     remove_edge(v1,v4,sg);
     ASSERT_EQ(4,num_edges(sg));
     EXPECT_FALSE(edge(v1,v4,sg).second);
     commit(sg);
     sg[v4] = 6;
+    sg[graph_bundle] = 32;
     undo_commit(sg);
     FILE_LOG(logDEBUG1) << "made undo";
     ASSERT_TRUE(edge(v1,v4,sg).second);
@@ -43,16 +46,21 @@ TEST(VersionedGraphTest, SimpleExample) {
     ASSERT_EQ(5,num_edges(sg));
     FILE_LOG(logDEBUG1) << "count match";
     ASSERT_EQ(4,sg[v4]);
+    ASSERT_EQ(30,sg[graph_bundle]);
     FILE_LOG(logDEBUG1) << "attribute match";
     vertex_descriptor v5 = add_vertex(5,sg);
     add_edge(v5,v4,"13",sg);
     add_edge(v3,v5,"14",sg);
+    sg[v4] = 7;
+    sg[graph_bundle] = 33;
     ASSERT_EQ(5,num_vertices(sg));
     ASSERT_EQ(7,num_edges(sg));
     ASSERT_EQ(5,sg[v5]);
     revert_changes(sg);
     ASSERT_EQ(4,num_vertices(sg));
     ASSERT_EQ(5,num_edges(sg));
+    ASSERT_EQ(4,sg[v4]);
+    ASSERT_EQ(30,sg[graph_bundle]);
 
 }
 

@@ -86,33 +86,35 @@ struct property_records<boost::no_property>{
 
 template<class T>
 class property_optional_records{
-    typedef std::list<std::pair<revision,T> > history_type;
+    typedef std::stack<std::pair<revision,T> > history_type;
     history_type hist;
 public:
     void update_if_needed(revision rev,const T& value){
         if(hist.empty()){
-            hist.push_front(std::make_pair(rev,value));
+            hist.push(std::make_pair(rev,value));
         } else {
-            auto p = hist.front();
+            auto p = hist.top();
             assert(p.first<rev);
             if(p.second!=value)
             {
-                hist.push_front(std::make_pair(rev,value));
+                hist.push(std::make_pair(rev,value));
             }
         }
     }
     void clean_to_max(const revision& rev){
-        while(!hist.empty() && hist.front().first>=rev){
-            hist.pop_front();
+        while(!hist.empty() && hist.top().first>=rev){
+            hist.pop();
         }
     }
     void clear(){
-        auto prop = hist.front().second;
-        hist.clear();
-        hist.push_front(std::make_pair(revision(1),prop));
+        auto prop = hist.top().second;
+        while(!hist.empty()){
+            hist.pop();
+        }
+        hist.push(std::make_pair(revision(1),prop));
     }
     T get_latest() const{
-        return hist.front().second;
+        return hist.top().second;
     }
 
 };
@@ -440,6 +442,7 @@ public:
         FILE_LOG(logDEBUG4) << "revert not commited changes";
         clean_edges_to_current_rev();
         clean_vertices_to_current_rev();
+        (*this)[graph_bundle] = graph_bundled_history.get_latest();
     }
     template<typename descriptor>
     revision get_latest_revision(const descriptor& v) const {
