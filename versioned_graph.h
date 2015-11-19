@@ -165,25 +165,16 @@ public:
             return true;
         }
         assert(rev>0);
-//        FILE_LOG(logDEBUG4) << "filter_predicate: check edge: (" << boost::source(v,*g) << ", " << boost::target(v,*g)<< ")";
         auto list = g->get_history(v);
-    //    for(auto iter = list.begin(); iter!=list.end();++iter){
-            revision r = detail::get_revision(list.top());
-            assert(r<=g->get_current_rev());
-            assert(r<=rev);
-        //    if(r<=rev){
-                if(is_deleted(r)){
-                    FILE_LOG(logDEBUG4) << "filter_predicate: (" << boost::source(v,*g) << ", " << boost::target(v,*g)<< ") found deleted rev: " << r;
-                    return false;
-                }
-                FILE_LOG(logDEBUG4) << "filter_predicate: (" << boost::source(v,*g) << ", " << boost::target(v,*g)<< ") found rev: " << r;
-                return true;
-     //       } else {
-     //           FILE_LOG(logDEBUG4) << "filter_predicate: (" << boost::source(v,*g) << ", " << boost::target(v,*g)<< ") skipped rev: " << r;
-     //       }
-     //   }
-     //   FILE_LOG(logDEBUG4) << "filter_predicate: not found " << rev << " for edge (" << boost::source(v,*g) << ", " << boost::target(v,*g)<< ")";
-     //   return false;
+        revision r = detail::get_revision(list.top());
+        assert(r<=g->get_current_rev());
+        assert(r<=rev);
+        if(is_deleted(r)){
+             FILE_LOG(logDEBUG4) << "filter_predicate: (" << boost::source(v,*g) << ", " << boost::target(v,*g)<< ") found deleted rev: " << r;
+             return false;
+        }
+        FILE_LOG(logDEBUG4) << "filter_predicate: (" << boost::source(v,*g) << ", " << boost::target(v,*g)<< ") found rev: " << r;
+        return true;
     }
 };
 template<typename graph_type>
@@ -211,23 +202,15 @@ public:
         FILE_LOG(logDEBUG4) << "filter_removed_predicate: check vertex: " << v;
 
         auto list = g->get_history(v);
-    //    for(auto iter = list.begin(); iter!=list.end();++iter){
-            revision r = detail::get_revision(list.top());
-            assert(r<=g->get_current_rev());
-            assert(r<=rev);
-       //     if(r<=rev){
-                if(is_deleted(r)){
-                    FILE_LOG(logDEBUG4) << "filter_removed_predicate: found deleted rev: " << r << " and while wanted: " << rev << " desc: " << v;
-                    return false;
-                }
-                FILE_LOG(logDEBUG4) << "filter_removed_predicate: found rev: " << r << " and while wanted: " << rev << " desc: " << v;
-                return true;
-     //       } else {
-    //            FILE_LOG(logDEBUG4) << "filter_removed_predicate: skipped rev: " << r << " and while wanted: " << rev;
-    //        }
-     //   }
-    //    FILE_LOG(logDEBUG4) << "filter_removed_predicate: not found " << rev;
-    //    return false;
+        revision r = detail::get_revision(list.top());
+        assert(r<=g->get_current_rev());
+        assert(r<=rev);
+        if(is_deleted(r)){
+             FILE_LOG(logDEBUG4) << "filter_removed_predicate: found deleted rev: " << r << " and while wanted: " << rev << " desc: " << v;
+             return false;
+         }
+         FILE_LOG(logDEBUG4) << "filter_removed_predicate: found rev: " << r << " and while wanted: " << rev << " desc: " << v;
+         return true;
     }
 };
 
@@ -253,22 +236,14 @@ public:
         assert(p.second);
         auto edge_desc = p.first;
         auto list = g->get_history(edge_desc);
-    //    for(auto iter = list.begin(); iter!=list.end();++iter){
-            revision r = detail::get_revision(list.top());
-            assert(r<=rev);
-       //     if(r<=rev){
-                if (is_deleted(r)) {
-                    FILE_LOG(logDEBUG4) << "adjacency_filter_removed_predicate: found deleted rev: " << r << " and while wanted: " << rev << " desc: " << v;
-                    return false;
-                }
-                FILE_LOG(logDEBUG4) << "adjacency_filter_removed_predicate: found rev: " << r << " and while wanted: " << rev << " desc: " << v;
-                return true;
-       //     } else {
-       //         FILE_LOG(logDEBUG4) << "adjacency_filter_removed_predicate: skipped rev: " << r << " and while wanted: " << rev;
-       //     }
-      //  }
-    //    FILE_LOG(logDEBUG4) << "adjacency_filter_removed_predicate: not found " << rev;
-    //    return false;
+        revision r = detail::get_revision(list.top());
+        assert(r<=rev);
+        if (is_deleted(r)) {
+           FILE_LOG(logDEBUG4) << "adjacency_filter_removed_predicate: found deleted rev: " << r << " and while wanted: " << rev << " desc: " << v;
+           return false;
+        }
+        FILE_LOG(logDEBUG4) << "adjacency_filter_removed_predicate: found rev: " << r << " and while wanted: " << rev << " desc: " << v;
+        return true;
     }
 };
 

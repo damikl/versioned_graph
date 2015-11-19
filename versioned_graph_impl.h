@@ -178,8 +178,6 @@ clean_history( vertices_history_type& hist, vertex_descriptor desc){
     }
     FILE_LOG(logDEBUG4) << "remove vertices history containing (" << hist.size() << " records ) entry: ("<< desc << ") for rev: " << rev_num;
     hist.pop();
-//    rev_num = detail::get_revision(hist.top());
-//    FILE_LOG(logDEBUG4) << "after vertices history removal: ("<< desc << ") for rev: " << rev_num;
 }
 
 template<typename graph_t>
