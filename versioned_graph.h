@@ -5,6 +5,7 @@
 #include <boost/graph/graph_utility.hpp>
 #include <boost/iterator/filter_iterator.hpp>
 #include "log.h"
+#include <stack>
 #include <type_traits>
 
 
@@ -75,12 +76,12 @@ std::ostream& operator<<(std::ostream& os, const revision& obj) {
 
 template<class T>
 struct property_records{
-    typedef std::list<std::pair<revision,T> > type;
+    typedef std::stack<std::pair<revision,T> > type;
 };
 
 template<>
 struct property_records<boost::no_property>{
-    typedef std::list<revision> type;
+    typedef std::stack<revision> type;
 };
 
 template<class T>
@@ -166,22 +167,23 @@ public:
         assert(rev>0);
 //        FILE_LOG(logDEBUG4) << "filter_predicate: check edge: (" << boost::source(v,*g) << ", " << boost::target(v,*g)<< ")";
         auto list = g->get_history(v);
-        for(auto iter = list.begin(); iter!=list.end();++iter){
-            revision r = detail::get_revision(*iter);
+    //    for(auto iter = list.begin(); iter!=list.end();++iter){
+            revision r = detail::get_revision(list.top());
             assert(r<=g->get_current_rev());
-            if(r<=rev){
+            assert(r<=rev);
+        //    if(r<=rev){
                 if(is_deleted(r)){
                     FILE_LOG(logDEBUG4) << "filter_predicate: (" << boost::source(v,*g) << ", " << boost::target(v,*g)<< ") found deleted rev: " << r;
                     return false;
                 }
                 FILE_LOG(logDEBUG4) << "filter_predicate: (" << boost::source(v,*g) << ", " << boost::target(v,*g)<< ") found rev: " << r;
                 return true;
-            } else {
-                FILE_LOG(logDEBUG4) << "filter_predicate: (" << boost::source(v,*g) << ", " << boost::target(v,*g)<< ") skipped rev: " << r;
-            }
-        }
-        FILE_LOG(logDEBUG4) << "filter_predicate: not found " << rev << " for edge (" << boost::source(v,*g) << ", " << boost::target(v,*g)<< ")";
-        return false;
+     //       } else {
+     //           FILE_LOG(logDEBUG4) << "filter_predicate: (" << boost::source(v,*g) << ", " << boost::target(v,*g)<< ") skipped rev: " << r;
+     //       }
+     //   }
+     //   FILE_LOG(logDEBUG4) << "filter_predicate: not found " << rev << " for edge (" << boost::source(v,*g) << ", " << boost::target(v,*g)<< ")";
+     //   return false;
     }
 };
 template<typename graph_type>
@@ -209,22 +211,23 @@ public:
         FILE_LOG(logDEBUG4) << "filter_removed_predicate: check vertex: " << v;
 
         auto list = g->get_history(v);
-        for(auto iter = list.begin(); iter!=list.end();++iter){
-            revision r = detail::get_revision(*iter);
+    //    for(auto iter = list.begin(); iter!=list.end();++iter){
+            revision r = detail::get_revision(list.top());
             assert(r<=g->get_current_rev());
-            if(r<=rev){
+            assert(r<=rev);
+       //     if(r<=rev){
                 if(is_deleted(r)){
                     FILE_LOG(logDEBUG4) << "filter_removed_predicate: found deleted rev: " << r << " and while wanted: " << rev << " desc: " << v;
                     return false;
                 }
                 FILE_LOG(logDEBUG4) << "filter_removed_predicate: found rev: " << r << " and while wanted: " << rev << " desc: " << v;
                 return true;
-            } else {
-                FILE_LOG(logDEBUG4) << "filter_removed_predicate: skipped rev: " << r << " and while wanted: " << rev;
-            }
-        }
-        FILE_LOG(logDEBUG4) << "filter_removed_predicate: not found " << rev;
-        return false;
+     //       } else {
+    //            FILE_LOG(logDEBUG4) << "filter_removed_predicate: skipped rev: " << r << " and while wanted: " << rev;
+    //        }
+     //   }
+    //    FILE_LOG(logDEBUG4) << "filter_removed_predicate: not found " << rev;
+    //    return false;
     }
 };
 
@@ -250,21 +253,22 @@ public:
         assert(p.second);
         auto edge_desc = p.first;
         auto list = g->get_history(edge_desc);
-        for(auto iter = list.begin(); iter!=list.end();++iter){
-            revision r = detail::get_revision(*iter);
-            if(r<=rev){
+    //    for(auto iter = list.begin(); iter!=list.end();++iter){
+            revision r = detail::get_revision(list.top());
+            assert(r<=rev);
+       //     if(r<=rev){
                 if (is_deleted(r)) {
                     FILE_LOG(logDEBUG4) << "adjacency_filter_removed_predicate: found deleted rev: " << r << " and while wanted: " << rev << " desc: " << v;
                     return false;
                 }
                 FILE_LOG(logDEBUG4) << "adjacency_filter_removed_predicate: found rev: " << r << " and while wanted: " << rev << " desc: " << v;
                 return true;
-            } else {
-                FILE_LOG(logDEBUG4) << "adjacency_filter_removed_predicate: skipped rev: " << r << " and while wanted: " << rev;
-            }
-        }
-        FILE_LOG(logDEBUG4) << "adjacency_filter_removed_predicate: not found " << rev;
-        return false;
+       //     } else {
+       //         FILE_LOG(logDEBUG4) << "adjacency_filter_removed_predicate: skipped rev: " << r << " and while wanted: " << rev;
+       //     }
+      //  }
+    //    FILE_LOG(logDEBUG4) << "adjacency_filter_removed_predicate: not found " << rev;
+    //    return false;
     }
 };
 
@@ -442,7 +446,7 @@ public:
      */
     template<typename descriptor>
     bool check_if_currently_deleted(descriptor d) const {
-        return is_deleted(detail::get_revision(get_history(d).front()));
+        return is_deleted(detail::get_revision(get_history(d).top()));
     }
 
     vertices_size_type num_vertices() const {
@@ -465,7 +469,7 @@ public:
     template<typename descriptor>
     revision get_latest_revision(const descriptor& v) const {
         const auto& list = get_history(v);
-        return detail::get_revision(list.front());
+        return detail::get_revision(list.top());
     }
 
     graph_type& get_self() {
@@ -528,10 +532,10 @@ private:
         using namespace detail;
         auto& list = get_history(e);
         FILE_LOG(logDEBUG4) << "set deleted: " << list.size() << " records in history";
-        assert(!is_deleted(detail::get_revision(list.front())));
+        assert(!is_deleted(detail::get_revision(list.top())));
         revision r = make_deleted(current_rev);
         FILE_LOG(logDEBUG4) << "negated to " << r;
-        list.push_front(make_entry(r,dummy_value));
+        list.push(make_entry(r,dummy_value));
     }
 
     template<typename descriptor,typename bundled_type>
@@ -548,14 +552,14 @@ private:
     struct property_handler{
         static auto& get_latest_bundled_value(const descriptor_type& d, graph& g) {
             auto& list = g.get_history(d);
-            assert(detail::get_revision(list.front())<=g.get_current_rev());
-            return list.front().second;
+            assert(detail::get_revision(list.top())<=g.get_current_rev());
+            return list.top().second;
         }
 
         static const auto& get_latest_bundled_value(const descriptor_type& d, const graph& g) {
             const auto& list = g.get_history(d);
-            assert(detail::get_revision(list.front())<=g.get_current_rev());
-            return list.front().second;
+            assert(detail::get_revision(list.top())<=g.get_current_rev());
+            return list.top().second;
         }
 
         inline static bool is_update_needed(const descriptor_type& d,const graph& g, const property_type& new_val){

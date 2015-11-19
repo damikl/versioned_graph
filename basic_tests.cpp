@@ -102,6 +102,10 @@ TEST(VersionedGraphTest, withoutTypes) {
     revert_changes(sg);
     ASSERT_EQ(4,num_vertices(sg));
     ASSERT_EQ(5,num_edges(sg));
+    auto iterv = vertices(sg);
+    ASSERT_EQ(4,distance(iterv.first,iterv.second));
+    auto itere = edges(sg);
+    ASSERT_EQ(5,distance(itere.first,itere.second));
 }
 
 TEST(VersionedGraphTest, normalTopologicalSort) {
