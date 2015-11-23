@@ -39,6 +39,7 @@ TEST(VersionedGraphTest, SimpleExample) {
     commit(sg);
     sg[v4] = 6;
     sg[graph_bundle] = 32;
+    simple_graph copy(sg);
     undo_commit(sg);
     FILE_LOG(logDEBUG1) << "made undo";
     ASSERT_TRUE(edge(v1,v4,sg).second);
@@ -46,6 +47,9 @@ TEST(VersionedGraphTest, SimpleExample) {
     ASSERT_EQ(5,num_edges(sg));
     FILE_LOG(logDEBUG1) << "count match";
     ASSERT_EQ(4,sg[v4]);
+    ASSERT_EQ(6,copy[v4]);
+    ASSERT_EQ(4,num_edges(copy));
+    ASSERT_EQ(32,copy[graph_bundle]);
     ASSERT_EQ(30,sg[graph_bundle]);
     FILE_LOG(logDEBUG1) << "attribute match";
     vertex_descriptor v5 = add_vertex(5,sg);
@@ -213,7 +217,7 @@ TEST(VersionedGraphTest, checkTopologicalSort) {
     FILE_LOG(logDEBUG1) << "make tolological sort";
     // Perform a topological sort.
     std::deque<int> topo_order;
-    boost::topological_sort(sg.get_self(), std::front_inserter(topo_order));
+    boost::topological_sort(sg.get_base_graph(), std::front_inserter(topo_order));
     // Print the results.
     FILE_LOG(logDEBUG1) << "Print the results";
     for(std::deque<int>::const_iterator i = topo_order.begin();i != topo_order.end();++i)

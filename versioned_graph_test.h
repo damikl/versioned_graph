@@ -65,9 +65,9 @@ public:
     }
 
     void check_all_vertices_count(unsigned int count) const {
-        auto vi = vertices(g.get_self());
+        auto vi = vertices(g.get_base_graph());
         ASSERT_EQ(count,std::distance(vi.first,vi.second));
-        ASSERT_EQ(count,boost::num_vertices(g.get_self()));
+        ASSERT_EQ(count,boost::num_vertices(g.get_base_graph()));
     }
 
     void check_edges_count(unsigned int count) const{
@@ -77,8 +77,8 @@ public:
     }
 
     void check_all_edges_count(unsigned int count) const{
-        auto ei = boost::edges(g.get_self());
-        ASSERT_EQ(count,boost::num_edges(g.get_self()));
+        auto ei = boost::edges(g.get_base_graph());
+        ASSERT_EQ(count,boost::num_edges(g.get_base_graph()));
         ASSERT_EQ(count,std::distance(ei.first,ei.second));
     }
     FRIEND_TEST(GraphTest, simple);
@@ -118,9 +118,9 @@ public:
         ASSERT_EQ(set.size(),out_degree(u,g));
     }
     virtual void check_all_out_edges(vertex_descriptor u,const std::set<vertex_descriptor>& set) const {
-        std::pair<out_edge_iterator, out_edge_iterator> ei = out_edges(u,g.get_self());
+        std::pair<out_edge_iterator, out_edge_iterator> ei = out_edges(u,g.get_base_graph());
         check_out_edges(u,set,ei);
-        ASSERT_EQ(set.size(),out_degree(u,g.get_self()));
+        ASSERT_EQ(set.size(),out_degree(u,g.get_base_graph()));
     }
 
     void check_adjacency(vertex_descriptor u,

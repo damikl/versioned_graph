@@ -56,7 +56,9 @@ auto edges(const versioned_graph<graph_t>& g){
 }
 
 template<typename graph_t>
-auto vertices(const versioned_graph<graph_t>& g){
+std::pair<typename versioned_graph<graph_t>::vertex_iterator,
+          typename versioned_graph<graph_t>::vertex_iterator>
+vertices(const versioned_graph<graph_t>& g){
     typedef versioned_graph<graph_t> graph_type;
 
     typename graph_type::vertex_predicate predicate(&g);
@@ -152,7 +154,7 @@ auto out_edges(vertex_descriptor u, const versioned_graph<graph_t>& g){
     typedef versioned_graph<graph_t> graph_type;
 
     typename graph_type::edge_predicate predicate(&g);
-    auto base_iter_p = out_edges(u,g.get_self());
+    auto base_iter_p = out_edges(u,g.get_base_graph());
     typename graph_type::out_edge_iterator iter_begin(predicate, base_iter_p.first, base_iter_p.second);
     typename graph_type::out_edge_iterator iter_end(predicate, base_iter_p.second, base_iter_p.second);
     return std::make_pair(iter_begin,iter_end);
@@ -163,7 +165,7 @@ auto in_edges(vertex_descriptor u, const versioned_graph<graph_t>& g){
     typedef versioned_graph<graph_t> graph_type;
 
     typename graph_type::edge_predicate predicate(&g);
-    auto base_iter_p = in_edges(u,g.get_self());
+    auto base_iter_p = in_edges(u,g.get_base_graph());
     typename graph_type::in_edge_iterator iter_begin(predicate, base_iter_p.first, base_iter_p.second);
     typename graph_type::in_edge_iterator iter_end(predicate, base_iter_p.second, base_iter_p.second);
     return std::make_pair(iter_begin,iter_end);
@@ -183,7 +185,7 @@ template<typename graph_t, typename vertex_descriptor>
 auto adjacent_vertices(vertex_descriptor u, const versioned_graph<graph_t>& g){
     typedef versioned_graph<graph_t> graph_type;
 
-    auto adj = boost::adjacent_vertices(u,g.get_self());
+    auto adj = boost::adjacent_vertices(u,g.get_base_graph());
     typename graph_type::adjacency_predicate predicate(&g,u);
     typename graph_type::adjacency_iterator iter_begin(predicate, adj.first, adj.second);
     typename graph_type::adjacency_iterator iter_end(predicate, adj.second, adj.second);
@@ -194,8 +196,8 @@ template<typename graph_t, typename vertex_descriptor>
 auto inv_adjacent_vertices(vertex_descriptor u, const versioned_graph<graph_t>& g){
     typedef versioned_graph<graph_t> graph_type;
 
-    auto adj = boost::inv_adjacent_vertices(u,g.get_self());
-    typename graph_type::adjacency_predicate predicate(&g,u,true);
+    auto adj = boost::inv_adjacent_vertices(u,g.get_base_graph());
+    typename graph_type::inv_adjacency_predicate predicate(&g,u);
     typename graph_type::inv_adjacency_iterator iter_begin(predicate, adj.first, adj.second);
     typename graph_type::inv_adjacency_iterator iter_end(predicate, adj.second, adj.second);
     return std::make_pair(iter_begin,iter_end);

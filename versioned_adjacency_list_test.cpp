@@ -71,13 +71,13 @@ public:
 
         ASSERT_NO_FATAL_FAILURE(this->check_adjacency(this->v1,{this->v4,this->v2,this->v3}));
         ASSERT_NO_FATAL_FAILURE(this->check_adjacency(this->v2,{this->v4,this->v1}));
-        ASSERT_NO_FATAL_FAILURE(this->check_adjacency(this->v2,{this->v4,this->v1,this->v3},adjacent_vertices(this->v2,this->g.get_self())));
+        ASSERT_NO_FATAL_FAILURE(this->check_adjacency(this->v2,{this->v4,this->v1,this->v3},adjacent_vertices(this->v2,this->g.get_base_graph())));
         ASSERT_NO_FATAL_FAILURE(this->check_adjacency(this->v3,{this->v1}));
         ASSERT_NO_FATAL_FAILURE(this->check_adjacency(this->v4,{this->v1,this->v2}));
 
         ASSERT_NO_FATAL_FAILURE(this->check_inv_adjacency(this->v1,{this->v4,this->v2,this->v3}));
         ASSERT_NO_FATAL_FAILURE(this->check_inv_adjacency(this->v2,{this->v4,this->v1}));
-        ASSERT_NO_FATAL_FAILURE(this->check_inv_adjacency({this->v4,this->v1,this->v3},inv_adjacent_vertices(this->v2,this->g.get_self())));
+        ASSERT_NO_FATAL_FAILURE(this->check_inv_adjacency({this->v4,this->v1,this->v3},inv_adjacent_vertices(this->v2,this->g.get_base_graph())));
         ASSERT_NO_FATAL_FAILURE(this->check_inv_adjacency(this->v3,{this->v1}));
         ASSERT_NO_FATAL_FAILURE(this->check_inv_adjacency(this->v4,{this->v1,this->v2}));
 
@@ -357,10 +357,10 @@ public:
         ASSERT_NO_FATAL_FAILURE(this->check_out_edges(this->v4,{}));
 
         if(validate_deleted){
-            ASSERT_EQ(0,boost::in_degree(this->v1,this->g.get_self()));
-            ASSERT_EQ(1,boost::in_degree(this->v2,this->g.get_self()));
-            ASSERT_EQ(2,boost::in_degree(this->v3,this->g.get_self()));
-            ASSERT_EQ(2,boost::in_degree(this->v4,this->g.get_self()));
+            ASSERT_EQ(0,boost::in_degree(this->v1,this->g.get_base_graph()));
+            ASSERT_EQ(1,boost::in_degree(this->v2,this->g.get_base_graph()));
+            ASSERT_EQ(2,boost::in_degree(this->v3,this->g.get_base_graph()));
+            ASSERT_EQ(2,boost::in_degree(this->v4,this->g.get_base_graph()));
         }
         ASSERT_NO_FATAL_FAILURE(this->check_in_edges(this->v1,{}));
         ASSERT_NO_FATAL_FAILURE(this->check_in_edges(this->v2,{this->v1}));

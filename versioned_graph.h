@@ -216,17 +216,16 @@ public:
     }
 };
 
-template<typename graph_type, typename vertex_descriptor>
+template<typename graph_type, typename vertex_descriptor,bool inv>
 struct adjacency_filter_removed_predicate{
     revision rev;
     vertex_descriptor u;
     typedef typename boost::graph_traits<graph_type>::vertex_descriptor value_type;
     const graph_type* g;
-    bool inv;
 public:
-    adjacency_filter_removed_predicate() : rev(std::numeric_limits<int>::max()),u(),g(nullptr),inv(false) {}
-    adjacency_filter_removed_predicate(const adjacency_filter_removed_predicate &p) : rev(p.rev),u(p.u),g(p.g),inv(p.inv){}
-    adjacency_filter_removed_predicate(const graph_type* graph,vertex_descriptor u,bool inv = false,const revision& r = std::numeric_limits<int>::max()) : rev(r),u(u),g(graph),inv(inv) {}
+    adjacency_filter_removed_predicate() : rev(std::numeric_limits<int>::max()),u(),g(nullptr) {}
+    adjacency_filter_removed_predicate(const adjacency_filter_removed_predicate &p) : rev(p.rev),u(p.u),g(p.g){}
+    adjacency_filter_removed_predicate(const graph_type* graph,vertex_descriptor u,const revision& r = std::numeric_limits<int>::max()) : rev(r),u(u),g(graph) {}
     bool operator()(const value_type& v) {
         if(rev.get_rev()==std::numeric_limits<int>::max() && g==nullptr){
             FILE_LOG(logDEBUG4) << "default filter for vertex: " << v << ", match all";
@@ -234,7 +233,7 @@ public:
         }
         assert(rev>0);
         FILE_LOG(logDEBUG4) << "adjacency_filter_removed_predicate: is_inv("<< inv <<") check edge : v= " << v << " u= " << u;
-        auto p = inv ? boost::edge(v,u,g->get_self()) : boost::edge(u,v,g->get_self());
+        auto p = inv ? boost::edge(v,u,g->get_base_graph()) : boost::edge(u,v,g->get_base_graph());
         assert(p.second);
         auto edge_desc = p.first;
         auto list = g->get_history(edge_desc);
@@ -341,7 +340,7 @@ public:
 
     typedef detail::filter_removed_predicate<self_type,vertex_descriptor> vertex_predicate;
     typedef detail::filter_removed_predicate<self_type,edge_descriptor> edge_predicate;
-    typedef detail::adjacency_filter_removed_predicate<self_type,vertex_descriptor> adjacency_predicate;
+    typedef detail::adjacency_filter_removed_predicate<self_type,vertex_descriptor,false> adjacency_predicate;
     friend vertex_predicate;
     friend edge_predicate;
     friend adjacency_predicate;
@@ -366,7 +365,7 @@ public:
                              in_edge_iterator;
 
     typedef typename boost::filter_iterator<
-                                    detail::adjacency_filter_removed_predicate<self_type,vertex_descriptor>,
+                                    adjacency_predicate,
                                     typename boost::graph_traits<graph_type>::adjacency_iterator>
                              adjacency_iterator;
 
@@ -379,7 +378,7 @@ public:
 
     versioned_graph() : direct_base(0,graph_bundled()),vertex_count(0),edge_count(0),current_rev(1) {}
     versioned_graph(vertices_size_type n, const graph_bundled& p = graph_bundled()) : direct_base(n,p),vertex_count(n),edge_count(0),current_rev(1) {
-        std::pair<vertex_iterator, vertex_iterator> vi = vertices(get_self());
+        std::pair<vertex_iterator, vertex_iterator> vi = vertices(get_base_graph());
         for(vertex_iterator it = vi.first; it!=vi.second;++it){
             init(*it);
         }
@@ -394,13 +393,13 @@ public:
                    const graph_bundled& p = graph_bundled()) :  direct_base(first,last,n,m,p),
                                                                 vertex_count(n),edge_count(m),current_rev(1) {
         typedef typename graph_type::vertex_iterator v_iter_type;
-        std::pair<v_iter_type, v_iter_type> vi = vertices(get_self());
+        std::pair<v_iter_type, v_iter_type> vi = vertices(get_base_graph());
         for(v_iter_type it = vi.first; it!=vi.second;++it){
             init(*it);
         }
         degree_size_type i = 0;
         typedef typename graph_type::edge_iterator e_iter_type;
-        std::pair<e_iter_type, e_iter_type> ei = edges(get_self());
+        std::pair<e_iter_type, e_iter_type> ei = edges(get_base_graph());
         for(e_iter_type it = ei.first; it!=ei.second;++it){
             init(*it);
             ++i;
@@ -421,8 +420,10 @@ public:
     /**
      * Checks if given vertex or edge is deleted
      */
-    template<typename descriptor>
-    bool check_if_currently_deleted(descriptor d) const {
+    bool check_if_currently_deleted(vertex_descriptor d) const {
+        return is_deleted(detail::get_revision(get_history(d).top()));
+    }
+    bool check_if_currently_deleted(edge_descriptor d) const {
         return is_deleted(detail::get_revision(get_history(d).top()));
     }
 
@@ -450,10 +451,10 @@ public:
         return detail::get_revision(list.top());
     }
 
-    graph_type& get_self() {
+    graph_type& get_base_graph() {
         return *const_cast<graph_type*>(dynamic_cast<const graph_type*>(this));
     }
-    const graph_type& get_self() const{
+    const graph_type& get_base_graph() const{
         return *dynamic_cast<const graph_type*>(this);
     }
 
@@ -487,14 +488,14 @@ private:
         return get_stored_data(idx).hist;
     }
 
-    const vertices_history_type& get_history(vertex_descriptor idx)const {
-        return get_stored_data(idx).hist;
-    }
-
     edges_history_type& get_history(edge_descriptor idx){
         auto iter = edges_history.find(idx);
         assert(iter!=edges_history.end());
         return iter->second;
+    }
+public:
+    const vertices_history_type& get_history(vertex_descriptor idx)const {
+        return get_stored_data(idx).hist;
     }
 
     const edges_history_type& get_history(edge_descriptor idx)const {
@@ -502,6 +503,7 @@ private:
         assert(iter!=edges_history.end());
         return iter->second;
     }
+private:
     /**
      *  mark edge/vertex as deleted, creates new entry in history
      */
@@ -601,8 +603,9 @@ struct graph_tr<boost::versioned_graph<boost::adjacency_list<OutEdgeList,VertexL
     typedef typename boost::graph_traits<graph_type>::vertex_descriptor vertex_descriptor;
     typedef typename boost::graph_traits<graph_type>::vertices_size_type vertices_size_type;
     typedef typename boost::graph_traits<graph_type>::edges_size_type edges_size_type;
+    typedef typename boost::detail::adjacency_filter_removed_predicate<versioned_graph<graph_type>,typename graph_type::vertex_descriptor,true> inv_adjacency_predicate;
     typedef typename boost::filter_iterator<
-                                    detail::adjacency_filter_removed_predicate<versioned_graph<graph_type>,typename graph_type::vertex_descriptor>,
+                                    inv_adjacency_predicate,
                                     typename graph_type::inv_adjacency_iterator>
                              inv_adjacency_iterator;
     graph_tr(typename graph_type::vertices_size_type n, const graph_bundled& p = graph_bundled()) : graph_type(n,p){

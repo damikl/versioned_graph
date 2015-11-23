@@ -64,10 +64,10 @@ public:
         ASSERT_NO_FATAL_FAILURE(this->check_out_edges(this->v4,{}));
         ASSERT_NO_FATAL_FAILURE(this->check_out_edges(this->v5,{this->v4}));
 
-        ASSERT_EQ(0,boost::in_degree(this->v1,this->g.get_self()));
-        ASSERT_EQ(1,boost::in_degree(this->v2,this->g.get_self()));
-        ASSERT_EQ(2,boost::in_degree(this->v3,this->g.get_self()));
-        ASSERT_EQ(3,boost::in_degree(this->v4,this->g.get_self()));
+        ASSERT_EQ(0,boost::in_degree(this->v1,this->g.get_base_graph()));
+        ASSERT_EQ(1,boost::in_degree(this->v2,this->g.get_base_graph()));
+        ASSERT_EQ(2,boost::in_degree(this->v3,this->g.get_base_graph()));
+        ASSERT_EQ(3,boost::in_degree(this->v4,this->g.get_base_graph()));
         ASSERT_NO_FATAL_FAILURE(this->check_in_edges(this->v1,{}));
         ASSERT_NO_FATAL_FAILURE(this->check_in_edges(this->v2,{this->v1}));
         ASSERT_NO_FATAL_FAILURE(this->check_in_edges(this->v3,{this->v1}));
@@ -207,10 +207,10 @@ public:
         ASSERT_NO_FATAL_FAILURE(this->check_out_edges(this->v4,{this->v1,this->v2,this->v5}));
         ASSERT_NO_FATAL_FAILURE(this->check_out_edges(this->v5,{this->v4}));
 
-        ASSERT_EQ(3,boost::in_degree(this->v1,this->g.get_self()));
-        ASSERT_EQ(3,boost::in_degree(this->v2,this->g.get_self()));
-        ASSERT_EQ(2,boost::in_degree(this->v3,this->g.get_self()));
-        ASSERT_EQ(3,boost::in_degree(this->v4,this->g.get_self()));
+        ASSERT_EQ(3,boost::in_degree(this->v1,this->g.get_base_graph()));
+        ASSERT_EQ(3,boost::in_degree(this->v2,this->g.get_base_graph()));
+        ASSERT_EQ(2,boost::in_degree(this->v3,this->g.get_base_graph()));
+        ASSERT_EQ(3,boost::in_degree(this->v4,this->g.get_base_graph()));
         ASSERT_NO_FATAL_FAILURE(this->check_in_edges(this->v1,{this->v4,this->v2,this->v3}));
         ASSERT_NO_FATAL_FAILURE(this->check_in_edges(this->v2,{this->v4,this->v1}));
         ASSERT_NO_FATAL_FAILURE(this->check_in_edges(this->v3,{this->v1}));

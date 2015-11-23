@@ -5,7 +5,7 @@ namespace boost {
 template<typename graph_t>
 auto versioned_graph<graph_t>::
 vertices_begin() const {
-    typename graph_type::vertex_iterator iter = boost::vertices(*dynamic_cast<const graph_type*>(this)).first;
+    typename graph_type::vertex_iterator iter = boost::vertices(get_base_graph()).first;
     FILE_LOG(logDEBUG4) << "fetched first vertex iterator";
     return iter;
 }
@@ -13,7 +13,7 @@ vertices_begin() const {
 template<typename graph_t>
 auto versioned_graph<graph_t>::
 vertices_end() const {
-    typename graph_type::vertex_iterator iter = boost::vertices(*dynamic_cast<const graph_type*>(this)).second;
+    typename graph_type::vertex_iterator iter = boost::vertices(get_base_graph()).second;
     FILE_LOG(logDEBUG4) << "fetched last vertex iterator";
     return iter;
 }
@@ -21,7 +21,7 @@ vertices_end() const {
 template<typename graph_t>
 auto versioned_graph<graph_t>::
 edges_begin() const {
-    typename graph_type::edge_iterator iter = boost::edges(*dynamic_cast<const graph_type*>(this)).first;
+    typename graph_type::edge_iterator iter = boost::edges(get_base_graph()).first;
     FILE_LOG(logDEBUG4) << "fetched first edge iterator";
     return iter;
 }
@@ -29,7 +29,7 @@ edges_begin() const {
 template<typename graph_t>
 auto versioned_graph<graph_t>::
 edges_end() const {
-    typename graph_type::edge_iterator iter = boost::edges(*dynamic_cast<const graph_type*>(this)).second;
+    typename graph_type::edge_iterator iter = boost::edges(get_base_graph()).second;
     FILE_LOG(logDEBUG4) << "fetched last edge iterator";
     return iter;
 }
@@ -184,7 +184,7 @@ template<typename graph_t>
 void versioned_graph<graph_t>::
 clean_edges_to_current_rev(){
     FILE_LOG(logDEBUG) << "clean edges to rev " << current_rev;
-    auto ei = boost::edges(get_self());
+    auto ei = boost::edges(get_base_graph());
     std::list<edge_descriptor> edges_to_be_removed;
     for(auto edge_iter = ei.first; edge_iter != ei.second; ++edge_iter) {
         FILE_LOG(logDEBUG3) << "clean edge:( "
@@ -214,7 +214,7 @@ void versioned_graph<graph_t>::
 clean_vertices_to_current_rev(){
     vertex_iterator vi, vi_end, next;
 
-    boost::tie(vi, vi_end) = vertices(get_self());
+    boost::tie(vi, vi_end) = vertices(get_base_graph());
     for (next = vi; vi != vi_end; vi = next) {
         ++next;
 
@@ -238,9 +238,12 @@ clean_vertices_to_current_rev(){
 
 template<typename graph_t>
 versioned_graph<graph_t>::
-versioned_graph(const versioned_graph& g ) : graph_type(),vertex_count(g.vertex_count),
+versioned_graph(const versioned_graph& g ) : direct_base(0),
+                                             graph_bundled_history(g.graph_bundled_history),
+                                             vertex_count(g.vertex_count),
                                              edge_count(g.edge_count),
-                                             current_rev(g.current_rev) {
+                                             current_rev(g.current_rev)
+                                             {
     std::map<vertex_descriptor,vertex_descriptor> vertex_map;
 
     // Copy the stored vertex objects by adding each vertex
@@ -248,12 +251,12 @@ versioned_graph(const versioned_graph& g ) : graph_type(),vertex_count(g.vertex_
     vertex_iterator vi, vi_end;
     vertices_size_type v_count = 0;
     for (boost::tie(vi, vi_end) = vertices(g); vi != vi_end; ++vi) {
-      vertex_descriptor v = add_vertex(get_self());
+      vertex_descriptor v = add_vertex(get_base_graph());
       (*this)[v] = g[*vi];
       auto iter = g.vertices_history.find(*vi);
       assert(iter!=g.vertices_history.end());
       vertices_history.insert(std::make_pair(v,iter->second));
-      if(!is_deleted(detail::get_revision(iter->second.hist.front()))){
+      if(!detail::is_deleted(detail::get_revision(iter->second.hist.top()))){
           ++v_count;
       }
       vertex_map[*vi] = v;
@@ -268,13 +271,13 @@ versioned_graph(const versioned_graph& g ) : graph_type(),vertex_count(g.vertex_
       bool inserted;
       vertex_descriptor s = source(*ei,g), t = target(*ei,g);
       boost::tie(e, inserted) = add_edge(vertex_map[s],
-                                         vertex_map[t], get_self());
+                                         vertex_map[t], get_base_graph());
       assert(inserted);
       auto iter = g.edges_history.find(*ei);
       assert(iter!=g.edges_history.end());
       edges_history.insert(std::make_pair(e,iter->second));
       (*this)[e] = g[*ei];
-      revision r = detail::get_revision(iter->second.front());
+      revision r = detail::get_revision(iter->second.top());
 
       if(!is_deleted(r)){
           ++e_count;
@@ -289,16 +292,18 @@ versioned_graph(const versioned_graph& g ) : graph_type(),vertex_count(g.vertex_
                           << boost::target(*ei,g)<< ") "
                           << hist.size() << " records in history, last rev: " << r;
       const edges_history_type& new_hist = get_history(e);
-      r = detail::get_revision(new_hist.front());
+      r = detail::get_revision(new_hist.top());
       FILE_LOG(logDEBUG4) << "copy graph: new edge: ("
-                          << boost::source(e,get_self())
+                          << boost::source(e,get_base_graph())
                           << ", "
-                          << boost::target(e,get_self())<< ") "
+                          << boost::target(e,get_base_graph())<< ") "
                           << new_hist.size() << " records in history, last rev: " << r;
     }
+    (*this)[graph_bundle] = g[graph_bundle];
+
     BOOST_ASSERT_MSG(e_count==edge_count,("counted " + std::to_string(e_count) + "  edges while expected " + std::to_string(edge_count)).c_str());
-    assert(boost::num_vertices(get_self())==vertices_history.size());
-    assert(boost::num_edges(get_self())==edges_history.size());
+    assert(boost::num_vertices(get_base_graph())==vertices_history.size());
+    assert(boost::num_edges(get_base_graph())==edges_history.size());
     FILE_LOG(logDEBUG4) << "copied graph: " << vertex_count << "("<< vertices_history.size() << ") vertices, "
                                             << edge_count << "("<< edges_history.size() << ") edges";
 }
@@ -333,7 +338,7 @@ template<typename graph_t>
 typename versioned_graph<graph_t>::vertex_descriptor
 versioned_graph<graph_t>::generate_vertex(vertex_bundled prop){
     using namespace detail;
-    vertex_descriptor v = boost::add_vertex(get_self());
+    vertex_descriptor v = boost::add_vertex(get_base_graph());
     FILE_LOG(logDEBUG4) << "created vertex: " << v;
     (*this)[v] = prop;
     init(v);
@@ -346,16 +351,16 @@ std::pair<typename versioned_graph<graph_t>::edge_descriptor,bool>
 versioned_graph<graph_t>::
 generate_edge(edge_bundled prop,vertex_descriptor u, vertex_descriptor v){
     using namespace detail;
-    auto p = boost::add_edge(u,v,prop,get_self());
+    auto p = boost::add_edge(u,v,prop,get_base_graph());
     if(p.second){
         init(p.first,prop);
         ++edge_count;
-        FILE_LOG(logDEBUG4) << "add edge (" << boost::source(p.first,get_self()) << ", "
-                                            << boost::target(p.first,get_self())
+        FILE_LOG(logDEBUG4) << "add edge (" << boost::source(p.first,get_base_graph()) << ", "
+                                            << boost::target(p.first,get_base_graph())
                                             << ") with rev " << current_rev << " num of edges: " << edge_count;
     } else {
-        FILE_LOG(logDEBUG4) << "edge (" << boost::source(p.first,get_self()) << ", "
-                                        << boost::target(p.first,get_self()) << ") already exist";
+        FILE_LOG(logDEBUG4) << "edge (" << boost::source(p.first,get_base_graph()) << ", "
+                                        << boost::target(p.first,get_base_graph()) << ") already exist";
     }
     return p;
 }
@@ -392,7 +397,7 @@ template<typename graph_t>
 void versioned_graph<graph_t>::erase_history(){
     using namespace detail;
     {
-        auto ei = edges(get_self());
+        auto ei = edges(get_base_graph());
         for(auto edge_iter = ei.first; edge_iter != ei.second; ) {
             edges_history_type& hist = get_history(*edge_iter);
             auto prop = property_handler<self_type,edge_descriptor,edge_bundled>::get_latest_bundled_value(*edge_iter,*this);
@@ -411,7 +416,7 @@ void versioned_graph<graph_t>::erase_history(){
             }
         }
     }
-    auto vi = boost::vertices(get_self());
+    auto vi = boost::vertices(get_base_graph());
     for(auto vertex_iter = vi.first; vertex_iter != vi.second; ++vertex_iter) {
         vertices_history_type& hist = get_history(*vertex_iter);
         auto prop = property_handler<self_type,vertex_descriptor,vertex_bundled>::get_latest_bundled_value(*vertex_iter,*this);
