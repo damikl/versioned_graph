@@ -29,20 +29,16 @@ template<typename graph_t,typename vertex_descriptor>
 auto edge(vertex_descriptor u,vertex_descriptor v, const versioned_graph<graph_t>& g) {
     using namespace detail;
     typedef versioned_graph<graph_t> graph_type;
-    auto p = boost::edge(u,v,dynamic_cast<const typename graph_type::graph_type&>(g));
-    if(p.second){
-        FILE_LOG(logDEBUG4) << "edge (" << u << ", " << v  <<  "): found existing intenally";
-        auto edge_desc = p.first;
-        FILE_LOG(logDEBUG4) << /*list.size()  <<*/ "records in history of edge";
-        if(is_deleted(g.get_latest_revision(edge_desc))){
-          FILE_LOG(logDEBUG4) << "edge: is deleted";
-          return std::make_pair(typename graph_type::edge_descriptor(),false);
+    typename graph_type::out_edge_iterator it,end;
+    tie(it,end) = out_edges(u,g);
+    while(it!=end){
+        if(target(*it,g)==v){
+            return std::make_pair(*it,true);
         }
-        FILE_LOG(logDEBUG4) << "edge: not deleted";
-    } else {
-        FILE_LOG(logDEBUG4) << "edge: not found";
+        ++it;
     }
-    return p;
+    FILE_LOG(logDEBUG4) << "edge: not found";
+    return std::make_pair(typename graph_type::edge_descriptor(),false);
 }
 
 template<typename graph_t>
