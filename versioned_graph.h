@@ -470,7 +470,7 @@ public:
         return current_rev;
     }
 
-private:
+protected:
     void init(vertex_descriptor v, const vertex_bundled& prop = vertex_bundled());
     void init(edge_descriptor v, const edge_bundled& prop = edge_bundled());
     vertex_stored_data& get_stored_data(vertex_descriptor u){
@@ -503,7 +503,7 @@ public:
         assert(iter!=edges_history.end());
         return iter->second;
     }
-private:
+protected:
     /**
      *  mark edge/vertex as deleted, creates new entry in history
      */
@@ -518,16 +518,6 @@ private:
         list.push(make_entry(r,dummy_value));
     }
 
-    template<typename descriptor,typename bundled_type>
-    void set_latest(descriptor& e,bundled_type value){
-        auto& list = get_history(e);
-        if(this->get_latest_revision(e)< current_rev){
-            auto p = std::make_pair(current_rev,value);
-            list.push_front(p);
-        } else {
-            list.front().second = value;
-        }
-    }
     template<typename graph,typename descriptor_type,typename property_type>
     struct property_handler{
         static auto& get_latest_bundled_value(const descriptor_type& d, graph& g) {
@@ -578,7 +568,7 @@ private:
     void clean_edges_to_current_rev();
 
     void clean_vertices_to_current_rev();
-
+private:
     std::map<vertex_descriptor,vertex_stored_data > vertices_history;
     std::map<edge_descriptor,edges_history_type> edges_history;
     graph_properties_history_type graph_bundled_history;
