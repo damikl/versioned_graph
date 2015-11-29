@@ -129,22 +129,6 @@ auto num_edges(const versioned_graph<graph_t>& g){
     return g.num_edges();
 }
 
-/*
-template<typename T,typename U>
-struct assert_same_types{
-    typedef T A1;
-    typedef U A2;
-    static_assert(std::is_same<A1,A2>::value,"Types are not same");
-    static void check() {}
-};
-template<typename From,typename To>
-struct assert_convert_types{
-    typedef From A1;
-    typedef To A2;
-    static_assert(std::is_convertible<A1,A2>::value,"Types are not convertible");
-    static void check() {}
-};
-*/
 template<typename graph_t, typename vertex_descriptor>
 auto out_edges(vertex_descriptor u, const versioned_graph<graph_t>& g){
     typedef versioned_graph<graph_t> graph_type;
