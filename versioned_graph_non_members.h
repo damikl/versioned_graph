@@ -210,12 +210,18 @@ void remove_vertex(vertex_descriptor v, versioned_graph<graph_t>& g){
 
 template<typename graph_t, typename vertex_descriptor>
 void remove_edge(vertex_descriptor u,vertex_descriptor v, versioned_graph<graph_t>& g){
-    auto p = edge(u,v,g);
-    if(p.second){
-        FILE_LOG(logDEBUG4) << "remove_edge: found existing";
-        auto edge_desc = p.first;
-        FILE_LOG(logDEBUG4) << "remove_edge: got desc: (" << boost::source(edge_desc,g) << ", " << boost::target(edge_desc,g) << ")";
-        g.set_deleted(edge_desc);
+    typedef versioned_graph<graph_t> graph_type;
+    typedef typename graph_type::out_edge_iterator out_edge_iterator;
+    out_edge_iterator ei, ei_end, next;
+    boost::tie(ei, ei_end) = out_edges(u,g);
+    for (next = ei; ei != ei_end; ei = next) {
+      ++next;
+      if (target(*ei,g)==v){
+        FILE_LOG(logDEBUG4) << "remove_edge: got desc: ("
+                            << boost::source(*ei,g) << ", "
+                            << boost::target(*ei,g) << ")";
+        remove_edge(*ei, g);
+      }
     }
 }
 
