@@ -231,8 +231,8 @@ void remove_edge(edge_descriptor edge_desc, versioned_graph<graph_t>& g){
     g.set_deleted(edge_desc);
 }
 
-template <class Predicate, typename vertex_descriptor, typename graph_t>
-void remove_out_edge_if(vertex_descriptor u, Predicate pred,
+template <class predicate, typename vertex_descriptor, typename graph_t>
+void remove_out_edge_if(vertex_descriptor u, predicate pred,
                         versioned_graph<graph_t>& g){
     FILE_LOG(logDEBUG4) << "remove_out_edge_if";
     typedef versioned_graph<graph_t> graph_type;
@@ -248,8 +248,8 @@ void remove_out_edge_if(vertex_descriptor u, Predicate pred,
     FILE_LOG(logDEBUG4) << "remove_out_edge_if ended";
 }
 
-template <class Predicate, typename vertex_descriptor, typename graph_t>
-void remove_in_edge_if(vertex_descriptor u, Predicate pred,
+template <class predicate, typename vertex_descriptor, typename graph_t>
+void remove_in_edge_if(vertex_descriptor u, predicate pred,
                         versioned_graph<graph_t>& g){
     FILE_LOG(logDEBUG4) << "remove_in_edge_if";
     typedef versioned_graph<graph_t> graph_type;
@@ -265,9 +265,9 @@ void remove_in_edge_if(vertex_descriptor u, Predicate pred,
     FILE_LOG(logDEBUG4) << "remove_in_edge_if ended";
 }
 
-template <class Predicate, typename graph_t>
+template <class predicate, typename graph_t>
 void
-remove_edge_if(Predicate pred, versioned_graph<graph_t>& g)
+remove_edge_if(predicate pred, versioned_graph<graph_t>& g)
 {
   typedef versioned_graph<graph_t> graph_type;
   typedef typename graph_type::edge_iterator edge_iterator;
