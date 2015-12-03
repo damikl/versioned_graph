@@ -405,8 +405,8 @@ void versioned_graph<graph_t>::erase_history(){
             while(!hist.empty()){
                 hist.pop();
             }
-            hist.push(make_entry(revision(1),prop));
-            assert(get_latest_revision(*edge_iter)==revision(1));
+            hist.push(make_entry(revision::create_start(),prop));
+            assert(get_latest_revision(*edge_iter)==revision::create_start());
             if(is_deleted(old_rev)){ // edges marked as deleted,m should not exist after erasing history
                 auto old = edge_iter;
                 ++edge_iter;
@@ -424,8 +424,8 @@ void versioned_graph<graph_t>::erase_history(){
         while(!hist.empty()){
             hist.pop();
         }
-        hist.push(make_entry(revision(1),prop));
-        assert(get_latest_revision(*vertex_iter)==revision(1));
+        hist.push(make_entry(revision::create_start(),prop));
+        assert(get_latest_revision(*vertex_iter)==revision::create_start());
         if(is_deleted(old_rev)){ // vertices marked as deleted,m should not exist after erasing history
             auto old = vertex_iter;
             ++vertex_iter;
@@ -435,7 +435,7 @@ void versioned_graph<graph_t>::erase_history(){
         }
     }
     graph_bundled_history.clear();
-    current_rev = revision(1);
+    current_rev = revision::create_start();
 }
 
 template<typename graph_t>

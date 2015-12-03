@@ -13,8 +13,10 @@ namespace boost {
 
 namespace detail {
 
-struct revision{
+class revision{
     int rev;
+    revision(int r) : rev(r){ }
+public:
     bool operator<(const revision& r) const{
  //       FILE_LOG(logDEBUG4) << "revision " << rev << " < " << r.rev << " == " << (abs(rev) < abs(r.rev));
         return abs(rev) < abs(r.rev);
@@ -51,7 +53,7 @@ struct revision{
         FILE_LOG(logDEBUG2) << "decremented";
         return *this;
     }
-    revision(int r) : rev(r){ }
+
 //    operator int()
 //    {
 //         return rev;
@@ -59,14 +61,23 @@ struct revision{
     int get_rev() const {
         return rev;
     }
+    static revision create_start(){
+        return revision(1);
+    }
+    static revision create_max(){
+        return revision(std::numeric_limits<int>::max());
+    }
+    static revision create(int value){
+        return revision(value);
+    }
+    revision create_deleted() const{
+        revision rev = *this;
+        rev.rev = -rev.rev;
+        return rev;
+    }
 
 };
 
-revision make_deleted(const revision& r){
-    revision rev = r;
-    rev.rev = -rev.rev;
-    return rev;
-}
 bool is_deleted(const revision& rev){
     return rev.get_rev()<0;
 }
@@ -111,7 +122,7 @@ public:
         while(!hist.empty()){
             hist.pop();
         }
-        hist.push(std::make_pair(revision(1),prop));
+        hist.push(std::make_pair(revision::create_start(),prop));
     }
     T get_latest() const{
         return hist.top().second;
@@ -151,7 +162,7 @@ struct filter_removed_predicate{
     revision rev;
     const graph_type* g;
 public:
-    filter_removed_predicate() : rev(std::numeric_limits<int>::max()),g(nullptr) {}
+    filter_removed_predicate() : rev(revision::create_start()),g(nullptr) {}
     filter_removed_predicate(const filter_removed_predicate &p) : rev(p.rev),g(p.g){}
     filter_removed_predicate& operator=(const filter_removed_predicate& other) { // copy assignment
         if (this != &other) { // self-assignment check expected
@@ -160,13 +171,12 @@ public:
         }
         return *this;
     }
-    filter_removed_predicate(const graph_type* graph,const revision& r = std::numeric_limits<int>::max()) : rev(r),g(graph) {}
+    filter_removed_predicate(const graph_type* graph,const revision& r = revision::create_max()) : rev(r),g(graph) {}
     bool operator()(const value_type& v) {
-        if(rev.get_rev()==std::numeric_limits<int>::max() && g==nullptr){
+        if(rev==revision::create_start() && g==nullptr){
             FILE_LOG(logDEBUG4) << "default filter for edge, match all";
             return true;
         }
-        assert(rev>0);
         auto list = g->get_history(v);
         revision r = detail::get_revision(list.top());
         assert(r<=g->get_current_rev());
@@ -185,7 +195,7 @@ struct filter_removed_predicate<graph_type,typename boost::graph_traits<graph_ty
     typedef typename boost::graph_traits<graph_type>::vertex_descriptor value_type;
     const graph_type* g;
 public:
-    filter_removed_predicate() : rev(std::numeric_limits<int>::max()),g(nullptr) {}
+    filter_removed_predicate() : rev(revision::create_start()),g(nullptr) {}
     filter_removed_predicate(const filter_removed_predicate &p) : rev(p.rev),g(p.g){}
     filter_removed_predicate& operator=(const filter_removed_predicate& other) { // copy assignment
         if (this != &other) { // self-assignment check expected
@@ -194,13 +204,12 @@ public:
         }
         return *this;
     }
-    filter_removed_predicate(const graph_type* graph,const revision& r = std::numeric_limits<int>::max()) : rev(r),g(graph) {}
+    filter_removed_predicate(const graph_type* graph,const revision& r = revision::create_max()) : rev(r),g(graph) {}
     bool operator()(const value_type& v) {
-        if(rev.get_rev()==std::numeric_limits<int>::max() && g==nullptr){
+        if(rev==revision::create_start() && g==nullptr){
             FILE_LOG(logDEBUG4) << "default filter for vertex: " << v << ", match all";
             return true;
         }
-        assert(rev>0);
         FILE_LOG(logDEBUG4) << "filter_removed_predicate: check vertex: " << v;
 
         auto list = g->get_history(v);
@@ -223,15 +232,14 @@ struct adjacency_filter_removed_predicate{
     typedef typename boost::graph_traits<graph_type>::vertex_descriptor value_type;
     const graph_type* g;
 public:
-    adjacency_filter_removed_predicate() : rev(std::numeric_limits<int>::max()),u(),g(nullptr) {}
+    adjacency_filter_removed_predicate() : rev(revision::create_start()),u(),g(nullptr) {}
     adjacency_filter_removed_predicate(const adjacency_filter_removed_predicate &p) : rev(p.rev),u(p.u),g(p.g){}
-    adjacency_filter_removed_predicate(const graph_type* graph,vertex_descriptor u,const revision& r = std::numeric_limits<int>::max()) : rev(r),u(u),g(graph) {}
+    adjacency_filter_removed_predicate(const graph_type* graph,vertex_descriptor u,const revision& r = revision::create_max()) : rev(r),u(u),g(graph) {}
     bool operator()(const value_type& v) {
-        if(rev.get_rev()==std::numeric_limits<int>::max() && g==nullptr){
+        if(rev==revision::create_start() && g==nullptr){
             FILE_LOG(logDEBUG4) << "default filter for vertex: " << v << ", match all";
             return true;
         }
-        assert(rev>0);
         FILE_LOG(logDEBUG4) << "adjacency_filter_removed_predicate: is_inv("<< inv <<") check edge : v= " << v << " u= " << u;
         auto p = inv ? boost::edge(v,u,g->get_base_graph()) : boost::edge(u,v,g->get_base_graph());
         assert(p.second);
@@ -376,8 +384,8 @@ public:
     auto edges_begin() const;
     auto edges_end() const;
 
-    versioned_graph() : direct_base(0,graph_bundled()),vertex_count(0),edge_count(0),current_rev(1) {}
-    versioned_graph(vertices_size_type n, const graph_bundled& p = graph_bundled()) : direct_base(n,p),vertex_count(n),edge_count(0),current_rev(1) {
+    versioned_graph() : direct_base(0,graph_bundled()),vertex_count(0),edge_count(0),current_rev(revision::create_start()) {}
+    versioned_graph(vertices_size_type n, const graph_bundled& p = graph_bundled()) : direct_base(n,p),vertex_count(n),edge_count(0),current_rev(revision::create_start()) {
         std::pair<vertex_iterator, vertex_iterator> vi = vertices(get_base_graph());
         for(vertex_iterator it = vi.first; it!=vi.second;++it){
             init(*it);
@@ -391,7 +399,7 @@ public:
                    vertices_size_type n,
                    edges_size_type m = 0,
                    const graph_bundled& p = graph_bundled()) :  direct_base(first,last,n,m,p),
-                                                                vertex_count(n),edge_count(m),current_rev(1) {
+                                                                vertex_count(n),edge_count(m),current_rev(revision::create_start()) {
         typedef typename graph_type::vertex_iterator v_iter_type;
         std::pair<v_iter_type, v_iter_type> vi = vertices(get_base_graph());
         for(v_iter_type it = vi.first; it!=vi.second;++it){
@@ -513,7 +521,7 @@ protected:
         auto& list = get_history(e);
         FILE_LOG(logDEBUG4) << "set deleted: " << list.size() << " records in history";
         assert(!is_deleted(detail::get_revision(list.top())));
-        revision r = make_deleted(current_rev);
+        revision r = current_rev.create_deleted();
         FILE_LOG(logDEBUG4) << "negated to " << r;
         list.push(make_entry(r,dummy_value));
     }
