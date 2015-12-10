@@ -589,17 +589,19 @@ public:
         this->g[this->v4] = 444;
         this->g[this->v1] = 111;
         ASSERT_EQ(revision::create(4),this->g.get_current_rev());
+        EXPECT_NO_FATAL_FAILURE(this->check_out_edges(this->v1,{this->v4,this->v2,this->v3,this->v5}));
+        EXPECT_NO_FATAL_FAILURE(this->check_out_edges(this->v5,{this->v4}));
         FILE_LOG(logDEBUG2) << "Clear vertex: " << this->v3;
         boost::clear_vertex(this->v3,this->g);
         boost::remove_vertex(this->v3,this->g);
         ASSERT_NO_FATAL_FAILURE(this->check_vertices_count(4));
         ASSERT_NO_FATAL_FAILURE(this->check_all_vertices_count(5));
-        ASSERT_NO_FATAL_FAILURE(this->check_edges_count(7));
+        ASSERT_NO_FATAL_FAILURE(this->check_edges_count(6));
         ASSERT_NO_FATAL_FAILURE(this->check_all_edges_count(8));
-        EXPECT_NO_FATAL_FAILURE(this->check_out_edges(this->v1,{this->v4,this->v2,this->v3,this->v5}));
-        EXPECT_NO_FATAL_FAILURE(this->check_out_edges(this->v5,{this->v4}));
+        ASSERT_NO_FATAL_FAILURE(this->check_out_edges(this->v1,{this->v4,this->v2,this->v5}));
+        ASSERT_NO_FATAL_FAILURE(this->check_out_edges(this->v5,{this->v4}));
 
-        EXPECT_NO_FATAL_FAILURE(this->check_adjacency(this->v1,{this->v4,this->v2,this->v3,this->v5}));
+        EXPECT_NO_FATAL_FAILURE(this->check_adjacency(this->v1,{this->v4,this->v2,this->v5}));
         ASSERT_EQ(444,this->g[this->v4]);
         ASSERT_EQ(111,this->g[this->v1]);
         vertex_descriptor v6 = boost::add_vertex(this->g);
@@ -607,16 +609,16 @@ public:
         add_edge(v6,this->v4,this->g);
         ASSERT_NO_FATAL_FAILURE(this->check_vertices_count(5));
         ASSERT_NO_FATAL_FAILURE(this->check_all_vertices_count(6));
-        ASSERT_NO_FATAL_FAILURE(this->check_edges_count(9));
+        ASSERT_NO_FATAL_FAILURE(this->check_edges_count(8));
         ASSERT_NO_FATAL_FAILURE(this->check_all_edges_count(10));
-        EXPECT_NO_FATAL_FAILURE(this->check_out_edges(v6,{this->v4,this->v2}));
+        ASSERT_NO_FATAL_FAILURE(this->check_out_edges(v6,{this->v4,this->v2}));
         FILE_LOG(logDEBUG2) << "Clear vertex: " << v6;
         boost::clear_vertex(v6,this->g);
         FILE_LOG(logDEBUG2) << "Remove vertex: " << v6;
         boost::remove_vertex(v6,this->g);
         ASSERT_NO_FATAL_FAILURE(this->check_vertices_count(4));
         ASSERT_NO_FATAL_FAILURE(this->check_all_vertices_count(5));
-        ASSERT_NO_FATAL_FAILURE(this->check_edges_count(7));
+        ASSERT_NO_FATAL_FAILURE(this->check_edges_count(6));
         ASSERT_NO_FATAL_FAILURE(this->check_all_edges_count(8));
         undo_commit(this->g);
         EXPECT_NO_FATAL_FAILURE(this->test_after_init());
@@ -668,11 +670,11 @@ TEST(DirectedSmallWorldGraphTest, smallworldtest){
     vertex_descriptor v26 = vertex(26,g);
     ASSERT_EQ(8,out_degree(v23,g));
 
-    ASSERT_NO_FATAL_FAILURE(clear_vertex(v23,g));// remove only 8 visible edges
+    ASSERT_NO_FATAL_FAILURE(clear_vertex(v23,g));// remove only 16 visible edges
     ASSERT_EQ(0,out_degree(v23,g));
     ASSERT_NO_FATAL_FAILURE(remove_vertex(v23,g));
     ASSERT_EQ(8,out_degree(v24,g));
-    ASSERT_EQ(792,num_edges(g));
+    ASSERT_EQ(784,num_edges(g));
     ASSERT_EQ(99,num_vertices(g));
 
     revert_changes(g);

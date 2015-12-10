@@ -44,7 +44,7 @@ remove_permanently(edge_descriptor e){
     auto it = edges_history.find(e);
     assert(it!=edges_history.end());
     edges_history.erase(it);
-    boost::remove_edge(e,*dynamic_cast<graph_type*>(this));
+    remove_edge(e,get_base_graph());
 }
 
 /**
@@ -53,7 +53,7 @@ remove_permanently(edge_descriptor e){
 template<typename graph_t>
 void versioned_graph<graph_t>::
 set_deleted(edge_descriptor e){
-    FILE_LOG(logDEBUG3)     << "remove edge ( "
+    FILE_LOG(logDEBUG3)     << "set delete edge ( "
                             << boost::source(e,*this) << ", "
                             << boost::target(e,*this) << ")";
     edges_history_type hist = get_history(e);
@@ -81,7 +81,7 @@ remove_permanently(vertex_descriptor v){
     auto it = vertices_history.find(v);
     assert(it!=vertices_history.end());
     vertices_history.erase(it);
-    boost::remove_vertex(v,*dynamic_cast<graph_type*>(this));
+    remove_vertex(v,get_base_graph());
 }
 
 /**

@@ -415,9 +415,14 @@ public:
         edge_count= i;
 
     }
-
+    /**
+     * method used in add_vertex()
+     */
     vertex_descriptor generate_vertex(vertex_bundled prop);
 
+    /**
+     * method used in add_edge()
+     */
     std::pair<edge_descriptor,bool> generate_edge(edge_bundled prop,vertex_descriptor u, vertex_descriptor v);
 
     void set_deleted(edge_descriptor e);
@@ -426,11 +431,14 @@ public:
     void remove_permanently(vertex_descriptor e);
 
     /**
-     * Checks if given vertex or edge is deleted
+     * Checks if given vertex is deleted
      */
     bool check_if_currently_deleted(vertex_descriptor d) const {
         return is_deleted(detail::get_revision(get_history(d).top()));
     }
+    /**
+     * Checks if given edge is deleted
+     */
     bool check_if_currently_deleted(edge_descriptor d) const {
         return is_deleted(detail::get_revision(get_history(d).top()));
     }
@@ -525,6 +533,8 @@ protected:
         FILE_LOG(logDEBUG4) << "negated to " << r;
         list.push(make_entry(r,dummy_value));
     }
+
+
 
     template<typename graph,typename descriptor_type,typename property_type>
     struct property_handler{
