@@ -76,10 +76,10 @@ void clear_out_edges(vertex_descriptor u, versioned_graph<graph_t>& g){
     typedef versioned_graph<graph_t> graph_type;
     typedef typename graph_type::out_edge_iterator out_edge_iterator;
     out_edge_iterator ei, ei_end, next;
-    boost::tie(ei, ei_end) = out_edges(g);
+    boost::tie(ei, ei_end) = out_edges(u,g);
     for (next = ei; ei != ei_end; ei = next) {
-      ++next;
-      g.set_deleted(*ei);
+        ++next;
+        g.set_deleted(*ei);
     }
 }
 
@@ -88,10 +88,10 @@ void clear_in_edges(vertex_descriptor u, versioned_graph<graph_t>& g){
     typedef versioned_graph<graph_t> graph_type;
     typedef typename graph_type::in_edge_iterator in_edge_iterator;
     in_edge_iterator ei, ei_end, next;
-    boost::tie(ei, ei_end) = in_edges(g);
+    boost::tie(ei, ei_end) = in_edges(u,g);
     for (next = ei; ei != ei_end; ei = next) {
-      ++next;
-      g.set_deleted(*ei);
+        ++next;
+        g.set_deleted(*ei);
     }
 }
 

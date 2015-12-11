@@ -501,6 +501,14 @@ TEST(BidirectionalSmallWorldGraphTest, smallworldtest){
     ASSERT_EQ(8,in_degree(v23,g));
     ASSERT_EQ(800,num_edges(g));
     ASSERT_EQ(100,num_vertices(g));
+    ASSERT_NO_FATAL_FAILURE(clear_out_edges(v23,g));
+    ASSERT_EQ(0,out_degree(v23,g));
+    ASSERT_EQ(8,in_degree(v23,g));
+    revert_changes(g);
+    ASSERT_NO_FATAL_FAILURE(clear_in_edges(v23,g));
+    ASSERT_EQ(8,out_degree(v23,g));
+    ASSERT_EQ(0,in_degree(v23,g));
+    revert_changes(g);
 
     commit(g);
     boost::remove_edge_if(make_predicate(g,6),g);
@@ -621,8 +629,16 @@ public:
         ASSERT_NO_FATAL_FAILURE(this->check_edges_count(6));
         ASSERT_NO_FATAL_FAILURE(this->check_all_edges_count(8));
         undo_commit(this->g);
+        ASSERT_NO_FATAL_FAILURE(clear_out_edges(this->v1,this->g));
+        ASSERT_NO_FATAL_FAILURE(this->check_out_edges(this->v1,{}));
+        ASSERT_NO_FATAL_FAILURE(this->check_out_edges(this->v2,{this->v4}));
+        ASSERT_NO_FATAL_FAILURE(this->check_edges_count(1));
+        ASSERT_TRUE(edge(this->v2,this->v4,this->g).second);
+        EXPECT_NO_FATAL_FAILURE(revert_changes(this->g));
+        ASSERT_EQ(detail::revision::create(3),this->g.get_current_rev());
         EXPECT_NO_FATAL_FAILURE(this->test_after_init());
         erase_history(this->g);
+        ASSERT_EQ(detail::revision::create(1),this->g.get_current_rev());
         EXPECT_NO_FATAL_FAILURE(this->test_after_init(false));
     }
 };
@@ -681,7 +697,9 @@ TEST(DirectedSmallWorldGraphTest, smallworldtest){
     ASSERT_EQ(8,out_degree(v23,g));
     ASSERT_EQ(800,num_edges(g));
     ASSERT_EQ(100,num_vertices(g));
-
+    ASSERT_NO_FATAL_FAILURE(clear_out_edges(v23,g));
+    ASSERT_EQ(0,out_degree(v23,g));
+    revert_changes(g);
     commit(g);
     boost::remove_edge_if(make_predicate(g,6),g);
 
