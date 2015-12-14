@@ -41,10 +41,50 @@ template<typename graph_t>
 void versioned_graph<graph_t>::
 remove_permanently(edge_descriptor e){
     FILE_LOG(logDEBUG3) << "remove edge completely";
-    auto it = edges_history.find(e);
+    edge_key key(e,*this);
+    auto it = edges_history.find(key);
     assert(it!=edges_history.end());
     edges_history.erase(it);
     remove_edge(e,get_base_graph());
+}
+
+/**
+ *  Removes out_edge with history, operation cannot be undone
+ */
+template<typename graph_t>
+void versioned_graph<graph_t>::
+remove_permanently(out_edge_iterator iter){
+    FILE_LOG(logDEBUG3) << "remove edge completely";
+    edge_key key(*iter,*this);
+    auto it = edges_history.find(key);
+    assert(it!=edges_history.end());
+    edges_history.erase(it);
+    remove_edge(iter.base(),get_base_graph());
+}
+
+/**
+ *  implementation of boost::remove_edge()
+ */
+template<typename graph_t>
+void versioned_graph<graph_t>::
+set_deleted(out_edge_iterator e){
+    FILE_LOG(logDEBUG3)     << "set delete edge ( "
+                            << boost::source(*e,*this) << ", "
+                            << boost::target(*e,*this) << ")";
+    edges_history_type hist = get_history(*e);
+    assert(!hist.empty());
+    assert(!check_if_currently_deleted(*e));
+    decr_degree(*e);
+    if(hist.size()>1 || get_latest_revision(*e) < current_rev){
+        // if there are many history records or was created in older revision then mark as deleted
+        FILE_LOG(logDEBUG3) << "remove edge: set as deleted";
+        mark_deleted(*e,edge_bundled());
+        assert(check_if_currently_deleted(*e));
+    } else {
+        remove_permanently(e);
+    }
+    --edge_count;
+    FILE_LOG(logDEBUG3) << "set deleted: finnished";
 }
 
 /**
@@ -273,10 +313,12 @@ versioned_graph(const versioned_graph& g ) : direct_base(0),
       boost::tie(e, inserted) = add_edge(vertex_map[s],
                                          vertex_map[t], get_base_graph());
       assert(inserted);
-      auto iter = g.edges_history.find(*ei);
+      auto key = edge_key(*ei,g);
+      auto iter = g.edges_history.find(key);
       assert(iter!=g.edges_history.end());
-      edges_history.insert(std::make_pair(e,iter->second));
-      (*this)[e] = g[*ei];
+      auto newkey = edge_key(e,*this);
+      edges_history.insert(std::make_pair(newkey,iter->second));
+      (*this)[e] = g[key];
       revision r = detail::get_revision(iter->second.top());
 
       if(!is_deleted(r)){
@@ -324,8 +366,9 @@ void versioned_graph<graph_t>::init(vertex_descriptor v,const vertex_bundled& pr
  */
 template<typename graph_t>
 void versioned_graph<graph_t>::init(edge_descriptor e,const edge_bundled& prop){
-    if(edges_history.find(e)==edges_history.end()){
-        edges_history.insert(std::make_pair(e,edges_history_type()));
+    edge_key key(e,*this);
+    if(edges_history.find(key)==edges_history.end()){
+        edges_history.insert(std::make_pair(key,edges_history_type()));
     }
     edges_history_type& list = get_history(e);
     assert(list.empty());
@@ -353,7 +396,8 @@ generate_edge(edge_bundled prop,vertex_descriptor u, vertex_descriptor v){
     using namespace detail;
     auto p = boost::add_edge(u,v,prop,get_base_graph());
     if(p.second){
-        init(p.first,prop);
+        auto key = edge_key(p.first,*this);
+        init(key,prop);
         ++edge_count;
         FILE_LOG(logDEBUG4) << "add edge (" << boost::source(p.first,get_base_graph()) << ", "
                                             << boost::target(p.first,get_base_graph())

@@ -79,7 +79,7 @@ void clear_out_edges(vertex_descriptor u, versioned_graph<graph_t>& g){
     boost::tie(ei, ei_end) = out_edges(u,g);
     for (next = ei; ei != ei_end; ei = next) {
         ++next;
-        g.set_deleted(*ei);
+        g.set_deleted(ei);
     }
 }
 
@@ -220,10 +220,9 @@ void remove_edge(vertex_descriptor u,vertex_descriptor v, versioned_graph<graph_
     }
 }
 
-template<typename graph_t, typename edge_descriptor>
-void remove_edge(edge_descriptor edge_desc, versioned_graph<graph_t>& g){
-    FILE_LOG(logDEBUG4) << "remove_edge: (" << boost::source(edge_desc,g) << ", " << boost::target(edge_desc,g) << ")";
-    g.set_deleted(edge_desc);
+template<typename graph_t, typename edge>
+void remove_edge(edge e, versioned_graph<graph_t>& g){
+    g.set_deleted(e);
 }
 
 template <class predicate, typename vertex_descriptor, typename graph_t>

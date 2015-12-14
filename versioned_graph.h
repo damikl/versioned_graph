@@ -6,6 +6,7 @@
 #include <boost/iterator/filter_iterator.hpp>
 #include "log.h"
 #include <stack>
+#include <unordered_map>
 #include <type_traits>
 
 
@@ -156,6 +157,28 @@ revision get_revision(const std::pair<revision,property_type>& value){
 revision get_revision(const revision& value){
     return value;
 }
+
+template<typename graph>
+struct edge_descriptor_cont : graph::edge_descriptor {
+    typedef typename graph::edge_descriptor edge_descriptor;
+    typedef typename graph::vertex_descriptor vertex_descriptor;
+    edge_descriptor_cont(const edge_descriptor& edge,const graph& g) :
+        graph::edge_descriptor(edge),
+        h(boost::hash<vertex_descriptor>()(boost::source(edge,g))^
+        boost::hash<vertex_descriptor>()(boost::target(edge,g)))
+    {}
+    std::size_t h;
+};
+
+
+template<typename edge_descriptor_cont>
+struct edge_hash{
+    typedef typename edge_descriptor_cont::vertex_descriptor vertex_descriptor;
+    std::size_t operator()(const edge_descriptor_cont& d) const {
+          return d.h;
+        }
+
+};
 
 template<typename graph_type,typename value_type>
 struct filter_removed_predicate{
@@ -345,6 +368,7 @@ public:
     typedef typename graph_type::traversal_category traversal_category;
     typedef typename graph_type::vertices_size_type vertices_size_type;
     typedef typename graph_type::edges_size_type edges_size_type;
+    typedef typename detail::edge_descriptor_cont<self_type> edge_key;
 
     typedef detail::filter_removed_predicate<self_type,vertex_descriptor> vertex_predicate;
     typedef detail::filter_removed_predicate<self_type,edge_descriptor> edge_predicate;
@@ -426,8 +450,10 @@ public:
     std::pair<edge_descriptor,bool> generate_edge(edge_bundled prop,vertex_descriptor u, vertex_descriptor v);
 
     void set_deleted(edge_descriptor e);
+    void set_deleted(out_edge_iterator e);
     void set_deleted(vertex_descriptor v);
     void remove_permanently(edge_descriptor e);
+    void remove_permanently(out_edge_iterator it);
     void remove_permanently(vertex_descriptor e);
 
     /**
@@ -488,7 +514,7 @@ public:
 
 protected:
     void init(vertex_descriptor v, const vertex_bundled& prop = vertex_bundled());
-    void init(edge_descriptor v, const edge_bundled& prop = edge_bundled());
+    void init(edge_descriptor e, const edge_bundled& prop = edge_bundled());
     vertex_stored_data& get_stored_data(vertex_descriptor u){
         auto iter = vertices_history.find(u);
         assert(iter!=vertices_history.end());
@@ -505,7 +531,8 @@ protected:
     }
 
     edges_history_type& get_history(edge_descriptor idx){
-        auto iter = edges_history.find(idx);
+        edge_key key(idx,*this);
+        auto iter = edges_history.find(key);
         assert(iter!=edges_history.end());
         return iter->second;
     }
@@ -515,7 +542,8 @@ public:
     }
 
     const edges_history_type& get_history(edge_descriptor idx)const {
-        auto iter = edges_history.find(idx);
+        edge_key key(idx,*this);
+        auto iter = edges_history.find(key);
         assert(iter!=edges_history.end());
         return iter->second;
     }
@@ -524,7 +552,7 @@ protected:
      *  mark edge/vertex as deleted, creates new entry in history
      */
     template<typename descriptor,typename bundled_type>
-    void mark_deleted(descriptor& e,bundled_type dummy_value){
+    void mark_deleted(descriptor e,bundled_type dummy_value){
         using namespace detail;
         auto& list = get_history(e);
         FILE_LOG(logDEBUG4) << "set deleted: " << list.size() << " records in history";
@@ -587,8 +615,8 @@ protected:
 
     void clean_vertices_to_current_rev();
 private:
-    std::map<vertex_descriptor,vertex_stored_data > vertices_history;
-    std::map<edge_descriptor,edges_history_type> edges_history;
+    std::unordered_map<vertex_descriptor,vertex_stored_data,boost::hash<vertex_descriptor> > vertices_history;
+    std::unordered_map<edge_key,edges_history_type,detail::edge_hash<edge_key> > edges_history;
     graph_properties_history_type graph_bundled_history;
     vertices_size_type vertex_count;
     edges_size_type edge_count;
