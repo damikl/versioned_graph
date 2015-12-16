@@ -236,7 +236,7 @@ void remove_out_edge_if(vertex_descriptor u, predicate pred,
     for (next = ei; ei != ei_end; ei = next) {
       ++next;
       if (pred(*ei)){
-        remove_edge(*ei, g);
+        remove_edge(ei, g);
       }
     }
     FILE_LOG(logDEBUG4) << "remove_out_edge_if ended";
