@@ -86,16 +86,25 @@ std::ostream& operator<<(std::ostream& os, const revision& obj) {
     return os << obj.get_rev() << " ";
 }
 
+/**
+ *  Type used for history of vertex and edge bundled properties
+ */
 template<class T>
 struct property_records{
     typedef std::stack<std::pair<revision,T> > type;
 };
 
+/**
+ *  Type used for history of vertex and edge without bundled properties
+ */
 template<>
 struct property_records<boost::no_property>{
     typedef std::stack<revision> type;
 };
 
+/**
+ *  Type used for history of graph bundled properties
+ */
 template<class T>
 class property_optional_records{
     typedef std::stack<std::pair<revision,T> > history_type;
@@ -131,6 +140,9 @@ public:
 
 };
 
+/**
+ *  Type used for history when there is no graph bundled properties
+ */
 template<>
 struct property_optional_records<boost::no_property>{
     void update_if_needed(revision ,const boost::no_property& ){}
@@ -158,6 +170,9 @@ revision get_revision(const revision& value){
     return value;
 }
 
+/**
+ *  edge_descriptor wrapper used to generate hash, used as key in edge history
+ */
 template<typename graph>
 struct edge_descriptor_cont : graph::edge_descriptor {
     typedef typename graph::edge_descriptor edge_descriptor;
@@ -202,8 +217,8 @@ public:
         }
         auto list = g->get_history(v);
         revision r = detail::get_revision(list.top());
-        assert(r<=g->get_current_rev());
-        assert(r<=rev);
+        assert(r<=g->get_current_rev() && "Top of history is above current rev");
+        assert(r<=rev && "Top of history is above wanted rev");
         if(is_deleted(r)){
              FILE_LOG(logDEBUG4) << "filter_predicate: (" << boost::source(v,*g) << ", " << boost::target(v,*g)<< ") found deleted rev: " << r;
              return false;
@@ -237,8 +252,8 @@ public:
 
         auto list = g->get_history(v);
         revision r = detail::get_revision(list.top());
-        assert(r<=g->get_current_rev());
-        assert(r<=rev);
+        assert(r<=g->get_current_rev() && "Top of history is above current rev");
+        assert(r<=rev && "Top of history is above wanted rev");
         if(is_deleted(r)){
              FILE_LOG(logDEBUG4) << "filter_removed_predicate: found deleted rev: " << r << " and while wanted: " << rev << " desc: " << v;
              return false;
@@ -265,11 +280,11 @@ public:
         }
         FILE_LOG(logDEBUG4) << "adjacency_filter_removed_predicate: is_inv("<< inv <<") check edge : v= " << v << " u= " << u;
         auto p = inv ? boost::edge(v,u,g->get_base_graph()) : boost::edge(u,v,g->get_base_graph());
-        assert(p.second);
+        assert(p.second && "Wanted edge does not exist");
         auto edge_desc = p.first;
         auto list = g->get_history(edge_desc);
         revision r = detail::get_revision(list.top());
-        assert(r<=rev);
+        assert(r<=rev && "Top of history is above wanted rev");
         if (is_deleted(r)) {
            FILE_LOG(logDEBUG4) << "adjacency_filter_removed_predicate: found deleted rev: " << r << " and while wanted: " << rev << " desc: " << v;
            return false;
