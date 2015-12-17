@@ -4,7 +4,6 @@
 #include <boost/graph/adjacency_matrix.hpp>
 #include <boost/graph/graph_utility.hpp>
 #include <boost/iterator/filter_iterator.hpp>
-#include "log.h"
 #include <stack>
 #include <unordered_map>
 #include <type_traits>
@@ -19,39 +18,31 @@ class revision{
     revision(int r) : rev(r){ }
 public:
     bool operator<(const revision& r) const{
- //       FILE_LOG(logDEBUG4) << "revision " << rev << " < " << r.rev << " == " << (abs(rev) < abs(r.rev));
         return abs(rev) < abs(r.rev);
     }
     bool operator>(const revision& r) const{
-//        FILE_LOG(logDEBUG4) << "revision " << rev << " < " << r.rev << " == " << (abs(rev) < abs(r.rev));
         return abs(rev) > abs(r.rev);
     }
     bool operator<=(const revision& r) const{
-//        FILE_LOG(logDEBUG4) << "revision " << rev << " <= " << r.rev << " == " << (abs(rev) <= abs(r.rev));
         return abs(rev) <= abs(r.rev);
     }
     bool operator>=(const revision& r) const{
         return abs(rev) >= abs(r.rev);
     }
     bool operator==(const revision& r) const{
-        FILE_LOG(logDEBUG4) << "revision " << rev << " == " << r.rev << " == " << (abs(rev) == abs(r.rev));
         return abs(rev) == abs(r.rev);
     }
     bool is_older(const revision& r)const{
         return *this < r;
     }
     revision& operator++(){
-        FILE_LOG(logDEBUG2) << "increment revision";
         assert(rev >=0);
         ++rev;
-        FILE_LOG(logDEBUG2) << "incremented";
         return *this;
     }
     revision& operator--(){
-        FILE_LOG(logDEBUG2) << "decrement revision";
         assert(rev >0);
         --rev;
-        FILE_LOG(logDEBUG2) << "decremented";
         return *this;
     }
 
@@ -212,7 +203,7 @@ public:
     filter_removed_predicate(const graph_type* graph,const revision& r = revision::create_max()) : rev(r),g(graph) {}
     bool operator()(const value_type& v) {
         if(rev==revision::create_start() && g==nullptr){
-            FILE_LOG(logDEBUG4) << "default filter for edge, match all";
+            // default filter for edge, match all
             return true;
         }
         auto list = g->get_history(v);
@@ -220,10 +211,8 @@ public:
         assert(r<=g->get_current_rev() && "Top of history is above current rev");
         assert(r<=rev && "Top of history is above wanted rev");
         if(is_deleted(r)){
-             FILE_LOG(logDEBUG4) << "filter_predicate: (" << boost::source(v,*g) << ", " << boost::target(v,*g)<< ") found deleted rev: " << r;
              return false;
         }
-        FILE_LOG(logDEBUG4) << "filter_predicate: (" << boost::source(v,*g) << ", " << boost::target(v,*g)<< ") found rev: " << r;
         return true;
     }
 };
@@ -245,20 +234,17 @@ public:
     filter_removed_predicate(const graph_type* graph,const revision& r = revision::create_max()) : rev(r),g(graph) {}
     bool operator()(const value_type& v) {
         if(rev==revision::create_start() && g==nullptr){
-            FILE_LOG(logDEBUG4) << "default filter for vertex: " << v << ", match all";
+            // default filter for vertex: " << v << ", match all
             return true;
         }
-        FILE_LOG(logDEBUG4) << "filter_removed_predicate: check vertex: " << v;
 
         auto list = g->get_history(v);
         revision r = detail::get_revision(list.top());
         assert(r<=g->get_current_rev() && "Top of history is above current rev");
         assert(r<=rev && "Top of history is above wanted rev");
         if(is_deleted(r)){
-             FILE_LOG(logDEBUG4) << "filter_removed_predicate: found deleted rev: " << r << " and while wanted: " << rev << " desc: " << v;
              return false;
          }
-         FILE_LOG(logDEBUG4) << "filter_removed_predicate: found rev: " << r << " and while wanted: " << rev << " desc: " << v;
          return true;
     }
 };
@@ -275,10 +261,9 @@ public:
     adjacency_filter_removed_predicate(const graph_type* graph,vertex_descriptor u,const revision& r = revision::create_max()) : rev(r),u(u),g(graph) {}
     bool operator()(const value_type& v) {
         if(rev==revision::create_start() && g==nullptr){
-            FILE_LOG(logDEBUG4) << "default filter for vertex: " << v << ", match all";
+            // default filter for vertex, match all
             return true;
         }
-        FILE_LOG(logDEBUG4) << "adjacency_filter_removed_predicate: is_inv("<< inv <<") check edge : v= " << v << " u= " << u;
         auto p = inv ? boost::edge(v,u,g->get_base_graph()) : boost::edge(u,v,g->get_base_graph());
         assert(p.second && "Wanted edge does not exist");
         auto edge_desc = p.first;
@@ -286,10 +271,8 @@ public:
         revision r = detail::get_revision(list.top());
         assert(r<=rev && "Top of history is above wanted rev");
         if (is_deleted(r)) {
-           FILE_LOG(logDEBUG4) << "adjacency_filter_removed_predicate: found deleted rev: " << r << " and while wanted: " << rev << " desc: " << v;
            return false;
         }
-        FILE_LOG(logDEBUG4) << "adjacency_filter_removed_predicate: found rev: " << r << " and while wanted: " << rev << " desc: " << v;
         return true;
     }
 };
@@ -306,13 +289,11 @@ private:
 public:
     vertex_data():hist(),out_deg(0) {}
     inline degree_size_type incr_out_degree() {
-        FILE_LOG(logDEBUG4) << "incr_out_degree " << out_deg;
         return ++out_deg;
     }
     inline void incr_in_degree() {
     }
     inline degree_size_type decr_out_degree() {
-        FILE_LOG(logDEBUG4) << "decr_out_degree " << out_deg;
         return --out_deg;
     }
     inline void decr_in_degree() {
@@ -336,19 +317,15 @@ private:
 public:
     vertex_data():hist(),out_deg(0),in_deg(0) {}
     inline degree_size_type incr_out_degree() {
-        FILE_LOG(logDEBUG4) << "incr_out_degree " << out_deg;
         return ++out_deg;
     }
     inline degree_size_type incr_in_degree() {
-        FILE_LOG(logDEBUG4) << "incr_in_degree " << in_deg;
         return ++in_deg;
     }
     inline degree_size_type decr_out_degree() {
-        FILE_LOG(logDEBUG4) << "decr_out_degree " << out_deg;
         return --out_deg;
     }
     inline degree_size_type decr_in_degree() {
-        FILE_LOG(logDEBUG4) << "decr_in_degree " << in_deg;
         return --in_deg;
     }
     inline degree_size_type get_out_degree() const{
@@ -485,11 +462,9 @@ public:
     }
 
     vertices_size_type num_vertices() const {
-        FILE_LOG(logDEBUG4) << "get num vertices " << vertex_count;
         return vertex_count;
     }
     edges_size_type num_edges() const {
-        FILE_LOG(logDEBUG4) << "get num edges " << edge_count;
         return edge_count;
     }
     void commit();
@@ -497,7 +472,6 @@ public:
     void erase_history();
 
     void revert_uncommited(){
-        FILE_LOG(logDEBUG4) << "revert not commited changes";
         clean_edges_to_current_rev();
         clean_vertices_to_current_rev();
         (*this)[graph_bundle] = graph_bundled_history.get_latest();
@@ -570,10 +544,8 @@ protected:
     void mark_deleted(descriptor e,bundled_type dummy_value){
         using namespace detail;
         auto& list = get_history(e);
-        FILE_LOG(logDEBUG4) << "set deleted: " << list.size() << " records in history";
         assert(!is_deleted(detail::get_revision(list.top())));
         revision r = current_rev.create_deleted();
-        FILE_LOG(logDEBUG4) << "negated to " << r;
         list.push(make_entry(r,dummy_value));
     }
 
@@ -624,7 +596,7 @@ protected:
 
     void clean_history( edges_history_type& hist, edge_descriptor desc);
 
-    void clean_history( vertices_history_type& hist, vertex_descriptor desc);
+    void clean_history( vertices_history_type& hist);
 
     void clean_edges_to_current_rev();
 

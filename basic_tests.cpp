@@ -5,8 +5,6 @@
 #include <boost/graph/topological_sort.hpp>
 
 TEST(VersionedGraphTest, SimpleExample) {
-    FILE* log_fd = fopen( "inner_basic_tests.txt", "w" );
-    Output2FILE::Stream() = log_fd;
     using namespace boost;
     using namespace std;
     typedef versioned_graph<adjacency_list<boost::vecS, boost::vecS, boost::directedS,int,string,int>> simple_graph;
@@ -28,9 +26,9 @@ TEST(VersionedGraphTest, SimpleExample) {
     sg[graph_bundle] = 30;
     ASSERT_EQ(4,num_vertices(sg));
     ASSERT_EQ(5,num_edges(sg));
-    FILE_LOG(logDEBUG1) << "start commit";
+    cout << "start commit";
     commit(sg);
-    FILE_LOG(logDEBUG1) << "commit end";
+    cout << "commit end";
     sg[v4] = 5;
     sg[graph_bundle] = 31;
     remove_edge(v1,v4,sg);
@@ -41,17 +39,17 @@ TEST(VersionedGraphTest, SimpleExample) {
     sg[graph_bundle] = 32;
     simple_graph copy(sg);
     undo_commit(sg);
-    FILE_LOG(logDEBUG1) << "made undo";
+    cout << "made undo";
     ASSERT_TRUE(edge(v1,v4,sg).second);
-    FILE_LOG(logDEBUG1) << "edge recreated";
+    cout << "edge recreated";
     ASSERT_EQ(5,num_edges(sg));
-    FILE_LOG(logDEBUG1) << "count match";
+    cout << "count match";
     ASSERT_EQ(4,sg[v4]);
     ASSERT_EQ(6,copy[v4]);
     ASSERT_EQ(4,num_edges(copy));
     ASSERT_EQ(32,copy[graph_bundle]);
     ASSERT_EQ(30,sg[graph_bundle]);
-    FILE_LOG(logDEBUG1) << "attribute match";
+    cout << "attribute match";
     vertex_descriptor v5 = add_vertex(5,sg);
     add_edge(v5,v4,"13",sg);
     add_edge(v3,v5,"14",sg);
@@ -69,8 +67,6 @@ TEST(VersionedGraphTest, SimpleExample) {
 }
 
 TEST(VersionedGraphTest, withoutTypes) {
-    FILE* log_fd = fopen( "checkWithoutTypes.txt", "w" );
-    Output2FILE::Stream() = log_fd;
     using namespace boost;
     using namespace std;
     typedef versioned_graph<adjacency_list<boost::vecS, boost::vecS, boost::directedS>> simple_graph;
@@ -94,18 +90,18 @@ TEST(VersionedGraphTest, withoutTypes) {
     add_edge(v2,v4,sg);
     add_edge(v1,v4,sg);
     add_edge(v2,v3,sg);
-    FILE_LOG(logDEBUG1) << "start commit";
+    cout << "start commit";
     commit(sg);
-    FILE_LOG(logDEBUG1) << "commit end";
+    cout << "commit end";
     remove_edge(v1,v4,sg);
     ASSERT_EQ(4,num_edges(sg));
     EXPECT_FALSE(edge(v1,v4,sg).second);
     revert_changes(sg);
-    FILE_LOG(logDEBUG1) << "made revert";
+    cout << "made revert";
     ASSERT_TRUE(edge(v1,v4,sg).second);
-    FILE_LOG(logDEBUG1) << "edge recreated";
+    cout << "edge recreated";
     ASSERT_EQ(5,num_edges(sg));
-    FILE_LOG(logDEBUG1) << "count match";
+    cout << "count match";
     vertex_descriptor v5 = add_vertex(sg);
     add_edge(v5,v4,sg);
     add_edge(v3,v5,sg);
@@ -121,8 +117,6 @@ TEST(VersionedGraphTest, withoutTypes) {
 }
 
 TEST(VersionedGraphTest, normalTopologicalSort) {
-    FILE* log_fd = fopen( "normalTopologicalSort.txt", "w" );
-    Output2FILE::Stream() = log_fd;
     using namespace boost;
     using namespace std;
     typedef property<vertex_color_t, int> ColorProperty;
@@ -141,18 +135,18 @@ TEST(VersionedGraphTest, normalTopologicalSort) {
     add_edge(v2,v4,sg);
     add_edge(v1,v4,sg);
     add_edge(v2,v3,sg);
-    FILE_LOG(logDEBUG1) << "start commit";
+    cout << "start commit";
 //    commit(sg);
-//    FILE_LOG(logDEBUG1) << "commit end";
+//    cout << "commit end";
 //    remove_edge(v1,v4,sg);
 //    ASSERT_EQ(4,num_edges(sg));
 //    EXPECT_FALSE(edge(v1,v4,sg).second);
 //    undo_commit(sg);
-//    FILE_LOG(logDEBUG1) << "made undo";
+//    cout << "made undo";
     ASSERT_TRUE(edge(v1,v4,sg).second);
-    FILE_LOG(logDEBUG1) << "edge recreated";
+    cout << "edge recreated";
     ASSERT_EQ(5,num_edges(sg));
-    FILE_LOG(logDEBUG1) << "count match";
+    cout << "count match";
     vertex_descriptor v5 = add_vertex(sg);
     add_edge(v5,v4,sg);
     add_edge(v3,v5,sg);
@@ -160,23 +154,21 @@ TEST(VersionedGraphTest, normalTopologicalSort) {
     ASSERT_EQ(7,num_edges(sg));
 
 
-    FILE_LOG(logDEBUG1) << "make tolological sort";
+    cout << "make tolological sort";
     // Perform a topological sort.
     std::vector<vertex_descriptor> topo_order;
     boost::topological_sort(sg, std::back_inserter(topo_order));
     // Print the results.
-    FILE_LOG(logDEBUG1) << "Print the results";
+    cout << "Print the results";
     for(std::vector<vertex_descriptor>::const_iterator i = topo_order.begin();i != topo_order.end();++i)
     {
         std::cout << *i << std::endl;
-        FILE_LOG(logDEBUG1) << *i;
+        cout << *i;
     }
 
 }
 
 TEST(VersionedGraphTest, checkTopologicalSort) {
-    FILE* log_fd = fopen( "checkTopologicalSort.txt", "w" );
-    Output2FILE::Stream() = log_fd;
     using namespace boost;
     using namespace std;
     typedef property<vertex_color_t, int> ColorProperty;
@@ -195,18 +187,18 @@ TEST(VersionedGraphTest, checkTopologicalSort) {
     add_edge(v2,v4,sg);
     add_edge(v1,v4,sg);
     add_edge(v2,v3,sg);
-    FILE_LOG(logDEBUG1) << "start commit";
+    cout << "start commit";
     commit(sg);
-    FILE_LOG(logDEBUG1) << "commit end";
+    cout << "commit end";
     remove_edge(v1,v4,sg);
     ASSERT_EQ(4,num_edges(sg));
     EXPECT_FALSE(edge(v1,v4,sg).second);
     revert_changes(sg);
-    FILE_LOG(logDEBUG1) << "made undo";
+    cout << "made undo";
     ASSERT_TRUE(edge(v1,v4,sg).second);
-    FILE_LOG(logDEBUG1) << "edge recreated";
+    cout << "edge recreated";
     ASSERT_EQ(5,num_edges(sg));
-    FILE_LOG(logDEBUG1) << "count match";
+    cout << "count match";
     vertex_descriptor v5 = add_vertex(sg);
     add_edge(v5,v4,sg);
     add_edge(v3,v5,sg);
@@ -214,16 +206,16 @@ TEST(VersionedGraphTest, checkTopologicalSort) {
     ASSERT_EQ(7,num_edges(sg));
 
 
-    FILE_LOG(logDEBUG1) << "make tolological sort";
+    cout << "make tolological sort";
     // Perform a topological sort.
     std::deque<int> topo_order;
     boost::topological_sort(sg.get_base_graph(), std::front_inserter(topo_order));
     // Print the results.
-    FILE_LOG(logDEBUG1) << "Print the results";
+    cout << "Print the results";
     for(std::deque<int>::const_iterator i = topo_order.begin();i != topo_order.end();++i)
     {
         std::cout << *i << std::endl;
-        FILE_LOG(logDEBUG1) << *i;
+        cout << *i;
     }
 
 }

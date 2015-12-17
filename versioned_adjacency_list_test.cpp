@@ -15,7 +15,7 @@ struct edge_remove_predicate{
     edge_remove_predicate(const graph& g,int mod=2) : g(g), mod(mod){}
     bool operator()(edge_descriptor e){
         edge_bundled prop = g[e];
-        FILE_LOG(logDEBUG4) << "edge_remove_predicate for property: "<< prop;
+        cout << "edge_remove_predicate for property: "<< prop;
         return prop % mod==0;
     }
     const graph& g;
@@ -45,7 +45,7 @@ public:
         for(inv_adjacency_iterator iter = ei.first; iter != ei.second; ++iter) {
             ++count;
             vertex_descriptor v = *iter;
-            FILE_LOG(logDEBUG1) << "adjacent vertex to "<< this->v1 << ": " << v;
+            cout << "adjacent vertex to "<< this->v1 << ": " << v;
             ASSERT_TRUE(this->result_allowed(set,v));
         }
         ASSERT_EQ(set.size(),count);
@@ -87,8 +87,6 @@ public:
     }
 
     void test(){
-        typedef detail::revision revision;
-        FILELog::ReportingLevel() = logDEBUG4;
         ::testing::StaticAssertTypeEq<boost::undirected_tag, directed_category>();
         typedef typename graph_traits<graph_type>::edge_parallel_category edge_parallel_category;
         ::testing::StaticAssertTypeEq<boost::allow_parallel_edge_tag, edge_parallel_category>();
@@ -108,13 +106,13 @@ public:
         assert(result);
         boost::tie(e,result) = add_edge(this->v5,this->v4,15,this->g);
         assert(result);
-        ASSERT_EQ(revision::create(3),this->g.get_current_rev());
+        ASSERT_EQ(detail::revision::create(3),this->g.get_current_rev());
         commit(g);
         ASSERT_NO_FATAL_FAILURE(this->check_vertices_count(5));
         this->g[this->v4] = 444;
         this->g[this->v1] = 111;
         this->g[boost::graph_bundle] = 7.2;
-        ASSERT_EQ(revision::create(4),this->g.get_current_rev());
+        ASSERT_EQ(detail::revision::create(4),this->g.get_current_rev());
         boost::clear_vertex(this->v3,this->g);
         boost::remove_vertex(this->v3,this->g);
         ASSERT_NO_FATAL_FAILURE(this->check_vertices_count(4));
@@ -180,8 +178,6 @@ public:
 };
 
 TEST_F(UndirectedGraphTest, undirected_graph_test) {
-    FILE* log_fd = fopen( "undirected_graph_test.txt", "w" );
-    Output2FILE::Stream() = log_fd;
     ASSERT_NO_FATAL_FAILURE(this->init());
     ASSERT_NO_FATAL_FAILURE(this->test());
 }
@@ -323,7 +319,7 @@ public:
         for(inv_adjacency_iterator iter = ei.first; iter != ei.second; ++iter) {
             ++count;
             vertex_descriptor v = *iter;
-            FILE_LOG(logDEBUG1) << "adjacent vertex to "<< v1 << ": " << v;
+            cout << "adjacent vertex to "<< v1 << ": " << v;
             ASSERT_TRUE(result_allowed(set,v));
         }
         ASSERT_EQ(set.size(),count);
@@ -332,15 +328,15 @@ public:
     virtual void check_in_edges(vertex_descriptor v,std::set<vertex_descriptor> set) const {
         std::pair<in_edge_iterator, in_edge_iterator> ei = in_edges(v,g);
         unsigned int in_edges_count = 0;
-        FILE_LOG(logDEBUG2) << "validate in_edges for: " << v;
+        cout << "validate in_edges for: " << v;
         for(in_edge_iterator edge_iter = ei.first; edge_iter != ei.second; ++edge_iter) {
             ++in_edges_count;
             vertex_descriptor u = boost::source(*edge_iter,g);
-            FILE_LOG(logDEBUG3) << "found in_edge: "<< u << "->" << v;
+            cout << "found in_edge: "<< u << "->" << v;
             ASSERT_EQ(v,boost::target(*edge_iter,g));
             ASSERT_TRUE(result_allowed(set,u));
         }
-        FILE_LOG(logDEBUG2) << "validate count of out_edges for: " << v;
+        cout << "validate count of out_edges for: " << v;
         ASSERT_EQ(set.size(),in_edges_count);
         ASSERT_EQ(set.size(),in_degree(v,g));
     }
@@ -383,8 +379,6 @@ public:
     }
 
     void test(){
-        FILELog::ReportingLevel() = logDEBUG4;
-        typedef detail::revision revision;
         typedef typename graph_traits<graph_type>::directed_category directed_category;
         assert_type_eq<boost::bidirectional_tag,directed_category>();
         typedef typename graph_traits<graph_type>::edge_parallel_category edge_parallel_category;
@@ -404,12 +398,12 @@ public:
         assert(result);
         boost::tie(e,result) = add_edge(this->v5,this->v4,15,this->g);
         assert(result);
-        ASSERT_EQ(revision::create(3),this->g.get_current_rev());
+        ASSERT_EQ(detail::revision::create(3),this->g.get_current_rev());
         commit(g);
         ASSERT_NO_FATAL_FAILURE(this->check_vertices_count(5));
         this->g[this->v4] = 444;
         this->g[this->v1] = 111;
-        ASSERT_EQ(revision::create(4),this->g.get_current_rev());
+        ASSERT_EQ(detail::revision::create(4),this->g.get_current_rev());
         boost::clear_vertex(this->v3,this->g);
         boost::remove_vertex(this->v3,this->g);
         ASSERT_NO_FATAL_FAILURE(this->check_vertices_count(4));
@@ -439,21 +433,17 @@ public:
         undo_commit(this->g);
         EXPECT_NO_FATAL_FAILURE(this->test_after_init());
         erase_history(this->g);
-        FILE_LOG(logINFO) << "erased ";
+        cout << "erased ";
         EXPECT_NO_FATAL_FAILURE(this->test_after_init(false));
     }
 };
 
 TEST_F(BidirectionalGraphTest, bidirectional_graph_test) {
-    FILE* log_fd = fopen( "bidirectional_graph_test.txt", "w" );
-    Output2FILE::Stream() = log_fd;
     ASSERT_NO_FATAL_FAILURE(this->init());
     ASSERT_NO_FATAL_FAILURE(this->test());
 }
 
 TEST(BidirectionalSmallWorldGraphTest, smallworldtest){
-    FILE* log_fd = fopen( "BidirectionalSmallWorldGraphTest.txt", "w" );
-    Output2FILE::Stream() = log_fd;
     typedef boost::versioned_graph<adjacency_list<boost::listS, boost::listS, boost::bidirectionalS,int,int,double>> Graph;
     typedef boost::small_world_iterator<boost::minstd_rand, Graph> SWGen;
     typedef typename graph_traits<Graph>::vertex_descriptor vertex_descriptor;
@@ -568,8 +558,6 @@ public:
     }
 
     void test(){
-        FILELog::ReportingLevel() = logDEBUG4;
-        typedef detail::revision revision;
         typedef typename graph_traits<graph_type>::directed_category directed_category;
         assert_type_eq<boost::directed_tag,directed_category>();
         typedef typename graph_traits<graph_type>::edge_parallel_category edge_parallel_category;
@@ -589,17 +577,17 @@ public:
         assert(result);
         boost::tie(e,result) = add_edge(this->v5,this->v4,15,this->g);
         assert(result);
-        ASSERT_EQ(revision::create(3),this->g.get_current_rev());
+        ASSERT_EQ(detail::revision::create(3),this->g.get_current_rev());
         commit(g);
         ASSERT_NO_FATAL_FAILURE(this->check_vertices_count(5));
         ASSERT_NO_FATAL_FAILURE(this->check_edges_count(7));
         ASSERT_NO_FATAL_FAILURE(this->check_all_edges_count(8));
         this->g[this->v4] = 444;
         this->g[this->v1] = 111;
-        ASSERT_EQ(revision::create(4),this->g.get_current_rev());
+        ASSERT_EQ(detail::revision::create(4),this->g.get_current_rev());
         EXPECT_NO_FATAL_FAILURE(this->check_out_edges(this->v1,{this->v4,this->v2,this->v3,this->v5}));
         EXPECT_NO_FATAL_FAILURE(this->check_out_edges(this->v5,{this->v4}));
-        FILE_LOG(logDEBUG2) << "Clear vertex: " << this->v3;
+        cout << "Clear vertex: " << this->v3;
         boost::clear_vertex(this->v3,this->g);
         boost::remove_vertex(this->v3,this->g);
         ASSERT_NO_FATAL_FAILURE(this->check_vertices_count(4));
@@ -620,9 +608,9 @@ public:
         ASSERT_NO_FATAL_FAILURE(this->check_edges_count(8));
         ASSERT_NO_FATAL_FAILURE(this->check_all_edges_count(10));
         ASSERT_NO_FATAL_FAILURE(this->check_out_edges(v6,{this->v4,this->v2}));
-        FILE_LOG(logDEBUG2) << "Clear vertex: " << v6;
+        cout << "Clear vertex: " << v6;
         boost::clear_vertex(v6,this->g);
-        FILE_LOG(logDEBUG2) << "Remove vertex: " << v6;
+        cout << "Remove vertex: " << v6;
         boost::remove_vertex(v6,this->g);
         ASSERT_NO_FATAL_FAILURE(this->check_vertices_count(4));
         ASSERT_NO_FATAL_FAILURE(this->check_all_vertices_count(5));
@@ -644,15 +632,11 @@ public:
 };
 
 TEST_F(DirectedGraphTest, directed_graph_test) {
-    FILE* log_fd = fopen( "directed_graph_test.txt", "w" );
-    Output2FILE::Stream() = log_fd;
     ASSERT_NO_FATAL_FAILURE(this->init());
     ASSERT_NO_FATAL_FAILURE(this->test());
 }
 
 TEST(DirectedSmallWorldGraphTest, smallworldtest){
-    FILE* log_fd = fopen( "DirectedSmallWorldGraphTest.txt", "w" );
-    Output2FILE::Stream() = log_fd;
     typedef boost::versioned_graph<adjacency_list<boost::listS, boost::listS, boost::directedS,int,int,double>> Graph;
     typedef boost::small_world_iterator<boost::minstd_rand, Graph> SWGen;
     typedef typename graph_traits<Graph>::vertex_descriptor vertex_descriptor;

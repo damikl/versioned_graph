@@ -3,8 +3,6 @@
 int main(){
     using namespace boost;
     using namespace std;
-    FILE* log_fd = fopen( "/dev/null", "w" );
-    Output2FILE::Stream() = log_fd;
     typedef versioned_graph<adjacency_list<boost::vecS, boost::vecS, boost::directedS,int,string>> simple_graph;
     simple_graph sg;
     typedef typename boost::graph_traits<simple_graph>::vertex_descriptor vertex_descriptor;

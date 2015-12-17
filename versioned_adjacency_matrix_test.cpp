@@ -41,15 +41,15 @@ public:
     virtual void check_in_edges(vertex_descriptor v,std::set<vertex_descriptor> set) const {
         std::pair<in_edge_iterator, in_edge_iterator> ei = in_edges(v,g);
         unsigned int in_edges_count = 0;
-        FILE_LOG(logDEBUG2) << "validate in_edges for: " << v;
+        cout << "validate in_edges for: " << v;
         for(in_edge_iterator edge_iter = ei.first; edge_iter != ei.second; ++edge_iter) {
             ++in_edges_count;
             vertex_descriptor u = boost::source(*edge_iter,g);
-            FILE_LOG(logDEBUG3) << "found in_edge: "<< u << "->" << v;
+            cout << "found in_edge: "<< u << "->" << v;
             ASSERT_EQ(v,boost::target(*edge_iter,g));
             ASSERT_TRUE(result_allowed(set,u));
         }
-        FILE_LOG(logDEBUG2) << "validate count of out_edges for: " << v;
+        cout << "validate count of out_edges for: " << v;
         ASSERT_EQ(set.size(),in_edges_count);
         ASSERT_EQ(set.size(),in_degree(v,g));
     }
@@ -86,7 +86,6 @@ public:
     void test(){
         typedef detail::revision revision;
         enum { A, B, C, D, E, F, N };
-        FILELog::ReportingLevel() = logDEBUG4;
         typedef typename graph_traits<graph_type>::directed_category directed_category;
         assert_type_eq<boost::bidirectional_tag,directed_category>();
         typedef typename graph_traits<graph_type>::edge_parallel_category edge_parallel_category;
@@ -139,8 +138,6 @@ public:
 };
 
 TEST_F(DirectedMatrixGraphTest, directed_graph_test) {
-    FILE* log_fd = fopen( "directed_matrix_graph_test.txt", "w" );
-    Output2FILE::Stream() = log_fd;
     ASSERT_NO_FATAL_FAILURE(this->init());
     ASSERT_NO_FATAL_FAILURE(this->test());
 }
@@ -153,15 +150,15 @@ public:
     virtual void check_in_edges(vertex_descriptor v,std::set<vertex_descriptor> set) const {
         std::pair<in_edge_iterator, in_edge_iterator> ei = in_edges(v,g);
         unsigned int in_edges_count = 0;
-        FILE_LOG(logDEBUG2) << "validate in_edges for: " << v;
+        cout << "validate in_edges for: " << v;
         for(in_edge_iterator edge_iter = ei.first; edge_iter != ei.second; ++edge_iter) {
             ++in_edges_count;
             vertex_descriptor u = boost::source(*edge_iter,g);
-            FILE_LOG(logDEBUG3) << "found in_edge: "<< u << "->" << v;
+            cout << "found in_edge: "<< u << "->" << v;
             ASSERT_EQ(v,boost::target(*edge_iter,g));
             ASSERT_TRUE(result_allowed(set,u));
         }
-        FILE_LOG(logDEBUG2) << "validate count of out_edges for: " << v;
+        cout << "validate count of out_edges for: " << v;
         ASSERT_EQ(set.size(),in_edges_count);
     }
 
@@ -232,7 +229,6 @@ public:
     void test(){
         typedef detail::revision revision;
         enum { A, B, C, D, E, F, N };
-        FILELog::ReportingLevel() = logDEBUG4;
         typedef typename graph_traits<graph_type>::directed_category directed_category;
         assert_type_eq<boost::undirected_tag,directed_category>();
         typedef typename graph_traits<graph_type>::edge_parallel_category edge_parallel_category;
@@ -291,8 +287,6 @@ public:
 };
 
 TEST_F(UndirectedMatrixGraphTest, undirected_graph_test) {
-    FILE* log_fd = fopen( "undirected_matrix_graph_test.txt", "w" );
-    Output2FILE::Stream() = log_fd;
     ASSERT_NO_FATAL_FAILURE(this->init());
     ASSERT_NO_FATAL_FAILURE(this->test());
 }

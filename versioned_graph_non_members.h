@@ -37,14 +37,12 @@ auto edge(vertex_descriptor u,vertex_descriptor v, const versioned_graph<graph_t
         }
         ++it;
     }
-    FILE_LOG(logDEBUG4) << "edge: not found";
     return std::make_pair(typename graph_type::edge_descriptor(),false);
 }
 
 template<typename graph_t>
 auto edges(const versioned_graph<graph_t>& g){
     typedef versioned_graph<graph_t> graph_type;
-    FILE_LOG(logDEBUG3) << "get edges";
     typename graph_type::edge_predicate predicate(&g);
     typename graph_type::edge_iterator iter_begin(predicate, g.edges_begin(), g.edges_end());
     typename graph_type::edge_iterator iter_end(predicate, g.edges_end(), g.edges_end());
@@ -58,16 +56,9 @@ vertices(const versioned_graph<graph_t>& g){
     typedef versioned_graph<graph_t> graph_type;
 
     typename graph_type::vertex_predicate predicate(&g);
-    FILE_LOG(logDEBUG4) << "will create begin and end iterators for vertices";
     auto end = g.vertices_end();
     typename graph_type::vertex_iterator iter_begin(predicate, g.vertices_begin(), end);
     typename graph_type::vertex_iterator iter_end(predicate, end, end);
-    FILE_LOG(logDEBUG4) << "created begin and end iterators for vertices";
-    if(iter_begin!=iter_end){
-        FILE_LOG(logDEBUG4) << "first vertex is: " << *iter_begin;
-    } else {
-        FILE_LOG(logDEBUG4) << "iterators are equal";
-    }
     return std::make_pair(iter_begin,iter_end);
 }
 
@@ -212,9 +203,6 @@ void remove_edge(vertex_descriptor u,vertex_descriptor v, versioned_graph<graph_
     for (next = ei; ei != ei_end; ei = next) {
       ++next;
       if (target(*ei,g)==v){
-        FILE_LOG(logDEBUG4) << "remove_edge: got desc: ("
-                            << boost::source(*ei,g) << ", "
-                            << boost::target(*ei,g) << ")";
         remove_edge(*ei, g);
       }
     }
@@ -228,7 +216,6 @@ void remove_edge(edge e, versioned_graph<graph_t>& g){
 template <class predicate, typename vertex_descriptor, typename graph_t>
 void remove_out_edge_if(vertex_descriptor u, predicate pred,
                         versioned_graph<graph_t>& g){
-    FILE_LOG(logDEBUG4) << "remove_out_edge_if";
     typedef versioned_graph<graph_t> graph_type;
     typedef typename graph_type::out_edge_iterator out_edge_iterator;
     out_edge_iterator ei, ei_end, next;
@@ -239,13 +226,11 @@ void remove_out_edge_if(vertex_descriptor u, predicate pred,
         remove_edge(ei, g);
       }
     }
-    FILE_LOG(logDEBUG4) << "remove_out_edge_if ended";
 }
 
 template <class predicate, typename vertex_descriptor, typename graph_t>
 void remove_in_edge_if(vertex_descriptor u, predicate pred,
                         versioned_graph<graph_t>& g){
-    FILE_LOG(logDEBUG4) << "remove_in_edge_if";
     typedef versioned_graph<graph_t> graph_type;
     typedef typename graph_type::in_edge_iterator in_edge_iterator;
     in_edge_iterator ei, ei_end, next;
@@ -256,7 +241,6 @@ void remove_in_edge_if(vertex_descriptor u, predicate pred,
         remove_edge(*ei, g);
       }
     }
-    FILE_LOG(logDEBUG4) << "remove_in_edge_if ended";
 }
 
 template <class predicate, typename graph_t>
