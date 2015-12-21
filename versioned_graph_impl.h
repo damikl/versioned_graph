@@ -31,7 +31,8 @@ edges_end() const {
 }
 
 /**
- *  Removes edge with history, operation cannot be undone
+ * Removes edge with history, operation cannot be undone
+ * do not alter degree
  */
 template<typename graph_t>
 void versioned_graph<graph_t>::
@@ -44,7 +45,8 @@ remove_permanently(edge_descriptor e){
 }
 
 /**
- *  Removes out_edge with history, operation cannot be undone
+ * Removes out_edge with history, operation cannot be undone
+ * do not alter degree
  */
 template<typename graph_t>
 void versioned_graph<graph_t>::
@@ -152,6 +154,11 @@ incr_degree(edge_descriptor e){
     }
 }
 
+/**
+ * remove latest record in history for edge,
+ * if removed record made edge marked as deleted adjusts num_edges() result
+ * do not alter edge attributes
+ */
 template<typename graph_t>
 void versioned_graph<graph_t>::
 clean_history( edges_history_type& hist, edge_descriptor desc){

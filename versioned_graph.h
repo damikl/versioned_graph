@@ -165,10 +165,10 @@ revision get_revision(const revision& value){
  *  edge_descriptor wrapper used to generate hash, used as key in edge history
  */
 template<typename graph>
-struct edge_descriptor_cont : graph::edge_descriptor {
+struct hashable_edge_descriptor : graph::edge_descriptor {
     typedef typename graph::edge_descriptor edge_descriptor;
     typedef typename graph::vertex_descriptor vertex_descriptor;
-    edge_descriptor_cont(const edge_descriptor& edge,const graph& g) :
+    hashable_edge_descriptor(const edge_descriptor& edge,const graph& g) :
         graph::edge_descriptor(edge),
         h(boost::hash<vertex_descriptor>()(boost::source(edge,g))^
         boost::hash<vertex_descriptor>()(boost::target(edge,g)))
@@ -177,90 +177,64 @@ struct edge_descriptor_cont : graph::edge_descriptor {
 };
 
 
-template<typename edge_descriptor_cont>
+template<typename hashable_edge_descriptor>
 struct edge_hash{
-    typedef typename edge_descriptor_cont::vertex_descriptor vertex_descriptor;
-    std::size_t operator()(const edge_descriptor_cont& d) const {
+    typedef typename hashable_edge_descriptor::vertex_descriptor vertex_descriptor;
+    std::size_t operator()(const hashable_edge_descriptor& d) const {
           return d.h;
         }
 
 };
 
+/**
+ * Predicate to decide if edge or vertex is deleted
+ * value_type is vertex_descriptor or edge_descriptor
+ */
 template<typename graph_type,typename value_type>
 struct filter_removed_predicate{
-    revision rev;
     const graph_type* g;
 public:
-    filter_removed_predicate() : rev(revision::create_start()),g(nullptr) {}
-    filter_removed_predicate(const filter_removed_predicate &p) : rev(p.rev),g(p.g){}
-    filter_removed_predicate& operator=(const filter_removed_predicate& other) { // copy assignment
+    filter_removed_predicate() : g(nullptr) {}
+    filter_removed_predicate(const filter_removed_predicate &p) : g(p.g){}
+    filter_removed_predicate& operator=(const filter_removed_predicate& other) {
         if (this != &other) { // self-assignment check expected
-            this->rev = other.rev;
             this->g = other.g;
         }
         return *this;
     }
-    filter_removed_predicate(const graph_type* graph,const revision& r = revision::create_max()) : rev(r),g(graph) {}
+    filter_removed_predicate(const graph_type* graph) : g(graph) {}
     bool operator()(const value_type& v) {
-        if(rev==revision::create_start() && g==nullptr){
+        if(g==nullptr){
             // default filter for edge, match all
             return true;
         }
         auto list = g->get_history(v);
         revision r = detail::get_revision(list.top());
         assert(r<=g->get_current_rev() && "Top of history is above current rev");
-        assert(r<=rev && "Top of history is above wanted rev");
         if(is_deleted(r)){
              return false;
         }
         return true;
     }
 };
-template<typename graph_type>
-struct filter_removed_predicate<graph_type,typename boost::graph_traits<graph_type>::vertex_descriptor>{
-    revision rev;
-    typedef typename boost::graph_traits<graph_type>::vertex_descriptor value_type;
-    const graph_type* g;
-public:
-    filter_removed_predicate() : rev(revision::create_start()),g(nullptr) {}
-    filter_removed_predicate(const filter_removed_predicate &p) : rev(p.rev),g(p.g){}
-    filter_removed_predicate& operator=(const filter_removed_predicate& other) { // copy assignment
-        if (this != &other) { // self-assignment check expected
-            this->rev = other.rev;
-            this->g = other.g;
-        }
-        return *this;
-    }
-    filter_removed_predicate(const graph_type* graph,const revision& r = revision::create_max()) : rev(r),g(graph) {}
-    bool operator()(const value_type& v) {
-        if(rev==revision::create_start() && g==nullptr){
-            // default filter for vertex: " << v << ", match all
-            return true;
-        }
 
-        auto list = g->get_history(v);
-        revision r = detail::get_revision(list.top());
-        assert(r<=g->get_current_rev() && "Top of history is above current rev");
-        assert(r<=rev && "Top of history is above wanted rev");
-        if(is_deleted(r)){
-             return false;
-         }
-         return true;
-    }
-};
-
+/**
+ * Predicate to decide if vertex v (passed as parameter of operator)
+ * is adjacent to vertex u passed in constructor
+ * To be used in adjacent_vertices()
+ * inv template parameter is a switch between adjacent_vertices() and inv_adjacent_vertices()
+ */
 template<typename graph_type, typename vertex_descriptor,bool inv>
 struct adjacency_filter_removed_predicate{
-    revision rev;
     vertex_descriptor u;
     typedef typename boost::graph_traits<graph_type>::vertex_descriptor value_type;
     const graph_type* g;
 public:
-    adjacency_filter_removed_predicate() : rev(revision::create_start()),u(),g(nullptr) {}
-    adjacency_filter_removed_predicate(const adjacency_filter_removed_predicate &p) : rev(p.rev),u(p.u),g(p.g){}
-    adjacency_filter_removed_predicate(const graph_type* graph,vertex_descriptor u,const revision& r = revision::create_max()) : rev(r),u(u),g(graph) {}
+    adjacency_filter_removed_predicate() : u(),g(nullptr) {}
+    adjacency_filter_removed_predicate(const adjacency_filter_removed_predicate &p) : u(p.u),g(p.g){}
+    adjacency_filter_removed_predicate(const graph_type* graph,vertex_descriptor u) : u(u),g(graph) {}
     bool operator()(const value_type& v) {
-        if(rev==revision::create_start() && g==nullptr){
+        if(g==nullptr){
             // default filter for vertex, match all
             return true;
         }
@@ -269,7 +243,7 @@ public:
         auto edge_desc = p.first;
         auto list = g->get_history(edge_desc);
         revision r = detail::get_revision(list.top());
-        assert(r<=rev && "Top of history is above wanted rev");
+        assert(r<=g->get_current_rev() && "Top of history is above current rev");
         if (is_deleted(r)) {
            return false;
         }
@@ -277,10 +251,18 @@ public:
     }
 };
 
+/**
+ *  base type for versioned graph, holds methods avaible only in some graph types
+ */
 template<typename unknown_graph_type>
 struct graph_tr{
 };
 
+
+/**
+ * holder of vertex history and degree counter
+ * general implementation for types supporting only out_degree
+ */
 template<typename vertices_history_type,typename degree_size_type,typename dir_tag>
 struct vertex_data{
     vertices_history_type hist;
@@ -308,6 +290,11 @@ public:
 //  }
 
 };
+
+/**
+ * holder of vertex history and degree counters
+ * specifc implementation for bidirectional graphs, they support in_degree
+ */
 template<typename vertices_history_type,typename degree_size_type>
 struct vertex_data<vertices_history_type,degree_size_type,bidirectional_tag>{
     vertices_history_type hist;
@@ -360,7 +347,7 @@ public:
     typedef typename graph_type::traversal_category traversal_category;
     typedef typename graph_type::vertices_size_type vertices_size_type;
     typedef typename graph_type::edges_size_type edges_size_type;
-    typedef typename detail::edge_descriptor_cont<self_type> edge_key;
+    typedef typename detail::hashable_edge_descriptor<self_type> edge_key;
 
     typedef detail::filter_removed_predicate<self_type,vertex_descriptor> vertex_predicate;
     typedef detail::filter_removed_predicate<self_type,edge_descriptor> edge_predicate;
@@ -441,11 +428,29 @@ public:
      */
     std::pair<edge_descriptor,bool> generate_edge(edge_bundled prop,vertex_descriptor u, vertex_descriptor v);
 
+    /**
+     * implementation of remove_edge(edge_descriptor,versioned_graph)
+     */
     void set_deleted(edge_descriptor e);
+    /**
+     * implementation of remove_edge(out_edge_iterator,versioned_graph)
+     */
     void set_deleted(out_edge_iterator e);
+    /**
+     * implementation of remove_vertex()
+     */
     void set_deleted(vertex_descriptor v);
+    /**
+     * Remove edge with history, cannot undo that
+     */
     void remove_permanently(edge_descriptor e);
+    /**
+     * Remove edge with history, cannot undo that
+     */
     void remove_permanently(out_edge_iterator it);
+    /**
+     * Remove vertex with history, cannot undo that
+     */
     void remove_permanently(vertex_descriptor e);
 
     /**
@@ -544,12 +549,10 @@ protected:
     void mark_deleted(descriptor e,bundled_type dummy_value){
         using namespace detail;
         auto& list = get_history(e);
-        assert(!is_deleted(detail::get_revision(list.top())));
+        assert(!check_if_currently_deleted(e) && "Already deleted");
         revision r = current_rev.create_deleted();
         list.push(make_entry(r,dummy_value));
     }
-
-
 
     template<typename graph,typename descriptor_type,typename property_type>
     struct property_handler{
@@ -568,11 +571,6 @@ protected:
         inline static bool is_update_needed(const descriptor_type& d,const graph& g, const property_type& new_val){
             return get_latest_bundled_value(d,g)!=new_val;
         }
-        template<typename value_type>
-        static void set_revision(const revision& r, value_type& value){
-            value.first = r;
-        }
-
     };
     template<typename graph,typename descriptor_type>
     struct property_handler<graph,descriptor_type,no_property>{
@@ -585,17 +583,24 @@ protected:
         inline static bool is_update_needed(const descriptor_type& , const graph&  , no_property& ){
             return false;
         }
-        template<typename value_type>
-        static void set_revision(const revision& , value_type& ){
-        }
     };
 
     void decr_degree(edge_descriptor e);
 
     void incr_degree(edge_descriptor e);
 
+    /**
+     * remove latest record in history for edge,
+     * if removed record made edge marked as deleted adjusts num_edges() result
+     * do not alter edge attributes
+     */
     void clean_history( edges_history_type& hist, edge_descriptor desc);
 
+    /**
+     * remove latest record in history for vertex,
+     * if removed record made vertex marked as deleted adjusts num_vertices() result
+     * do not alter vertex attributes
+     */
     void clean_history( vertices_history_type& hist);
 
     void clean_edges_to_current_rev();
