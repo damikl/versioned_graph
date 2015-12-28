@@ -5,28 +5,28 @@ namespace boost {
 template<typename graph_t>
 auto versioned_graph<graph_t>::
 vertices_begin() const {
-    typename graph_type::vertex_iterator iter = boost::vertices(get_base_graph()).first;
+    typename graph_traits<graph_t>::vertex_iterator iter = boost::vertices(get_base_graph()).first;
     return iter;
 }
 
 template<typename graph_t>
 auto versioned_graph<graph_t>::
 vertices_end() const {
-    typename graph_type::vertex_iterator iter = boost::vertices(get_base_graph()).second;
+    typename graph_traits<graph_t>::vertex_iterator iter = boost::vertices(get_base_graph()).second;
     return iter;
 }
 
 template<typename graph_t>
 auto versioned_graph<graph_t>::
 edges_begin() const {
-    typename graph_type::edge_iterator iter = boost::edges(get_base_graph()).first;
+    typename graph_traits<graph_t>::edge_iterator iter = boost::edges(get_base_graph()).first;
     return iter;
 }
 
 template<typename graph_t>
 auto versioned_graph<graph_t>::
 edges_end() const {
-    typename graph_type::edge_iterator iter = boost::edges(get_base_graph()).second;
+    typename graph_traits<graph_t>::edge_iterator iter = boost::edges(get_base_graph()).second;
     return iter;
 }
 
@@ -189,30 +189,28 @@ clean_history( vertices_history_type& hist){
 template<typename graph_t>
 void versioned_graph<graph_t>::
 clean_edges_to_current_rev(){
-    auto ei = boost::edges(get_base_graph());
-    std::list<edge_descriptor> edges_to_be_removed;
-    for(auto edge_iter = ei.first; edge_iter != ei.second; ++edge_iter) {
-        edges_history_type& hist = get_history(*edge_iter);
-        while(!hist.empty() && get_latest_revision(*edge_iter)>=current_rev){
-            clean_history(hist,*edge_iter);
+    typename graph_traits<graph_t>::edge_iterator ei, ei_end, next;
+    boost::tie(ei,ei_end) = boost::edges(get_base_graph());
+    for (next = ei; ei != ei_end; ei = next) {
+        ++next;
+        edges_history_type& hist = get_history(*ei);
+        while(!hist.empty() && get_latest_revision(*ei)>=current_rev){
+            clean_history(hist,*ei);
         }
         if(hist.empty()){
-            edges_to_be_removed.push_front(*edge_iter);
-            decr_degree(*edge_iter);
+            decr_degree(*ei);
+            remove_permanently(*ei);
+            --edge_count;
         } else {
-            (*this)[*edge_iter] = property_handler<self_type,edge_descriptor,edge_bundled>::get_latest_bundled_value(*edge_iter,*this);
+            (*this)[*ei] = property_handler<self_type,edge_descriptor,edge_bundled>::get_latest_bundled_value(*ei,*this);
         }
-    }
-    for(edge_descriptor e : edges_to_be_removed){
-        remove_permanently(e);
-        --edge_count;
     }
 }
 
 template<typename graph_t>
 void versioned_graph<graph_t>::
 clean_vertices_to_current_rev(){
-    vertex_iterator vi, vi_end, next;
+    typename graph_traits<graph_t>::vertex_iterator vi, vi_end, next;
 
     boost::tie(vi, vi_end) = vertices(get_base_graph());
     for (next = vi; vi != vi_end; vi = next) {

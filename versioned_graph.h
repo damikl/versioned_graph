@@ -274,19 +274,20 @@ public:
         return ++out_deg;
     }
     inline void incr_in_degree() {
+        // call ignored by design
     }
     inline degree_size_type decr_out_degree() {
         return --out_deg;
     }
     inline void decr_in_degree() {
+        // call ignored by design
     }
     inline degree_size_type get_out_degree() const{
         return out_deg;
     }
 
-//  unavaible
+//  unavaible by design, calling in_degree(adjacency_list) would not compile here
 //  inline degree_size_type get_in_degree() const{
-//       return 0;
 //  }
 
 };
@@ -554,21 +555,22 @@ protected:
         list.push(make_entry(r,dummy_value));
     }
 
-    template<typename graph,typename descriptor_type,typename property_type>
+    template<typename graph,typename descriptor_type,typename bundled_prop_type>
     struct property_handler{
-        static auto& get_latest_bundled_value(const descriptor_type& d, graph& g) {
+
+        static bundled_prop_type& get_latest_bundled_value(const descriptor_type& d, graph& g) {
             auto& list = g.get_history(d);
             assert(detail::get_revision(list.top())<=g.get_current_rev());
             return list.top().second;
         }
 
-        static const auto& get_latest_bundled_value(const descriptor_type& d, const graph& g) {
+        static const bundled_prop_type& get_latest_bundled_value(const descriptor_type& d, const graph& g) {
             const auto& list = g.get_history(d);
             assert(detail::get_revision(list.top())<=g.get_current_rev());
             return list.top().second;
         }
 
-        inline static bool is_update_needed(const descriptor_type& d,const graph& g, const property_type& new_val){
+        inline static bool is_update_needed(const descriptor_type& d,const graph& g, const bundled_prop_type& new_val){
             return get_latest_bundled_value(d,g)!=new_val;
         }
     };

@@ -430,6 +430,9 @@ public:
         ASSERT_NO_FATAL_FAILURE(this->check_all_vertices_count(5));
         ASSERT_NO_FATAL_FAILURE(this->check_edges_count(6));
         ASSERT_NO_FATAL_FAILURE(this->check_all_edges_count(8));
+        v6 = boost::add_vertex(this->g);
+        add_edge(v6,this->v2,this->g);
+        add_edge(v6,this->v4,this->g);
         undo_commit(this->g);
         EXPECT_NO_FATAL_FAILURE(this->test_after_init());
         erase_history(this->g);
