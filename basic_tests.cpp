@@ -7,7 +7,7 @@
 TEST(VersionedGraphTest, SimpleExample) {
     using namespace boost;
     using namespace std;
-    typedef versioned_graph<adjacency_list<boost::vecS, boost::vecS, boost::directedS,int,string,int>> simple_graph;
+    typedef versioned_graph<adjacency_list<boost::vecS, boost::listS, boost::directedS,int,string,int>> simple_graph;
     simple_graph sg;
 //    typedef typename graph_traits<simple_graph>::vertices_size_type size_type;
 //    typedef typename boost::vertex_bundle_type<simple_graph>::type vertex_properties;
@@ -26,9 +26,9 @@ TEST(VersionedGraphTest, SimpleExample) {
     sg[graph_bundle] = 30;
     ASSERT_EQ(4,num_vertices(sg));
     ASSERT_EQ(5,num_edges(sg));
-    cout << "start commit";
+    cout << "start commit" << endl;
     commit(sg);
-    cout << "commit end";
+    cout << "commit end" << endl;
     sg[v4] = 5;
     sg[graph_bundle] = 31;
     remove_edge(v1,v4,sg);
@@ -39,17 +39,17 @@ TEST(VersionedGraphTest, SimpleExample) {
     sg[graph_bundle] = 32;
     simple_graph copy(sg);
     undo_commit(sg);
-    cout << "made undo";
+    cout << "made undo" << endl;
     ASSERT_TRUE(edge(v1,v4,sg).second);
-    cout << "edge recreated";
+    cout << "edge recreated" << endl;
     ASSERT_EQ(5,num_edges(sg));
-    cout << "count match";
+    cout << "count match" << endl;
     ASSERT_EQ(4,sg[v4]);
-    ASSERT_EQ(6,copy[v4]);
     ASSERT_EQ(4,num_edges(copy));
+    ASSERT_EQ(6,copy[vertex(3,copy)]);
     ASSERT_EQ(32,copy[graph_bundle]);
     ASSERT_EQ(30,sg[graph_bundle]);
-    cout << "attribute match";
+    cout << "attribute match" << endl;
     vertex_descriptor v5 = add_vertex(5,sg);
     add_edge(v5,v4,"13",sg);
     add_edge(v3,v5,"14",sg);
@@ -69,7 +69,7 @@ TEST(VersionedGraphTest, SimpleExample) {
 TEST(VersionedGraphTest, withoutTypes) {
     using namespace boost;
     using namespace std;
-    typedef versioned_graph<adjacency_list<boost::vecS, boost::vecS, boost::directedS>> simple_graph;
+    typedef versioned_graph<adjacency_list<boost::vecS, boost::listS, boost::directedS>> simple_graph;
     simple_graph sg;
 //    typedef typename graph_traits<simple_graph>::vertices_size_type size_type;
     typedef typename boost::vertex_bundle_type<simple_graph>::type vertex_properties;
@@ -90,18 +90,18 @@ TEST(VersionedGraphTest, withoutTypes) {
     add_edge(v2,v4,sg);
     add_edge(v1,v4,sg);
     add_edge(v2,v3,sg);
-    cout << "start commit";
+    cout << "start commit" << endl;
     commit(sg);
-    cout << "commit end";
+    cout << "commit end" << endl;
     remove_edge(v1,v4,sg);
     ASSERT_EQ(4,num_edges(sg));
     EXPECT_FALSE(edge(v1,v4,sg).second);
     revert_changes(sg);
-    cout << "made revert";
+    cout << "made revert" << endl;
     ASSERT_TRUE(edge(v1,v4,sg).second);
-    cout << "edge recreated";
+    cout << "edge recreated" << endl;
     ASSERT_EQ(5,num_edges(sg));
-    cout << "count match";
+    cout << "count match" << endl;
     vertex_descriptor v5 = add_vertex(sg);
     add_edge(v5,v4,sg);
     add_edge(v3,v5,sg);
@@ -135,18 +135,18 @@ TEST(VersionedGraphTest, normalTopologicalSort) {
     add_edge(v2,v4,sg);
     add_edge(v1,v4,sg);
     add_edge(v2,v3,sg);
-    cout << "start commit";
+    cout << "start commit" << endl;
 //    commit(sg);
-//    cout << "commit end";
+//    cout << "commit end" << endl;
 //    remove_edge(v1,v4,sg);
 //    ASSERT_EQ(4,num_edges(sg));
 //    EXPECT_FALSE(edge(v1,v4,sg).second);
 //    undo_commit(sg);
-//    cout << "made undo";
+//    cout << "made undo" << endl;
     ASSERT_TRUE(edge(v1,v4,sg).second);
-    cout << "edge recreated";
+    cout << "edge recreated" << endl;
     ASSERT_EQ(5,num_edges(sg));
-    cout << "count match";
+    cout << "count match" << endl;
     vertex_descriptor v5 = add_vertex(sg);
     add_edge(v5,v4,sg);
     add_edge(v3,v5,sg);
@@ -154,16 +154,15 @@ TEST(VersionedGraphTest, normalTopologicalSort) {
     ASSERT_EQ(7,num_edges(sg));
 
 
-    cout << "make tolological sort";
+    cout << "make tolological sort" << endl;
     // Perform a topological sort.
     std::vector<vertex_descriptor> topo_order;
     boost::topological_sort(sg, std::back_inserter(topo_order));
     // Print the results.
-    cout << "Print the results";
+    cout << "Print the results" << endl;
     for(std::vector<vertex_descriptor>::const_iterator i = topo_order.begin();i != topo_order.end();++i)
     {
         std::cout << *i << std::endl;
-        cout << *i;
     }
 
 }
@@ -187,18 +186,18 @@ TEST(VersionedGraphTest, checkTopologicalSort) {
     add_edge(v2,v4,sg);
     add_edge(v1,v4,sg);
     add_edge(v2,v3,sg);
-    cout << "start commit";
+    cout << "start commit" << endl;
     commit(sg);
-    cout << "commit end";
+    cout << "commit end" << endl;
     remove_edge(v1,v4,sg);
     ASSERT_EQ(4,num_edges(sg));
     EXPECT_FALSE(edge(v1,v4,sg).second);
     revert_changes(sg);
-    cout << "made undo";
+    cout << "made undo" << endl;
     ASSERT_TRUE(edge(v1,v4,sg).second);
-    cout << "edge recreated";
+    cout << "edge recreated" << endl;
     ASSERT_EQ(5,num_edges(sg));
-    cout << "count match";
+    cout << "count match" << endl;
     vertex_descriptor v5 = add_vertex(sg);
     add_edge(v5,v4,sg);
     add_edge(v3,v5,sg);
@@ -206,16 +205,15 @@ TEST(VersionedGraphTest, checkTopologicalSort) {
     ASSERT_EQ(7,num_edges(sg));
 
 
-    cout << "make tolological sort";
+    cout << "make tolological sort" << endl;
     // Perform a topological sort.
     std::deque<int> topo_order;
     boost::topological_sort(sg.get_base_graph(), std::front_inserter(topo_order));
     // Print the results.
-    cout << "Print the results";
+    cout << "Print the results" << endl;
     for(std::deque<int>::const_iterator i = topo_order.begin();i != topo_order.end();++i)
     {
         std::cout << *i << std::endl;
-        cout << *i;
     }
 
 }

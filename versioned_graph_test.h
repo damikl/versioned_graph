@@ -101,15 +101,15 @@ public:
                                  const std::set<vertex_descriptor>& set,
                                  const std::pair<out_edge_iterator, out_edge_iterator>& ei) const {
         unsigned int out_edges_count = 0;
-        cout << "validate out_edges for: " << u;
+        cout << "validate out_edges for: " << u << endl;
         for(out_edge_iterator edge_iter = ei.first; edge_iter != ei.second; ++edge_iter) {
             ++out_edges_count;
             vertex_descriptor v = boost::target(*edge_iter,g);
-            cout << "found out_edge: "<< u << "->" << v;
+            cout << "found out_edge: "<< u << "->" << v << endl;
             ASSERT_EQ(u,boost::source(*edge_iter,g));
             ASSERT_TRUE(result_allowed(set,v));
         }
-        cout << "validate count of out_edges for: " << u;
+        cout << "validate count of out_edges for: " << u << endl;
         ASSERT_EQ(set.size(),out_edges_count);
     }
     virtual void check_out_edges(vertex_descriptor u,const std::set<vertex_descriptor>& set) const {
@@ -130,7 +130,7 @@ public:
         for(adjacency_iterator iter = ei.first; iter != ei.second; ++iter) {
             ++count;
             vertex_descriptor v = *iter;
-            cout << "adjacent vertex to "<< u << ": " << v;
+            cout << "adjacent vertex to "<< u << ": " << v << endl;
             ASSERT_TRUE(result_allowed(set,v));
         }
         ASSERT_EQ(set.size(),count);

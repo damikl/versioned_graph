@@ -106,6 +106,7 @@ remove_permanently(vertex_descriptor v){
     auto it = vertices_history.find(v);
     assert(it!=vertices_history.end());
     vertices_history.erase(it);
+    assert(!versioned_graph<graph_t>::non_removable_vertex::value && !vertices_history.empty() && "vertex descriptors invalidated");
     remove_vertex(v,get_base_graph());
 }
 
@@ -244,14 +245,14 @@ versioned_graph(const versioned_graph& g ) : direct_base(0),
 
     // Copy the stored vertex objects by adding each vertex
     // and copying its bundled property object.
-    vertex_iterator vi, vi_end;
+    typename graph_t::vertex_iterator vi, vi_end;
     vertices_size_type v_count = 0;
-    for (boost::tie(vi, vi_end) = vertices(g); vi != vi_end; ++vi) {
+    for (boost::tie(vi, vi_end) = vertices(g.get_base_graph()); vi != vi_end; ++vi) {
       vertex_descriptor v = add_vertex(get_base_graph());
-      (*this)[v] = g[*vi];
       auto iter = g.vertices_history.find(*vi);
       assert(iter!=g.vertices_history.end());
       vertices_history.insert(std::make_pair(v,iter->second));
+      (*this)[v] = g[*vi]; // set bundled properties
       if(!detail::is_deleted(detail::get_revision(iter->second.hist.top()))){
           ++v_count;
           // vertex marked as existing, so increase num_edges()
@@ -261,9 +262,9 @@ versioned_graph(const versioned_graph& g ) : direct_base(0),
     assert(v_count==vertex_count);
     // Copy the edges by adding each edge and copying its
     // property bundled object.
-    edge_iterator ei, ei_end;
+    typename graph_t::edge_iterator ei, ei_end;
     edges_size_type e_count = 0;
-    for (boost::tie(ei, ei_end) = edges(g); ei != ei_end; ++ei) {
+    for (boost::tie(ei, ei_end) = edges(g.get_base_graph()); ei != ei_end; ++ei) {
       edge_descriptor e;
       bool inserted;
       vertex_descriptor s = source(*ei,g), t = target(*ei,g);

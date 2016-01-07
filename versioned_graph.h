@@ -633,6 +633,7 @@ struct graph_tr<boost::versioned_graph<boost::adjacency_list<OutEdgeList,VertexL
     typedef typename boost::graph_traits<graph_type>::vertex_descriptor vertex_descriptor;
     typedef typename boost::graph_traits<graph_type>::vertices_size_type vertices_size_type;
     typedef typename boost::graph_traits<graph_type>::edges_size_type edges_size_type;
+    typedef typename std::is_same<boost::vecS,VertexList> non_removable_vertex;
     typedef typename boost::detail::adjacency_filter_removed_predicate<versioned_graph<graph_type>,typename graph_type::vertex_descriptor,true> inv_adjacency_predicate;
     typedef typename boost::filter_iterator<
                                     inv_adjacency_predicate,
@@ -660,7 +661,7 @@ struct graph_tr<boost::versioned_graph<boost::adjacency_matrix<Directed,VertexPr
     typedef typename boost::graph_bundle_type<graph_type>::type graph_bundled;
     typedef typename boost::graph_traits<graph_type>::vertices_size_type vertices_size_type;
     typedef typename boost::graph_traits<graph_type>::edges_size_type edges_size_type;
-
+    typedef std::true_type non_removable_vertex;
     graph_tr(typename graph_type::vertices_size_type n,const graph_bundled& p = graph_bundled()) : graph_type(n,p){
     }
     template <class EdgeIterator>
