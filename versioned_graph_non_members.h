@@ -127,6 +127,17 @@ auto out_edges(vertex_descriptor u, const versioned_graph<graph_t>& g){
 }
 
 template<typename graph_t, typename vertex_descriptor>
+auto edge_range(vertex_descriptor u,vertex_descriptor v, const versioned_graph<graph_t>& g){
+    typedef versioned_graph<graph_t> graph_type;
+
+    typename graph_type::edge_predicate predicate(&g);
+    auto base_iter_p = edge_range(u,v,g.get_base_graph());
+    typename graph_type::out_edge_iterator iter_begin(predicate, base_iter_p.first, base_iter_p.first);
+    typename graph_type::out_edge_iterator iter_end(predicate, base_iter_p.second, base_iter_p.second);
+    return std::make_pair(iter_begin,iter_end);
+}
+
+template<typename graph_t, typename vertex_descriptor>
 auto in_edges(vertex_descriptor u, const versioned_graph<graph_t>& g){
     typedef versioned_graph<graph_t> graph_type;
 

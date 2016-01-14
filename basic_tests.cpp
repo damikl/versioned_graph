@@ -7,22 +7,26 @@
 TEST(VersionedGraphTest, SimpleExample) {
     using namespace boost;
     using namespace std;
-    typedef versioned_graph<adjacency_list<boost::vecS, boost::listS, boost::directedS,int,string,int>> simple_graph;
+    typedef versioned_graph<adjacency_list<boost::vecS, boost::listS, boost::directedS,int,string,long>> simple_graph;
     simple_graph sg;
-//    typedef typename graph_traits<simple_graph>::vertices_size_type size_type;
-//    typedef typename boost::vertex_bundle_type<simple_graph>::type vertex_properties;
-//    typedef typename boost::edge_bundle_type<simple_graph>::type edge_properties;
+    typedef typename boost::vertex_bundle_type<simple_graph>::type vertex_properties;
+    ::testing::StaticAssertTypeEq<int, vertex_properties>();
+    typedef typename boost::edge_bundle_type<simple_graph>::type edge_properties;
+    ::testing::StaticAssertTypeEq<std::string, edge_properties>();
+    typedef typename boost::graph_bundle_type<simple_graph>::type graph_properties;
+    ::testing::StaticAssertTypeEq<long, graph_properties>();
     typedef typename boost::graph_traits<simple_graph>::vertex_descriptor vertex_descriptor;
     vertex_descriptor v1 = add_vertex(1,sg);
     vertex_descriptor v2 = add_vertex(2,sg);
     vertex_descriptor v3 = add_vertex(3,sg);
     vertex_descriptor v4 = add_vertex(6,sg);
-    add_edge(v1,v2,std::string("9"),sg);
-    add_edge(v1,v3,"8",sg);
-    add_edge(v2,v4,"7",sg);
-    add_edge(v1,v4,"11",sg);
-    add_edge(v2,v3,"12",sg);
+    add_edge(v1,v2,std::string("A1"),sg);
+    add_edge(v1,v3,"A2",sg);
+    add_edge(v2,v4,"A3",sg);
+    add_edge(v1,v4,"A4",sg);
+    add_edge(v2,v3,"A5",sg);
     sg[v4] = 4;
+    sg[edge(v2,v4,sg).first] = "A6";
     sg[graph_bundle] = 30;
     ASSERT_EQ(4,num_vertices(sg));
     ASSERT_EQ(5,num_edges(sg));
@@ -114,6 +118,25 @@ TEST(VersionedGraphTest, withoutTypes) {
     ASSERT_EQ(4,distance(iterv.first,iterv.second));
     auto itere = edges(sg);
     ASSERT_EQ(5,distance(itere.first,itere.second));
+
+    typedef versioned_graph<adjacency_list<boost::multisetS, boost::listS, boost::undirectedS>> parallel_graph;
+    typedef typename boost::graph_traits<parallel_graph>::vertex_descriptor vertex_descr;
+    parallel_graph g;
+    vertex_descr nv1 = add_vertex(g);
+    vertex_descr nv2 = add_vertex(g);
+    vertex_descr nv3 = add_vertex(g);
+    vertex_descr nv4 = add_vertex(g);
+    add_edge(nv1,nv2,g);
+    add_edge(nv1,nv3,g);
+    add_edge(nv2,nv4,g);
+    add_edge(nv1,nv4,g);
+    add_edge(nv2,nv3,g);
+    add_edge(nv2,nv3,g);
+    typedef typename graph_traits<parallel_graph>::edge_parallel_category category;
+    ::testing::StaticAssertTypeEq<boost::allow_parallel_edge_tag, category>();
+    auto p_iter = edge_range(nv2,nv3,g);
+    ASSERT_EQ(2,std::distance(p_iter.first,p_iter.second));
+
 }
 
 TEST(VersionedGraphTest, normalTopologicalSort) {
