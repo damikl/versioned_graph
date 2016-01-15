@@ -1,5 +1,6 @@
 #ifndef VERSIONED_GRAPH_NON_MEMBERS_H
 #define VERSIONED_GRAPH_NON_MEMBERS_H
+#include <list>
 
 namespace boost {
 
@@ -66,11 +67,12 @@ template<typename graph_t,typename vertex_descriptor>
 void clear_out_edges(vertex_descriptor u, versioned_graph<graph_t>& g){
     typedef versioned_graph<graph_t> graph_type;
     typedef typename graph_type::out_edge_iterator out_edge_iterator;
-    out_edge_iterator ei, ei_end, next;
-    boost::tie(ei, ei_end) = out_edges(u,g);
-    for (next = ei; ei != ei_end; ei = next) {
-        ++next;
-        g.set_deleted(ei);
+    out_edge_iterator ei, ei_end;
+    tie(ei, ei_end) = out_edges(u,g);
+    std::list<typename graph_type::edge_descriptor> to_remove;
+    copy(ei, ei_end, std::back_inserter(to_remove));
+    for(auto e : to_remove){
+        g.set_deleted(e);
     }
 }
 
@@ -78,11 +80,12 @@ template<typename graph_t,typename vertex_descriptor>
 void clear_in_edges(vertex_descriptor u, versioned_graph<graph_t>& g){
     typedef versioned_graph<graph_t> graph_type;
     typedef typename graph_type::in_edge_iterator in_edge_iterator;
-    in_edge_iterator ei, ei_end, next;
+    in_edge_iterator ei, ei_end;
     boost::tie(ei, ei_end) = in_edges(u,g);
-    for (next = ei; ei != ei_end; ei = next) {
-        ++next;
-        g.set_deleted(*ei);
+    std::list<typename graph_type::edge_descriptor> to_remove;
+    copy(ei, ei_end, std::back_inserter(to_remove));
+    for(auto e : to_remove){
+        g.set_deleted(e);
     }
 }
 
@@ -91,17 +94,16 @@ void clear_vertex(vertex_descriptor u, versioned_graph<graph_t>& g){
     typedef versioned_graph<graph_t> graph_type;
     typedef typename graph_type::edge_iterator edge_iterator;
     edge_iterator ei, ei_end, next;
-    std::stack<typename graph_type::edge_descriptor> st;
+    std::list<typename graph_type::edge_descriptor> to_remove;
     boost::tie(ei, ei_end) = edges(g);
     for (next = ei; ei != ei_end; ei = next) {
       ++next;
       if (source(*ei,g)==u || target(*ei,g)==u){
-        st.push(*ei);
+        to_remove.push_back(*ei);
       }
     }
-    while(!st.empty()){
-        g.set_deleted(st.top());
-        st.pop();
+    for(auto e : to_remove){
+        g.set_deleted(e);
     }
 }
 
@@ -211,11 +213,15 @@ void remove_edge(vertex_descriptor u,vertex_descriptor v, versioned_graph<graph_
     typedef typename graph_type::out_edge_iterator out_edge_iterator;
     out_edge_iterator ei, ei_end, next;
     boost::tie(ei, ei_end) = out_edges(u,g);
+    std::list<typename graph_type::edge_descriptor> to_remove;
     for (next = ei; ei != ei_end; ei = next) {
       ++next;
-      if (target(*ei,g)==v){
-        remove_edge(*ei, g);
-      }
+        if (target(*ei,g)==v){
+            to_remove.push_back(*ei);
+        }
+    }
+    for(auto e : to_remove){
+        remove_edge(e, g);
     }
 }
 
@@ -231,11 +237,15 @@ void remove_out_edge_if(vertex_descriptor u, predicate pred,
     typedef typename graph_type::out_edge_iterator out_edge_iterator;
     out_edge_iterator ei, ei_end, next;
     boost::tie(ei, ei_end) = out_edges(u,g);
+    std::list<typename graph_type::edge_descriptor> to_remove;
     for (next = ei; ei != ei_end; ei = next) {
       ++next;
       if (pred(*ei)){
-        remove_edge(ei, g);
+          to_remove.push_back(*ei);
       }
+    }
+    for(auto e : to_remove){
+        remove_edge(e, g);
     }
 }
 
@@ -246,11 +256,15 @@ void remove_in_edge_if(vertex_descriptor u, predicate pred,
     typedef typename graph_type::in_edge_iterator in_edge_iterator;
     in_edge_iterator ei, ei_end, next;
     boost::tie(ei, ei_end) = in_edges(u,g);
+    std::list<typename graph_type::edge_descriptor> to_remove;
     for (next = ei; ei != ei_end; ei = next) {
       ++next;
       if (pred(*ei)){
-        remove_edge(*ei, g);
+          to_remove.push_back(*ei);
       }
+    }
+    for(auto e : to_remove){
+        remove_edge(e, g);
     }
 }
 
@@ -262,12 +276,19 @@ remove_edge_if(predicate pred, versioned_graph<graph_t>& g)
   typedef typename graph_type::edge_iterator edge_iterator;
   edge_iterator ei, ei_end, next;
   boost::tie(ei, ei_end) = edges(g);
+  std::list<typename graph_type::edge_descriptor> to_remove;
   for (next = ei; ei != ei_end; ei = next) {
     ++next;
-    if (pred(*ei))
-      remove_edge(*ei, g);
+    if (pred(*ei)){
+        to_remove.push_back(*ei);
+    }
   }
+  for(auto e : to_remove){
+      remove_edge(e, g);
+  }
+
 }
+
 
 template<typename graph_t,typename vertex_size_type>
 typename versioned_graph<graph_t>::vertex_descriptor
