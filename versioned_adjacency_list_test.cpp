@@ -33,6 +33,7 @@ class ListGraphTest : public GraphTest<adjacency_list_graph>{
 public:
     typedef adjacency_list_graph graph_type;
     typedef typename adjacency_list_graph::inv_adjacency_iterator inv_adjacency_iterator;
+    typedef typename adjacency_list_graph::graph_type::inv_adjacency_iterator base_inv_adjacency_iterator;
     typedef typename graph_traits<adjacency_list_graph>::vertex_descriptor vertex_descriptor;
     typedef typename graph_type::out_edge_list_selector out_edge_list_selector;
     typedef typename graph_type::vertex_list_selector vertex_list_selector;
@@ -43,6 +44,17 @@ public:
                              const std::pair<inv_adjacency_iterator, inv_adjacency_iterator>& ei){
         unsigned int count = 0;
         for(inv_adjacency_iterator iter = ei.first; iter != ei.second; ++iter) {
+            ++count;
+            vertex_descriptor v = *iter;
+            cout << "adjacent vertex to "<< this->v1 << ": " << v << endl;
+            ASSERT_TRUE(this->result_allowed(set,v));
+        }
+        ASSERT_EQ(set.size(),count);
+    }
+    void check_inv_adjacency(const std::set<vertex_descriptor>& set,
+                             const std::pair<base_inv_adjacency_iterator, base_inv_adjacency_iterator>& ei){
+        unsigned int count = 0;
+        for(base_inv_adjacency_iterator iter = ei.first; iter != ei.second; ++iter) {
             ++count;
             vertex_descriptor v = *iter;
             cout << "adjacent vertex to "<< this->v1 << ": " << v << endl;
@@ -71,7 +83,8 @@ public:
 
         ASSERT_NO_FATAL_FAILURE(this->check_adjacency(this->v1,{this->v4,this->v2,this->v3}));
         ASSERT_NO_FATAL_FAILURE(this->check_adjacency(this->v2,{this->v4,this->v1}));
-        ASSERT_NO_FATAL_FAILURE(this->check_adjacency(this->v2,{this->v4,this->v1,this->v3},adjacent_vertices(this->v2,this->g.get_base_graph())));
+        ASSERT_NO_FATAL_FAILURE(this->check_adjacency(this->v2,{this->v4,this->v1,this->v3},
+                                                      adjacent_vertices(this->v2,this->g.get_base_graph())));
         ASSERT_NO_FATAL_FAILURE(this->check_adjacency(this->v3,{this->v1}));
         ASSERT_NO_FATAL_FAILURE(this->check_adjacency(this->v4,{this->v1,this->v2}));
 

@@ -26,6 +26,11 @@ public:
     typedef typename graph_traits<Graph>::out_edge_iterator out_edge_iterator;
     typedef typename graph_traits<Graph>::in_edge_iterator in_edge_iterator;
     typedef typename graph_traits<Graph>::adjacency_iterator adjacency_iterator;
+
+    typedef typename graph_traits<typename Graph::graph_type>::out_edge_iterator base_out_edge_iterator;
+    typedef typename graph_traits<typename Graph::graph_type>::in_edge_iterator base_in_edge_iterator;
+    typedef typename graph_traits<typename Graph::graph_type>::adjacency_iterator base_adjacency_iterator;
+
     typedef typename graph_traits<Graph>::directed_category directed_category;
     typedef typename graph_traits<Graph>::edge_parallel_category edge_parallel_category;
     typedef typename graph_traits<Graph>::vertices_size_type vertices_size_type;
@@ -97,12 +102,13 @@ public:
             return res;
         }
     }
-    virtual void check_out_edges(vertex_descriptor u,
+    template <typename desc_pair>
+    void check_out_edges(vertex_descriptor u,
                                  const std::set<vertex_descriptor>& set,
-                                 const std::pair<out_edge_iterator, out_edge_iterator>& ei) const {
+                                 const desc_pair& ei) const {
         unsigned int out_edges_count = 0;
         cout << "validate out_edges for: " << u << endl;
-        for(out_edge_iterator edge_iter = ei.first; edge_iter != ei.second; ++edge_iter) {
+        for(auto edge_iter = ei.first; edge_iter != ei.second; ++edge_iter) {
             ++out_edges_count;
             vertex_descriptor v = boost::target(*edge_iter,g);
             cout << "found out_edge: "<< u << "->" << v << endl;
@@ -113,12 +119,12 @@ public:
         ASSERT_EQ(set.size(),out_edges_count);
     }
     virtual void check_out_edges(vertex_descriptor u,const std::set<vertex_descriptor>& set) const {
-        std::pair<out_edge_iterator, out_edge_iterator> ei = out_edges(u,g);
+        auto ei = out_edges(u,g);
         check_out_edges(u,set,ei);
         ASSERT_EQ(set.size(),out_degree(u,g));
     }
     virtual void check_all_out_edges(vertex_descriptor u,const std::set<vertex_descriptor>& set) const {
-        std::pair<out_edge_iterator, out_edge_iterator> ei = out_edges(u,g.get_base_graph());
+        auto ei = out_edges(u,g.get_base_graph());
         check_out_edges(u,set,ei);
         ASSERT_EQ(set.size(),out_degree(u,g.get_base_graph()));
     }
@@ -128,6 +134,18 @@ public:
                          const std::pair<adjacency_iterator, adjacency_iterator>& ei) const {
         unsigned int count = 0;
         for(adjacency_iterator iter = ei.first; iter != ei.second; ++iter) {
+            ++count;
+            vertex_descriptor v = *iter;
+            cout << "adjacent vertex to "<< u << ": " << v << endl;
+            ASSERT_TRUE(result_allowed(set,v));
+        }
+        ASSERT_EQ(set.size(),count);
+    }
+    void check_adjacency(vertex_descriptor u,
+                         const std::set<vertex_descriptor>& set,
+                         const std::pair<base_adjacency_iterator, base_adjacency_iterator>& ei) const {
+        unsigned int count = 0;
+        for(base_adjacency_iterator iter = ei.first; iter != ei.second; ++iter) {
             ++count;
             vertex_descriptor v = *iter;
             cout << "adjacent vertex to "<< u << ": " << v << endl;

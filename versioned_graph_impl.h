@@ -1,5 +1,6 @@
 #ifndef VERSIONED_GRAPH_IMPL_H
 #define VERSIONED_GRAPH_IMPL_H
+#include <iostream>
 namespace boost {
 
 template<typename graph_t>
@@ -192,19 +193,24 @@ void versioned_graph<graph_t>::
 clean_edges_to_current_rev(){
     typename graph_traits<graph_t>::edge_iterator ei, ei_end, next;
     boost::tie(ei,ei_end) = boost::edges(get_base_graph());
+    std::deque<edge_descriptor> will_remove;
     for (next = ei; ei != ei_end; ei = next) {
         ++next;
-        edges_history_type& hist = get_history(*ei);
-        while(!hist.empty() && get_latest_revision(*ei)>=current_rev){
-            clean_history(hist,*ei);
+        edge_descriptor e =  *ei;
+        edges_history_type& hist = get_history(e);
+        while(!hist.empty() && get_latest_revision(e)>=current_rev){
+            clean_history(hist,e);
         }
         if(hist.empty()){
-            decr_degree(*ei);
-            remove_permanently(*ei);
-            --edge_count;
+            will_remove.push_back(e);
         } else {
-            (*this)[*ei] = property_handler<self_type,edge_descriptor,edge_bundled>::get_latest_bundled_value(*ei,*this);
+            (*this)[e] = property_handler<self_type,edge_descriptor,edge_bundled>::get_latest_bundled_value(e,*this);
         }
+    }
+    for(auto e : will_remove){
+        decr_degree(e);
+        remove_permanently(e);
+        --edge_count;
     }
 }
 
@@ -212,24 +218,26 @@ template<typename graph_t>
 void versioned_graph<graph_t>::
 clean_vertices_to_current_rev(){
     typename graph_traits<graph_t>::vertex_iterator vi, vi_end, next;
-
+    std::deque<vertex_descriptor> will_remove;
     boost::tie(vi, vi_end) = vertices(get_base_graph());
     for (next = vi; vi != vi_end; vi = next) {
         ++next;
-
-        vertices_history_type& hist = get_history(*vi);
-        while(!hist.empty() && get_latest_revision(*vi)>=current_rev){
+        vertex_descriptor v = *vi;
+        vertices_history_type& hist = get_history(v);
+        while(!hist.empty() && get_latest_revision(v)>=current_rev){
             clean_history(hist);
         }
         if(hist.empty()){
             // vertex was created in this or younger revision, we need to delete it
-            vertex_descriptor v = *vi;
-            remove_permanently(v);
-            --vertex_count;
-            // completly removed vertex history record
+            will_remove.push_back(v);
         } else {
-            (*this)[*vi] = property_handler<self_type,vertex_descriptor,vertex_bundled>::get_latest_bundled_value(*vi,*this);
+            (*this)[v] = property_handler<self_type,vertex_descriptor,vertex_bundled>::get_latest_bundled_value(v,*this);
         }
+    }
+    for(auto v : will_remove){
+        remove_permanently(v);
+        --vertex_count;
+        // completly removed vertex history record
     }
 }
 
