@@ -1,3 +1,8 @@
+/***
+ * author: Damian Lipka
+ *
+ * */
+
 #ifndef VERSIONED_GRAPH_H
 #define VERSIONED_GRAPH_H
 #include <boost/graph/adjacency_list.hpp>

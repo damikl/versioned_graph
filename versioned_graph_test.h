@@ -1,3 +1,8 @@
+/***
+ * author: Damian Lipka
+ *
+ * */
+
 #ifndef VERSIONED_GRAPH_TEST_H
 #define VERSIONED_GRAPH_TEST_H
 

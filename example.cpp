@@ -1,3 +1,8 @@
+/***
+ * author: Damian Lipka
+ *
+ * */
+
 #include "versioned_graph.h"
 using namespace boost;
 using namespace std;

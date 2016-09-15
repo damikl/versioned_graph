@@ -1,3 +1,8 @@
+/***
+ * author: Damian Lipka
+ *
+ * */
+
 #ifndef VERSIONED_GRAPH_NON_MEMBERS_H
 #define VERSIONED_GRAPH_NON_MEMBERS_H
 #include <list>

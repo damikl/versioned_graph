@@ -1,3 +1,8 @@
+/***
+ * author: Damian Lipka
+ *
+ * */
+
 #ifndef VERSIONED_GRAPH_IMPL_H
 #define VERSIONED_GRAPH_IMPL_H
 #include <iostream>
