@@ -9,28 +9,28 @@
 namespace boost {
 
 template<typename graph_t>
-auto versioned_graph<graph_t>::
+typename graph_traits<graph_t>::vertex_iterator versioned_graph<graph_t>::
 vertices_begin() const {
     typename graph_traits<graph_t>::vertex_iterator iter = boost::vertices(get_base_graph()).first;
     return iter;
 }
 
 template<typename graph_t>
-auto versioned_graph<graph_t>::
+typename graph_traits<graph_t>::vertex_iterator versioned_graph<graph_t>::
 vertices_end() const {
     typename graph_traits<graph_t>::vertex_iterator iter = boost::vertices(get_base_graph()).second;
     return iter;
 }
 
 template<typename graph_t>
-auto versioned_graph<graph_t>::
+typename graph_traits<graph_t>::edge_iterator versioned_graph<graph_t>::
 edges_begin() const {
     typename graph_traits<graph_t>::edge_iterator iter = boost::edges(get_base_graph()).first;
     return iter;
 }
 
 template<typename graph_t>
-auto versioned_graph<graph_t>::
+typename graph_traits<graph_t>::edge_iterator versioned_graph<graph_t>::
 edges_end() const {
     typename graph_traits<graph_t>::edge_iterator iter = boost::edges(get_base_graph()).second;
     return iter;

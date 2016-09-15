@@ -3,7 +3,7 @@ project(BackTracking)
 enable_testing()
 find_package (Threads)
 
-ADD_DEFINITIONS ( -Wall -DDEBUG -pedantic -Wextra -std=c++1y -g -D_GLIBCXX_DEBUG -ftemplate-backtrace-limit=0 )
+ADD_DEFINITIONS ( -Wall -DDEBUG -pedantic -Wextra -std=c++11 -g -D_GLIBCXX_DEBUG -ftemplate-backtrace-limit=0 )
 
 ADD_DEFINITIONS ( -DTEST_ONLY_LIST )
 add_executable(BasicTest versioned_graph.h versioned_graph_test.h versioned_graph_impl.h versioned_graph_non_members.h basic_tests.cpp)

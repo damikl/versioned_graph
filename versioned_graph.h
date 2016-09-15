@@ -388,10 +388,10 @@ public:
 
     typedef detail::vertex_data<vertices_history_type,degree_size_type,directed_category> vertex_stored_data;
 
-    auto vertices_begin() const;
-    auto vertices_end() const;
-    auto edges_begin() const;
-    auto edges_end() const;
+    typename graph_traits<graph_t>::vertex_iterator vertices_begin() const;
+    typename graph_traits<graph_t>::vertex_iterator vertices_end() const;
+    typename graph_traits<graph_t>::edge_iterator edges_begin() const;
+    typename graph_traits<graph_t>::edge_iterator edges_end() const;
 
     versioned_graph() : direct_base(0,graph_bundled()),vertex_count(0),edge_count(0),current_rev(revision::create_start()) {}
     versioned_graph(vertices_size_type n, const graph_bundled& p = graph_bundled()) : direct_base(n,p),vertex_count(n),edge_count(0),current_rev(revision::create_start()) {

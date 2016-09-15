@@ -10,29 +10,34 @@
 namespace boost {
 
 template<typename graph_t>
-auto add_vertex(versioned_graph<graph_t>& g){
+typename versioned_graph<graph_t>::vertex_descriptor
+add_vertex(versioned_graph<graph_t>& g){
     typedef typename versioned_graph<graph_t>::vertex_bundled bundled_type;
     return g.generate_vertex(bundled_type());
 }
 
 template<typename graph_t, typename propertyType>
-auto add_vertex(const propertyType& p, versioned_graph<graph_t>& g){
+typename versioned_graph<graph_t>::vertex_descriptor
+add_vertex(const propertyType& p, versioned_graph<graph_t>& g){
     return g.generate_vertex(p);
 }
 
 template<typename graph_t, typename vertex_descriptor, typename propertyType>
-auto add_edge(vertex_descriptor u,vertex_descriptor v,const propertyType& p, versioned_graph<graph_t>& g){
+std::pair<typename versioned_graph<graph_t>::edge_descriptor,bool>
+add_edge(vertex_descriptor u,vertex_descriptor v,const propertyType& p, versioned_graph<graph_t>& g){
     return g.generate_edge(p,u,v);
 }
 
 template<typename graph_t,typename vertex_descriptor>
-auto add_edge(vertex_descriptor u,vertex_descriptor v, versioned_graph<graph_t>& g){
+std::pair<typename versioned_graph<graph_t>::edge_descriptor,bool>
+add_edge(vertex_descriptor u,vertex_descriptor v, versioned_graph<graph_t>& g){
     typedef typename versioned_graph<graph_t>::edge_bundled bundled_type;
     return g.generate_edge(bundled_type(),u,v);
 }
 
 template<typename graph_t,typename vertex_descriptor>
-auto edge(vertex_descriptor u,vertex_descriptor v, const versioned_graph<graph_t>& g) {
+std::pair<typename versioned_graph<graph_t>::edge_descriptor,bool>
+edge(vertex_descriptor u,vertex_descriptor v, const versioned_graph<graph_t>& g) {
     using namespace detail;
     typedef versioned_graph<graph_t> graph_type;
     typename graph_type::out_edge_iterator it,end;
@@ -47,7 +52,9 @@ auto edge(vertex_descriptor u,vertex_descriptor v, const versioned_graph<graph_t
 }
 
 template<typename graph_t>
-auto edges(const versioned_graph<graph_t>& g){
+std::pair<typename versioned_graph<graph_t>::edge_iterator,
+          typename versioned_graph<graph_t>::edge_iterator>
+edges(const versioned_graph<graph_t>& g){
     typedef versioned_graph<graph_t> graph_type;
     typename graph_type::edge_predicate predicate(&g);
     typename graph_type::edge_iterator iter_begin(predicate, g.edges_begin(), g.edges_end());
@@ -113,17 +120,21 @@ void clear_vertex(vertex_descriptor u, versioned_graph<graph_t>& g){
 }
 
 template<typename graph_t>
-auto num_vertices(const versioned_graph<graph_t>& g){
+typename versioned_graph<graph_t>::vertices_size_type
+num_vertices(const versioned_graph<graph_t>& g){
     return g.num_vertices();
 }
 
 template<typename graph_t>
-auto num_edges(const versioned_graph<graph_t>& g){
+typename versioned_graph<graph_t>::edges_size_type
+num_edges(const versioned_graph<graph_t>& g){
     return g.num_edges();
 }
 
 template<typename graph_t, typename vertex_descriptor>
-auto out_edges(vertex_descriptor u, const versioned_graph<graph_t>& g){
+std::pair<typename versioned_graph<graph_t>::out_edge_iterator,
+          typename versioned_graph<graph_t>::out_edge_iterator>
+out_edges(vertex_descriptor u, const versioned_graph<graph_t>& g){
     typedef versioned_graph<graph_t> graph_type;
 
     typename graph_type::edge_predicate predicate(&g);
@@ -134,7 +145,9 @@ auto out_edges(vertex_descriptor u, const versioned_graph<graph_t>& g){
 }
 
 template<typename graph_t, typename vertex_descriptor>
-auto edge_range(vertex_descriptor u,vertex_descriptor v, const versioned_graph<graph_t>& g){
+std::pair<typename versioned_graph<graph_t>::out_edge_iterator,
+          typename versioned_graph<graph_t>::out_edge_iterator>
+edge_range(vertex_descriptor u,vertex_descriptor v, const versioned_graph<graph_t>& g){
     typedef versioned_graph<graph_t> graph_type;
 
     typename graph_type::edge_predicate predicate(&g);
@@ -145,7 +158,9 @@ auto edge_range(vertex_descriptor u,vertex_descriptor v, const versioned_graph<g
 }
 
 template<typename graph_t, typename vertex_descriptor>
-auto in_edges(vertex_descriptor u, const versioned_graph<graph_t>& g){
+std::pair<typename versioned_graph<graph_t>::in_edge_iterator,
+          typename versioned_graph<graph_t>::in_edge_iterator>
+in_edges(vertex_descriptor u, const versioned_graph<graph_t>& g){
     typedef versioned_graph<graph_t> graph_type;
 
     typename graph_type::edge_predicate predicate(&g);
@@ -156,17 +171,21 @@ auto in_edges(vertex_descriptor u, const versioned_graph<graph_t>& g){
 }
 
 template<typename graph_t, typename vertex_descriptor>
-auto out_degree(vertex_descriptor u, const versioned_graph<graph_t>& g){
+typename versioned_graph<graph_t>::degree_size_type
+out_degree(vertex_descriptor u, const versioned_graph<graph_t>& g){
     return g.get_out_degree(u);
 }
 
 template<typename graph_t, typename vertex_descriptor>
-auto in_degree(vertex_descriptor u, const versioned_graph<graph_t>& g){
+typename versioned_graph<graph_t>::degree_size_type
+in_degree(vertex_descriptor u, const versioned_graph<graph_t>& g){
     return g.get_in_degree(u);
 }
 
 template<typename graph_t, typename vertex_descriptor>
-auto adjacent_vertices(vertex_descriptor u, const versioned_graph<graph_t>& g){
+std::pair<typename versioned_graph<graph_t>::adjacency_iterator,
+          typename versioned_graph<graph_t>::adjacency_iterator>
+adjacent_vertices(vertex_descriptor u, const versioned_graph<graph_t>& g){
     typedef versioned_graph<graph_t> graph_type;
 
     auto adj = boost::adjacent_vertices(u,g.get_base_graph());
@@ -177,7 +196,9 @@ auto adjacent_vertices(vertex_descriptor u, const versioned_graph<graph_t>& g){
 }
 
 template<typename graph_t, typename vertex_descriptor>
-auto inv_adjacent_vertices(vertex_descriptor u, const versioned_graph<graph_t>& g){
+std::pair<typename versioned_graph<graph_t>::inv_adjacency_iterator,
+          typename versioned_graph<graph_t>::inv_adjacency_iterator>
+inv_adjacent_vertices(vertex_descriptor u, const versioned_graph<graph_t>& g){
     typedef versioned_graph<graph_t> graph_type;
 
     auto adj = boost::inv_adjacent_vertices(u,g.get_base_graph());
@@ -188,22 +209,22 @@ auto inv_adjacent_vertices(vertex_descriptor u, const versioned_graph<graph_t>& 
 }
 
 template<typename graph_t>
-auto commit(versioned_graph<graph_t>& g){
+void commit(versioned_graph<graph_t>& g){
     return g.commit();
 }
 
 template<typename graph_t>
-auto undo_commit(versioned_graph<graph_t>& g){
+void undo_commit(versioned_graph<graph_t>& g){
     return g.undo_commit();
 }
 
 template<typename graph_t>
-auto revert_changes(versioned_graph<graph_t>& g){
+void revert_changes(versioned_graph<graph_t>& g){
     return g.revert_uncommited();
 }
 
 template<typename graph_t>
-auto erase_history(versioned_graph<graph_t>& g){
+void erase_history(versioned_graph<graph_t>& g){
     return g.erase_history();
 }
 
