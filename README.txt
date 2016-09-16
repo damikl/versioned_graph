@@ -44,7 +44,7 @@ Kompilacja:
 
 plik example.cpp
 można skompilować za pomocą:
-g++ -std=c++1y example.cpp
+g++ -std=c++11 example.cpp
 
 Testy można skompilować za pomocą
 cmake <ścieżka do tego katalogu>
