@@ -89,27 +89,20 @@ void assign_task(simple_graph& sg, vector<string>& vec, vertex_descriptor& v, co
 bool worlplan_generator_demo(simple_graph& sg){
 	vector<string> first, second;
 	if(validate_state1(sg)) {
-		assign_task()
-		int start = first.size()*5;
-        assert(check_slot(b,start,sg));
-		for(int i=0; i < (sg[b].duration/5.0f); ++i){ 
-			first.push_back("B");
-		}
-		
-		start = second.size()*5;
-		assert(check_slot(c,start,sg));
-		for(int i=0; i < (sg[c].duration/5.0f); ++i){ 
-			second.push_back("C");
-		}
-		
-		start = first.size()*5;
-		assert(check_slot(a,start,sg));
-		for(int i=0; i < (sg[a].duration/5.0f); ++i){ 
-			first.push_back("A");
-		}
-		
-		
+		assign_task(sg,first,b,string("B"));
+		assign_task(sg,second,c,string("C"));
+		assign_task(sg,first,a,string("A"));
+	} else if(validate_state2(sg)){
+		assign_task(sg,first,a,string("A"));
+		assign_task(sg,second,f,string("F"));
+		assign_task(sg,second,g,string("G"));
+		assign_task(sg,first,d,string("D"));
+		assign_task(sg,second,c,string("C"));
+		assign_task(sg,second,b,string("B"));
+	} else {
+		return false;
 	}
+	return true;
 }
 
 bool valid_workplan_exists(simple_graph& sg){
