@@ -112,7 +112,8 @@ remove_permanently(vertex_descriptor v){
     auto it = vertices_history.find(v);
     assert(it!=vertices_history.end());
     vertices_history.erase(it);
-    assert(!versioned_graph<graph_t>::non_removable_vertex::value && !vertices_history.empty() && "vertex descriptors invalidated");
+    assert(!versioned_graph<graph_t>::non_removable_vertex::value && "vertex descriptors invalidated");
+    assert(!vertices_history.empty());
     remove_vertex(v,get_base_graph());
 }
 
@@ -196,6 +197,7 @@ clean_history( vertices_history_type& hist){
 template<typename graph_t>
 void versioned_graph<graph_t>::
 clean_edges_to_current_rev(){
+    assert(current_rev > detail::revision::create_start());
     typename graph_traits<graph_t>::edge_iterator ei, ei_end, next;
     boost::tie(ei,ei_end) = boost::edges(get_base_graph());
     std::deque<edge_descriptor> will_remove;
@@ -222,6 +224,7 @@ clean_edges_to_current_rev(){
 template<typename graph_t>
 void versioned_graph<graph_t>::
 clean_vertices_to_current_rev(){
+    assert(current_rev > detail::revision::create_start());
     typename graph_traits<graph_t>::vertex_iterator vi, vi_end, next;
     std::deque<vertex_descriptor> will_remove;
     boost::tie(vi, vi_end) = vertices(get_base_graph());

@@ -63,11 +63,23 @@ void create_state3(simple_graph& sg){
 void verify_state3(const simple_graph& sg){
     assert(num_edges(sg)==3);
     assert(num_vertices(sg)==4);
+    assert(sg[edge(c,c,sg).first]==9);
+    assert(sg[graph_bundle]=="60%");
 }
 
 void create_state4(simple_graph& sg){
     sg[edge(a,c,sg).first] = 1;
     add_edge(c,f,3,sg);
+    sg[d] = 7;
+}
+void verify_state4(const simple_graph& sg){
+    assert(edge(c,f,sg).second);
+    assert(num_edges(sg)==4);
+    assert(num_vertices(sg)==4);
+    assert(sg[edge(a,c,sg).first]==1);
+    assert(sg[edge(c,f,sg).first]==3);
+    assert(sg[d]==7);
+
 }
 
 int main(){
@@ -77,12 +89,16 @@ int main(){
     create_state1(sg);
     verify_state1(sg);
     commit(sg);		// stan 1
+    revert_changes(sg); // brak zmian
+    verify_state1(sg);
 
 
     create_state2(sg);
     verify_state2(sg);
     // revert_changes(sg); verify_state1(sg);
     commit(sg); // stan 2
+    revert_changes(sg); // brak zmian
+    verify_state2(sg);
 
 
     create_state3(sg);
@@ -93,6 +109,7 @@ int main(){
     // undo_commit(sg);  verify_state2(sg);
 
     create_state4(sg);
+    verify_state4(sg);
     revert_changes(sg); // stan 3
     verify_state3(sg);
     undo_commit(sg);
