@@ -1,5 +1,5 @@
 Implementacja typu versioned_graph rozszerzajacego typy adjacency_list oraz adjacency_matrix zdefiniowane w
-Boost Graph Library w wersji 1.58.0
+Boost Graph Library w wersji 1.55.0
 o możliowść zapisywania aktualnego stanu grafu oraz jego póżniejszego przywracania.
 
 Program został stworzony w ramach pracy magisterskiej
@@ -17,7 +17,6 @@ Przywraca ostatnio zapisany stan grafu.
 
 undo_commit(versioned_graph& g)
 Przywraca przedostatni stan grafu oraz usuwa ostatni punkt zapisu.
-
 
 erase_history(versioned_graph& g)
 Usuwa całkowicie historię zapisanych stanów.
@@ -45,6 +44,10 @@ Kompilacja:
 plik example.cpp
 można skompilować za pomocą:
 g++ -std=c++11 example.cpp
+
+Program był testowany dla g++ w wersji 4.9.4
+biblioteki boost w wersji 1.55.0
+na systemie ubuntu 14.04.1
 
 Testy można skompilować za pomocą
 cmake <ścieżka do tego katalogu>

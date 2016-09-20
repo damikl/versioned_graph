@@ -60,7 +60,6 @@ bool check_slot(const vertex_descriptor& v,int start, const simple_graph& sg){
             return false;
         }
     }
-    cout << "checked " << d.to_str() <<  endl;
     return true;
 }
 
@@ -108,7 +107,7 @@ void assign_task(simple_graph& sg, vector<string>& vec, vertex_descriptor& v, co
 		vec.push_back(label);
 	}
 }
-bool worlplan_generator_demo(simple_graph& sg){
+bool workplan_generator_demo(simple_graph& sg){
 	vector<string> first, second;
 	if(validate_state1(sg)) {
 		assign_task(sg,first,b,string("B"));
@@ -122,9 +121,10 @@ bool worlplan_generator_demo(simple_graph& sg){
 		assign_task(sg,second,c,string("C"));
 		assign_task(sg,second,b,string("B"));
 	} else {
+        cout << "Nie mozna znalezc poprawnego podzialu pracy" << endl;
 		return false;
 	}
-	cout << "Pierwszy: "
+    cout << "Pierwszy: ";
 	for(auto& i : first){
         std::cout << i << ' ';
 	}
@@ -137,48 +137,9 @@ bool worlplan_generator_demo(simple_graph& sg){
 }
 
 bool valid_workplan_exists(simple_graph& sg){
-    vector<vertex_descriptor> first, second;
-    auto iter_p = vertices(sg);
-    bool result = false;
-	
-    for(auto v_it = iter_p.first; v_it!=iter_p.second; ++v_it){
-        vertex_descriptor v = *v_it;
-        if(contains(first,v) || contains(second,v)){
-            continue;
-        }
-
-        Details adj = sg[v];
-        int start = first.size()*5;
-        if(check_slot(v,start,sg)){
-            adj.take(start);
-            first.push_back(v);
-            cout << "added " << adj.to_str() <<" on pos" << adj.start_time << " to first" << endl;
-            result = valid_workplan_exists(sg,first,second);
-            if(!result){
-                cout << "failed to add " << adj.to_str() <<" on pos" << adj.start_time << " to first" << endl;
-                first.pop_back();
-            }
-        } else {
-            start = second.size()*5;
-            if(check_slot(v,start,sg)){
-                adj.take(start);
-                second.push_back(v);
-                cout << "added " << adj.to_str() <<" on pos" << adj.start_time << " to second" << endl;
-                result = valid_workplan_exists(sg,first,second);
-                if(!result){
-                    cout << "failed to add " << adj.to_str() <<" on pos" << adj.start_time << " to second" << endl;
-                    first.pop_back();
-                }
-            }
-        }
-        if(!result){
-            adj.clear();
-        }
-    }
-    return result;
+    // Pelny algorytm jest poza zakresem tej pracy
+    return workplan_generator_demo(sg);
 }
-
-
 
 void create_state1(simple_graph& sg){
     a = add_vertex(Details(15,30),sg);
@@ -187,8 +148,6 @@ void create_state1(simple_graph& sg){
     add_edge(a,c,sg);
     add_edge(a,b,sg);
 }
-
-
 
 void create_state2(simple_graph& sg){
     d = add_vertex(Details(20,40),sg);
@@ -216,21 +175,19 @@ int main(){
 
     create_state1(sg);
     bool result = valid_workplan_exists(sg);
-    cout << "First check: " << result;
+    cout << "Wynik pierwszego etapu: " << (result ? "Podział udany" : "Podział nieudany" ) << endl;
     commit(sg);		// stan 1
     revert_changes(sg); // brak zmian
 
-
     create_state2(sg);
     result = valid_workplan_exists(sg);
-    cout << "Second check: " << result;
+    cout << "Wynik etapu drugiego: " << (result ? "Podział udany" : "Podział nieudany" ) << endl;
     // revert_changes(sg); verify_state1(sg);
     commit(sg); // stan 2
 
-
     create_state3(sg);
     result = valid_workplan_exists(sg);
-    cout << "Third check: " << result;
+    cout << "Wynik etapu trzeciego: " << (result ? "Podział udany" : "Podział nieudany" ) << endl;
 
 
 }

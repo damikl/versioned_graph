@@ -11,6 +11,7 @@ add_executable(VersionedAdjacencyMatrixTest versioned_graph.h versioned_graph_te
 add_executable(VersionedAdjacencyListTest versioned_graph.h versioned_graph_non_members.h versioned_adjacency_list_test.cpp)
 add_executable(Example example.cpp)
 add_executable(Example1 example1.cpp)
+add_executable(Example2 example1.1.cpp)
 
 
 target_link_libraries(BasicTest gtest gtest_main pthread)
