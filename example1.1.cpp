@@ -79,6 +79,28 @@ bool validate_state1(const simple_graph& sg){
 	return true;
 }
 
+bool validate_state2(const simple_graph& sg){
+	if(!edge(d,f,sg).second) return false;
+    if(!edge(d,g,sg).second) return false;
+    if(num_edges(sg)!=5) return false;
+    if(num_vertices(sg)!=6) return false;
+    if(sg[d].duration!=20) return false;
+	if(sg[f].duration!=10) return false;
+	if(sg[g].duration!=5) return false;
+	return true;
+}
+
+bool validate_state3(const simple_graph& sg){
+	if(!edge(c,h,sg).second) return false;
+    if(!edge(f,i,sg).second) return false;
+    if(num_edges(sg)!=10) return false;
+    if(num_vertices(sg)!=9) return false;
+    if(sg[h].duration!=10) return false;
+	if(sg[j].duration!=10) return false;
+	if(sg[i].duration!=15) return false;
+	return true;
+}
+
 void assign_task(simple_graph& sg, vector<string>& vec, vertex_descriptor& v, const string& label){
 	int start = vec.size()*5;
 	assert(check_slot(v,start,sg));
@@ -102,6 +124,15 @@ bool worlplan_generator_demo(simple_graph& sg){
 	} else {
 		return false;
 	}
+	cout << "Pierwszy: "
+	for(auto& i : first){
+        std::cout << i << ' ';
+	}
+	cout << endl << "Drugi:    ";
+	for(auto& i : second){
+        std::cout << i << ' ';
+	}
+	cout << endl;
 	return true;
 }
 
@@ -157,16 +188,7 @@ void create_state1(simple_graph& sg){
     add_edge(a,b,sg);
 }
 
-bool validate_state2(const simple_graph& sg){
-	if(!edge(d,f,sg).second) return false;
-    if(!edge(d,g,sg).second) return false;
-    if(num_edges(sg)!=5) return false;
-    if(num_vertices(sg)!=6) return false;
-    if(sg[d].duration!=20) return false;
-	if(sg[f].duration!=10) return false;
-	if(sg[g].duration!=5) return false;
-	return true;
-}
+
 
 void create_state2(simple_graph& sg){
     d = add_vertex(Details(20,40),sg);
@@ -175,17 +197,6 @@ void create_state2(simple_graph& sg){
     add_edge(a,d,sg);
     add_edge(d,g,sg);
     add_edge(d,f,sg);
-}
-
-bool validate_state3(const simple_graph& sg){
-	if(!edge(c,h,sg).second) return false;
-    if(!edge(f,i,sg).second) return false;
-    if(num_edges(sg)!=10) return false;
-    if(num_vertices(sg)!=9) return false;
-    if(sg[h].duration!=10) return false;
-	if(sg[j].duration!=10) return false;
-	if(sg[i].duration!=15) return false;
-	return true;
 }
 
 void create_state3(simple_graph& sg){
