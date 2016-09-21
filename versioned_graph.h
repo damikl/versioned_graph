@@ -124,13 +124,12 @@ public:
         }
     }
     void clear(){
-        auto prop = hist.top().second;
         while(!hist.empty()){
             hist.pop();
         }
-        hist.push(std::make_pair(revision::create_start(),prop));
     }
-    T get_latest() const{
+    const T& get_latest() const{
+        BOOST_ASSERT_MSG(!hist.empty(),"Trying to obtain graph bundle from empty history");
         return hist.top().second;
     }
 
@@ -422,7 +421,6 @@ public:
             ++i;
         }
         edge_count= i;
-
     }
     /**
      * method used in add_vertex()
@@ -546,6 +544,15 @@ public:
         auto iter = edges_history.find(key);
         assert(iter!=edges_history.end());
         return iter->second;
+    }
+    const vertex_bundled& get_latest_from_history(vertex_descriptor v) const {
+        return property_handler<self_type,vertex_descriptor,vertex_bundled>::get_latest_bundled_value(v,*this);
+    }
+    const edge_bundled& get_latest_from_history(edge_descriptor e) const {
+        return property_handler<self_type,edge_descriptor,edge_bundled>::get_latest_bundled_value(e,*this);
+    }
+    const graph_bundled& get_latest_from_history() const {
+        return graph_bundled_history.get_latest();
     }
 protected:
     /**

@@ -393,13 +393,12 @@ void versioned_graph<graph_t>::erase_history(){
         auto ei = edges(get_base_graph());
         for(auto edge_iter = ei.first; edge_iter != ei.second; ) {
             edges_history_type& hist = get_history(*edge_iter);
-            auto prop = property_handler<self_type,edge_descriptor,edge_bundled>::get_latest_bundled_value(*edge_iter,*this);
             const revision old_rev = get_latest_revision(*edge_iter);
             while(!hist.empty()){
                 hist.pop(); // clear history
             }
             // recreate single entry
-            hist.push(make_entry(revision::create_start(),prop));
+            hist.push(make_entry(revision::create_start(),(*this)[*edge_iter]));
             assert(get_latest_revision(*edge_iter)==revision::create_start());
             if(is_deleted(old_rev)){ // edges marked as deleted,m should not exist after erasing history
                 auto old = edge_iter;
@@ -413,13 +412,12 @@ void versioned_graph<graph_t>::erase_history(){
     auto vi = boost::vertices(get_base_graph());
     for(auto vertex_iter = vi.first; vertex_iter != vi.second; ++vertex_iter) {
         vertices_history_type& hist = get_history(*vertex_iter);
-        auto prop = property_handler<self_type,vertex_descriptor,vertex_bundled>::get_latest_bundled_value(*vertex_iter,*this);
         const revision old_rev = get_latest_revision(*vertex_iter);
         while(!hist.empty()){
             hist.pop(); // clear history
         }
         // recreate single entry
-        hist.push(make_entry(revision::create_start(),prop));
+        hist.push(make_entry(revision::create_start(),(*this)[*vertex_iter]));
         assert(get_latest_revision(*vertex_iter)==revision::create_start());
         if(is_deleted(old_rev)){ // vertices marked as deleted,m should not exist after erasing history
             auto old = vertex_iter;

@@ -67,7 +67,12 @@ TEST(VersionedGraphTest, SimpleExample) {
     ASSERT_EQ(5,num_edges(sg));
     ASSERT_EQ(4,sg[v4]);
     ASSERT_EQ(30,sg[graph_bundle]);
-
+    erase_history(sg);
+    ASSERT_EQ(4,num_vertices(sg));
+    ASSERT_EQ(5,num_edges(sg));
+    ASSERT_EQ(4,sg[v4]);
+    ASSERT_EQ(30,sg[graph_bundle]);
+    ASSERT_EQ(4,sg.get_latest_from_history(v4));
 }
 
 TEST(VersionedGraphTest, withoutTypes) {
@@ -113,6 +118,10 @@ TEST(VersionedGraphTest, withoutTypes) {
     ASSERT_EQ(4,distance(iterv.first,iterv.second));
     auto itere = edges(sg);
     ASSERT_EQ(5,distance(itere.first,itere.second));
+    erase_history(sg);
+    ASSERT_EQ(4,num_vertices(sg));
+    ASSERT_EQ(5,num_edges(sg));
+
 
     typedef versioned_graph<adjacency_list<boost::multisetS, boost::listS, boost::undirectedS>> parallel_graph;
     typedef typename boost::graph_traits<parallel_graph>::vertex_descriptor vertex_descr;
