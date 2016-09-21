@@ -4,6 +4,13 @@
  * */
 
 #include "versioned_graph.h"
+#include <stdlib.h>
+#include <time.h>
+
+/***
+ * Przykłady zastosowania versioned_graph na potrzeby rozdziału 3.3.2
+ * */
+
 using namespace boost;
 using namespace std;
 typedef versioned_graph<adjacency_list<boost::listS, boost::listS, boost::directedS, int, int, string>> simple_graph;
@@ -27,6 +34,7 @@ void verify_state1(const simple_graph& sg){
     assert(sg[edge(a,b,sg).first]==7);
     assert(sg[edge(a,c,sg).first]==6);
     assert(sg[graph_bundle]=="10%");
+    cout << "Graf jest w stanie 1" << endl;
 }
 
 void create_state2(simple_graph& sg){
@@ -48,6 +56,7 @@ void verify_state2(const simple_graph& sg){
     assert(num_vertices(sg)==4);
     assert(sg[edge(c,c,sg).first]==7);
     assert(sg[graph_bundle]=="30%");
+    cout << "Graf jest w stanie 2" << endl;
 }
 
 void create_state3(simple_graph& sg){
@@ -65,6 +74,7 @@ void verify_state3(const simple_graph& sg){
     assert(num_vertices(sg)==4);
     assert(sg[edge(c,c,sg).first]==9);
     assert(sg[graph_bundle]=="60%");
+    cout << "Graf jest w stanie 3" << endl;
 }
 
 void create_state4(simple_graph& sg){
@@ -79,7 +89,7 @@ void verify_state4(const simple_graph& sg){
     assert(sg[edge(a,c,sg).first]==1);
     assert(sg[edge(c,f,sg).first]==3);
     assert(sg[d]==7);
-
+    cout << "Graf jest w stanie 4" << endl;
 }
 
 int main(){
@@ -110,12 +120,21 @@ int main(){
 
     create_state4(sg);
     verify_state4(sg);
-    revert_changes(sg); // stan 3
-    verify_state3(sg);
+
+    srand ( time(NULL) );
+    if(rand() % 2 == 1){
+        cout << "Wybrano revert do stanu 3" << endl;
+        revert_changes(sg); // stan 3
+        verify_state3(sg);
+        revert_changes(sg); // dalej stan 3
+        verify_state3(sg);
+    }
     undo_commit(sg);
     verify_state2(sg);
     undo_commit(sg);
     verify_state1(sg);
+
+
 
 }
 

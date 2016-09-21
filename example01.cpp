@@ -7,6 +7,10 @@
 using namespace boost;
 using namespace std;
 
+/***
+ * Przykłady zastosowania versioned_graph na potrzeby rozdziału 3.3.1
+ * */
+
 struct Details {
     int duration;
     int max_waiting_time;
@@ -188,6 +192,10 @@ int main(){
     create_state3(sg);
     result = valid_workplan_exists(sg);
     cout << "Wynik etapu trzeciego: " << (result ? "Podział udany" : "Podział nieudany" ) << endl;
+    revert_changes(sg);
+    assert(validate_state2(sg));
+    cout << "Wycofano do stanu drugiego" << endl;
+
 
 
 }
