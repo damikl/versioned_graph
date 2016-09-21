@@ -15,8 +15,8 @@ struct Details {
     int duration;
     int max_waiting_time;
     int start_time;
-    Details(int dn, int max) : duration(dn),max_waiting_time(max),start_time(0){}
-    Details() : duration(0),max_waiting_time(0),start_time(0){}
+    Details(int dn, int max) : duration(dn),max_waiting_time(max),start_time(-1){}
+    Details() : duration(0),max_waiting_time(0),start_time(-1){}
 
     bool operator==(const Details& o)const {
         return this->duration==o.duration && this->max_waiting_time==o.max_waiting_time;
@@ -28,16 +28,21 @@ struct Details {
         start_time = start;
     }
     void clear(){
-        start_time = 0;
+        start_time = -1;
     }
     bool is_reserved() const{
-        return start_time > 0;
+        return start_time >= 0;
     }
-    bool is_in_conflict(int timeslot) const {
-        return start_time < timeslot && timeslot < get_end_time();
+    bool is_in_conflict(int start, int end) const {
+        bool result = is_reserved() && (max(start_time,start) < min(get_end_time(),end));
+        if(result){
+            cout << "Wystepuje konflikt: (" << start_time << " " << get_end_time()
+             << ")  (" << start  << " " << end  << ") " << endl;
+        }
+        return result;
     }
-    int get_end_time()const {
-        return start_time + duration;
+    int get_end_time() const {
+        return is_reserved() ? start_time + duration : 0;
     }
     string to_str(){
         return string("(").append(to_string(duration).append(" ").append(to_string(max_waiting_time).append(")")));
@@ -45,22 +50,23 @@ struct Details {
 };
 
 
-typedef versioned_graph<adjacency_list<boost::listS, boost::listS, boost::directedS, Details>> simple_graph;
+typedef versioned_graph<adjacency_list<boost::listS, boost::listS, boost::undirectedS, Details>> simple_graph;
 typedef typename boost::graph_traits<simple_graph>::vertex_descriptor vertex_descriptor;
 vertex_descriptor a,b,c,d,f,g,h,i,j;
 
 bool check_slot(const vertex_descriptor& v,int start, const simple_graph& sg){
     Details d = sg[v];
     int end = start + d.duration;
+    cout << "Test: " << d.to_str() << " start w " << start << " minucie, koniec w " << end <<   endl;
     if(end > d.max_waiting_time){
-        cout << d.to_str() << " out of time " << start <<  endl;
+        cout << "Zadanie " << d.to_str() << " zakonczy sie po: " << end << " minutach, czyli zbyt pozno" <<   endl;
         return false;
     }
     auto iter_p = adjacent_vertices(v,sg);
     for(auto v_it = iter_p.first; v_it!=iter_p.second; ++v_it){
         Details adj = sg[*v_it];
-        if(adj.is_in_conflict(start)){
-            cout << d.to_str() << " in conflict with " << adj.to_str() <<  endl;
+        if(adj.is_in_conflict(start,end)){
+            cout << "Zadanie " << d.to_str() << " jest w konflikcie z zadaniem: " << adj.to_str() <<  endl;
             return false;
         }
     }
@@ -107,6 +113,7 @@ bool validate_state3(const simple_graph& sg){
 void assign_task(simple_graph& sg, vector<string>& vec, vertex_descriptor& v, const string& label){
 	int start = vec.size()*5;
 	assert(check_slot(v,start,sg));
+    sg[v].take(start);
 	for(int i=0; i < (sg[v].duration/5.0f); ++i) { 
 		vec.push_back(label);
 	}
@@ -114,9 +121,9 @@ void assign_task(simple_graph& sg, vector<string>& vec, vertex_descriptor& v, co
 bool workplan_generator_demo(simple_graph& sg){
 	vector<string> first, second;
 	if(validate_state1(sg)) {
-		assign_task(sg,first,b,string("B"));
-		assign_task(sg,second,c,string("C"));
-		assign_task(sg,first,a,string("A"));
+        assign_task(sg,first,b,string("B"));
+        assign_task(sg,second,c,string("C"));
+        assign_task(sg,first,a,string("A"));
 	} else if(validate_state2(sg)){
 		assign_task(sg,first,a,string("A"));
 		assign_task(sg,second,f,string("F"));
@@ -137,6 +144,10 @@ bool workplan_generator_demo(simple_graph& sg){
         std::cout << i << ' ';
 	}
 	cout << endl;
+    auto iter_p = vertices(sg);
+    for(auto it =iter_p.first; it != iter_p.second; ++it){
+        sg[*it].clear();
+    }
 	return true;
 }
 
